@@ -62,6 +62,9 @@ machines:
   break: owner
   # Alle wie viele Ticks die Barrier-Blöcke geladener Maschinen geprüft werden (/fill, Kolben-Exploits).
   verify-ticks: 100
+  # Nie eine Maschine dort aufstellen, wo ein Spieler ausgeloggt ist (er würde in den Barrieren erwachen und
+  # ersticken). Nur für Tests abschalten.
+  refuse-logout-spots: true
 
 safety:
   # Kein Menü, solange der Spieler vor so vielen Sekunden Schaden genommen oder ausgeteilt hat.
@@ -96,6 +99,9 @@ roulette:
   # Roulette. -1 = Quoten wie im Mod (RTP 36/37 auf jede Farbe). 0..100 = erzwungene Gewinnchance (CasinoOdds des
   # Mods: auf Rot/Schwarz p/100, auf Grün p/1800).
   win-chance: -1
+  # true: mindestens eines der vier Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
   # Das Roulette hat keine Lichter.
   idle-light-ticks: 0
   idle-light-range: 16

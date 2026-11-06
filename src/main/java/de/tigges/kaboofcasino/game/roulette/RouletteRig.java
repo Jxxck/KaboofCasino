@@ -45,8 +45,14 @@ final class RouletteRig {
         this.coins = new Coins(record.id());
     }
 
+    /** The rig stands at the table centre (origin + 1, + 1), so the culling boxes cover the whole 2 x 2 table. */
     private Location base() {
-        return new Location(world, record.anchor().x() + 0.5, record.anchor().y(), record.anchor().z() + 0.5);
+        return new Location(world, record.anchor().x() + 1.0, record.anchor().y(), record.anchor().z() + 1.0);
+    }
+
+    /** A point in px from the origin corner as a pivot relative to the rig entity (8 px further in x and z). */
+    private static org.joml.Vector3f point(double x, double y, double z) {
+        return RigMath.point(x - 8, y, z - 8);
     }
 
     boolean spawned() {
@@ -69,19 +75,19 @@ final class RouletteRig {
         for (int part = 0; part < 4; part++) {
             parts.add(Displays.item(world, base, record.id(),
                     Displays.model("roulettecasino:block/roulette_body_" + part),
-                    RigMath.part(record.facing(), RigMath.point(8 + 16 * (part & 1), 8, 8 + 16 * (part >> 1))), 2.0f,
+                    RigMath.part(record.facing(), point(8 + 16 * (part & 1), 8, 8 + 16 * (part >> 1))), 2.0f,
                     d -> { }));
         }
         rotorPhase = frame;
         rotor = Displays.item(world, base, record.id(), Displays.model("kaboofcasino:roulette/rotor"),
-                rotorTransform(frame), 2.0f, d -> { });
+                rotorTransform(frame), 1.0f, d -> { });
         parts.add(rotor);
         ball = Displays.item(world, base, record.id(), Displays.model("kaboofcasino:roulette/ball"),
-                ballTransform(2.0 * frame, RouletteSpin.ballRadius(0), 12.8), 2.0f, d -> { });
+                ballTransform(2.0 * frame, RouletteSpin.ballRadius(0), 12.8), 1.0f, d -> { });
         parts.add(ball);
         for (ItemDisplay d : parts) {
-            d.setDisplayWidth(2.5f);
-            d.setDisplayHeight(1.5f);
+            d.setDisplayWidth(2.2f);
+            d.setDisplayHeight(1.2f);
         }
     }
 
@@ -105,7 +111,7 @@ final class RouletteRig {
 
     /** The rotor at {@code phase} frames: rotation about Y through the table centre. */
     Transformation rotorTransform(double phase) {
-        return RigMath.part(record.facing(), RigMath.point(CENTRE, 0, CENTRE),
+        return RigMath.part(record.facing(), point(CENTRE, 0, CENTRE),
                 new Quaternionf().rotationY((float) (phase * RouletteSpin.ANGLE)));
     }
 
@@ -133,7 +139,7 @@ final class RouletteRig {
     Transformation ballTransform(double ballPhase, double radius, double height) {
         double[] p = ballPoint(ballPhase, radius, height);
         double theta = ballAngle(ballPhase);
-        return RigMath.part(record.facing(), RigMath.point(p[0], p[1], p[2]),
+        return RigMath.part(record.facing(), point(p[0], p[1], p[2]),
                 new Quaternionf().rotationXYZ((float) (3 * theta), 0f, (float) (2 * theta)));
     }
 

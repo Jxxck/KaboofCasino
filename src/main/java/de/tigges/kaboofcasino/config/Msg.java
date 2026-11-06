@@ -20,6 +20,7 @@ public enum Msg {
     MACHINE_NO_SUPPORT("machine.no-support"),
     MACHINE_CHUNK_BORDER("machine.chunk-border"),
     MACHINE_PLAYER_NEAR("machine.player-near"),
+    MACHINE_LOGOUT_SPOT("machine.logout-spot"),
     MACHINE_PLACE_DENIED("machine.place-denied"),
     MACHINE_REMOVED("machine.removed"),
     MACHINE_NONE("machine.none"),

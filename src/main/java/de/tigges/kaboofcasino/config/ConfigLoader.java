@@ -61,7 +61,7 @@ public final class ConfigLoader {
                 new CasinoConfig.Rounds(r.integer("rounds.max-open", d.rounds().maxOpen(), 1, 16)),
                 new CasinoConfig.Owed(r.integer("owed.delivery-ticks", d.owed().deliveryTicks(), 1, 1200)),
                 new CasinoConfig.Machines(mode, r.integer("machines.verify-ticks", d.machines().verifyTicks(), 20,
-                        12_000)),
+                        12_000), r.bool("machines.refuse-logout-spots", d.machines().refuseLogoutSpots())),
                 new CasinoConfig.Safety(r.integer("safety.combat-seconds", d.safety().combatSeconds(), 0, 600),
                         r.integer("safety.monster-radius", d.safety().monsterRadius(), 0, 64),
                         r.integer("safety.tnt-radius", d.safety().tntRadius(), 0, 64),
@@ -77,7 +77,9 @@ public final class ConfigLoader {
     private static CasinoConfig.Slot game(Reader r, String section, CasinoConfig.Slot d) {
         return new CasinoConfig.Slot(r.integer(section + ".win-chance", d.winChance(), -1, 100),
                 r.integer(section + ".idle-light-ticks", d.idleLightTicks(), 0, 200),
-                r.integer(section + ".idle-light-range", d.idleLightRange(), 0, 128));
+                r.integer(section + ".idle-light-range", d.idleLightRange(), 0, 128),
+                // only the roulette table has the switch (the other machines always need support)
+                section.equals("roulette") ? r.bool(section + ".needs-support", d.needsSupport()) : d.needsSupport());
     }
 
     /** Typed, range-checked reads with warnings. */

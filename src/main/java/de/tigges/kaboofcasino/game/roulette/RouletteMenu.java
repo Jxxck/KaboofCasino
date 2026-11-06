@@ -85,10 +85,14 @@ final class RouletteMenu extends StakeMenu {
         ctx.messages().get().actionBar(player, Msg.ROULETTE_SEVERAL);
     }
 
+    /** The veil of a column lies on its middle slot (an oversized item covering chip, label and column). */
     @Override
-    protected ItemStack lockedIcon() {
-        return DisplayCopies.model("kaboofcasino:gui/roulette_veil", ctx.messages().get().render(Msg.GUI_ROULETTE_VEIL),
-                List.of());
+    protected ItemStack lockedIcon(int slot) {
+        if (slot / 3 != 1) {
+            return null;
+        }
+        return DisplayCopies.model("kaboofcasino:gui/roulette_veil_" + slot % 3,
+                ctx.messages().get().render(Msg.GUI_ROULETTE_VEIL), List.of());
     }
 
     /** The marker moves down the chosen colour column. */

@@ -41,7 +41,7 @@ public final class RouletteController extends MachineController {
     /** The panel hides this many ticks after the result ({@code displayTicks = 20}). */
     static final int PANEL_AFTER_RESULT = 20;
     private static final Particle.DustOptions RED_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xDF3B4B), 1.15f);
-    private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xFFD268), 1.25f);
+    private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xFFD168), 1.25f);
     private static final Particle.DustOptions GREEN_CONFETTI = new Particle.DustOptions(Color.fromRGB(0x36D886),
             1.15f);
 
@@ -216,7 +216,8 @@ public final class RouletteController extends MachineController {
             sound(world, "start", ORIGIN, 1.0f, 1.0f);
         }
         if (rig != null) {
-            rig.panel(RoulettePanel.render(ctx.messages().get(), player.getUniqueId(), player.getName(), colour,
+            rig.panel(RoulettePanel.render(ctx.messages().get(), ctx.layout(), player.getUniqueId(), player.getName(),
+                    colour,
                     slips.stream().map(Slip::stake).toList()));
         }
         panelUntil = -1;

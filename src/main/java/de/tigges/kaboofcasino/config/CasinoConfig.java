@@ -67,8 +67,12 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     public record Owed(int deliveryTicks) {
     }
 
-    /** @param breakMode {@code owner} (placer + ops) or {@code anyone} */
-    public record Machines(String breakMode, int verifyTicks) {
+    /**
+     * @param breakMode         {@code owner} (placer + ops) or {@code anyone}
+     * @param refuseLogoutSpots refuse placing a carrier within one block of where an offline player logged out
+     *                          (safety; only switched off for tests)
+     */
+    public record Machines(String breakMode, int verifyTicks, boolean refuseLogoutSpots) {
         public Machines {
             Objects.requireNonNull(breakMode);
         }
@@ -94,7 +98,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      *
      * @param winChance -1 = natural odds (the mod's default); 0..100 = forced pools (CasinoOdds)
      */
-    public record Slot(int winChance, int idleLightTicks, int idleLightRange) {
+    public record Slot(int winChance, int idleLightTicks, int idleLightRange, boolean needsSupport) {
     }
 
     public static final List<String> DEFAULT_BET_ITEMS = List.of(
@@ -113,12 +117,12 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Bets(64, DEFAULT_BET_ITEMS, Bets.PER_SLOT),
             new Rounds(8),
             new Owed(20),
-            new Machines("owner", 100),
+            new Machines("owner", 100, true),
             new Safety(10, 12, 8, 5),
             new Gui(4, 120),
-            new Slot(-1, 4, 16),
-            new Slot(-1, 4, 16),
-            new Slot(-1, 4, 16),
-            new Slot(-1, 0, 16),
+            new Slot(-1, 4, 16, true),
+            new Slot(-1, 4, 16, true),
+            new Slot(-1, 4, 16, true),
+            new Slot(-1, 0, 16, true),
             new Lights(4));
 }

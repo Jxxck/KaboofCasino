@@ -152,7 +152,8 @@ public final class BreakListener implements Listener {
                     w.playSound(center(task.block, w), Sound.BLOCK_METAL_BREAK, 1f, 0.8f);
                     machines.remove(task.machine, "broken by " + player.getName(),
                             player.getGameMode() == GameMode.CREATIVE ? null
-                                    : CasinoItems.create(CasinoItem.forMachine(task.machine.type()), messages.get(), 1));
+                                    : CasinoItems.create(CasinoItem.forMachine(task.machine.type()), messages.get(), 1),
+                            player);
                 }
             }
         }

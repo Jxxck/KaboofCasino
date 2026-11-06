@@ -63,8 +63,8 @@ public abstract class StakeMenu extends GameMenu {
     protected void refused(Player player, int slot) {
     }
 
-    /** The icon of an empty slot that is not selectable (the roulette's veil), or null for none. */
-    protected ItemStack lockedIcon() {
+    /** The icon of an empty slot that is not selectable (the roulette's veil), or null for a blank. */
+    protected ItemStack lockedIcon(int slot) {
         return null;
     }
 
@@ -188,8 +188,10 @@ public abstract class StakeMenu extends GameMenu {
                 if (i == active) {
                     icon.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
                 }
-            } else if (!selectable(i) && lockedIcon() != null) {
-                icon = lockedIcon();
+            } else if (!selectable(i)) {
+                ItemStack locked = lockedIcon(i);
+                icon = locked != null ? locked : DisplayCopies.model("kaboofcasino:gui/blank",
+                        m.render(Msg.GUI_STAKE_EMPTY), List.of());
             } else if (i == active) {
                 icon = DisplayCopies.model("kaboofcasino:gui/stake_active", m.render(Msg.GUI_STAKE_ACTIVE),
                         m.lines(ctx.config().get().bets().capPerRound() ? Msg.GUI_STAKE_ACTIVE_LORE_ROUND

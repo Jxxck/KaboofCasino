@@ -49,7 +49,7 @@ public final class MachineService {
 
     /** Outcome of {@link #place}. */
     public enum PlaceResult {
-        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_BORDER, PLAYER_NEAR
+        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_BORDER, PLAYER_NEAR, LOGOUT_SPOT
     }
 
     /** A refused placement and, for {@link PlaceResult#CHUNK_BORDER}, where to move the machine (player-relative). */
@@ -71,12 +71,19 @@ public final class MachineService {
     private final Deque<UUID> pendingSpawns = new ArrayDeque<>();
     private Function<Machine, MachineGame> games;
 
+    private final LogoutSpots logouts;
+
     public MachineService(Supplier<CasinoConfig> config, Supplier<Messages> messages, MachineIndex index,
-                          LongSupplier clock) {
+                          LongSupplier clock, LogoutSpots logouts) {
         this.config = config;
         this.messages = messages;
         this.index = index;
         this.clock = clock;
+        this.logouts = logouts;
+    }
+
+    public LogoutSpots logouts() {
+        return logouts;
     }
 
     /** Wiring: creates the game of a machine (by its type). */
@@ -141,6 +148,9 @@ public final class MachineService {
                 return Placement.of(PlaceResult.NO_SPACE);
             }
             Block b = p.block(world);
+            if (config.get().machines().refuseLogoutSpots() && logouts.blocks(p)) {
+                return Placement.of(PlaceResult.LOGOUT_SPOT);
+            }
             if (!b.isReplaceable() || isCarrier(p) || liquid(b)
                     || !world.getWorldBorder().isInside(new Location(world, p.x() + 0.5, p.y(), p.z() + 0.5))) {
                 return Placement.of(PlaceResult.NO_SPACE);
@@ -153,12 +163,21 @@ public final class MachineService {
                 }
             }
         }
-        // the mod's canSurvive: every cell of the bottom row needs centre support below (not the roulette table)
+        // the mod's canSurvive: every cell of the bottom row needs centre support below; the mod's roulette table
+        // needs none, here (roulette.needs-support, permadeath) at least one of its cells
+        int supported = 0;
+        int bottom = 0;
         for (Pos p : carriers) {
-            if (type.needsSupport() && p.y() == anchor.y() + type.bottom() && !p.block(world)
-                    .getRelative(BlockFace.DOWN).getBlockData().isFaceSturdy(BlockFace.UP, BlockSupport.CENTER)) {
-                return Placement.of(PlaceResult.NO_SUPPORT);
+            if (p.y() == anchor.y() + type.bottom()) {
+                bottom++;
+                if (p.block(world).getRelative(BlockFace.DOWN).getBlockData().isFaceSturdy(BlockFace.UP,
+                        BlockSupport.CENTER)) {
+                    supported++;
+                }
             }
+        }
+        if (!supportOk(type, supported, bottom, config.get().roulette().needsSupport())) {
+            return Placement.of(PlaceResult.NO_SUPPORT);
         }
         if (type == MachineType.SLOT_MACHINE && slotCrowded(anchor, facing)) {
             return Placement.of(PlaceResult.CROWDED);
@@ -206,9 +225,29 @@ public final class MachineService {
         return Placement.of(PlaceResult.PLACED);
     }
 
-    /** Water, lava or a waterlogged block: a barrier there would hold the fluid (refused instead). */
+    /**
+     * Any fluid in the cell: water, lava, waterlogged blocks and blocks with a fluid state such as seagrass, kelp or
+     * a bubble column (a barrier there would hold or hide the fluid; refused instead).
+     */
     static boolean liquid(Block b) {
-        return b.isLiquid() || b.getBlockData() instanceof Waterlogged w && w.isWaterlogged();
+        return wet(b.isLiquid(), b.getBlockData() instanceof Waterlogged w && w.isWaterlogged(),
+                b.getWorld().getFluidData(b.getX(), b.getY(), b.getZ()).getFluidType() != org.bukkit.Fluid.EMPTY);
+    }
+
+    /** @param fluidState the cell's fluid state is not empty (seagrass, kelp, bubble columns, waterlogged blocks) */
+    static boolean wet(boolean liquid, boolean waterlogged, boolean fluidState) {
+        return liquid || waterlogged || fluidState;
+    }
+
+    /**
+     * Support below the bottom row: every cell for machines with {@link MachineType#needsSupport()}; for the roulette
+     * table at least one cell when {@code roulette.needs-support}, none otherwise (the mod).
+     */
+    static boolean supportOk(MachineType type, int supported, int bottomCells, boolean rouletteNeedsSupport) {
+        if (type.needsSupport()) {
+            return supported == bottomCells;
+        }
+        return !rouletteNeedsSupport || supported >= 1;
     }
 
     /**
@@ -245,6 +284,83 @@ public final class MachineService {
         return both.isEmpty() ? "zur Seite" : both;
     }
 
+    /** Gives {@code item}; whatever the inventory returns as not fitting goes to {@code drop}. */
+    static <T> void giveOrDrop(T item, java.util.function.Function<T, Map<Integer, T>> add,
+                               java.util.function.Consumer<T> drop) {
+        for (T rest : add.apply(item).values()) {
+            drop.accept(rest);
+        }
+    }
+
+    // ---- rescue (safety 1a) ----------------------------------------------------------------------------------------
+
+    /** The carrier blocks a bounding box overlaps, or null. */
+    Machine carrierIn(BoundingBox box, String world) {
+        for (int x = (int) Math.floor(box.getMinX()); x <= (int) Math.floor(box.getMaxX() - 1e-6); x++) {
+            for (int y = (int) Math.floor(box.getMinY()); y <= (int) Math.floor(box.getMaxY() - 1e-6); y++) {
+                for (int z = (int) Math.floor(box.getMinZ()); z <= (int) Math.floor(box.getMaxZ() - 1e-6); z++) {
+                    Machine m = byCarrier.get(new Pos(world, x, y, z));
+                    if (m != null) {
+                        return m;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Moves a player who stands inside a machine's carriers (logged in on a spot a machine was placed on, an ender
+     * pearl, a teleport) to the nearest free standing spot, the machine's front first, else onto the highest safe
+     * block above. Returns true if he was moved.
+     */
+    public boolean rescue(Player player, String cause) {
+        World world = player.getWorld();
+        Machine m = carrierIn(player.getBoundingBox(), world.getKey().asString());
+        if (m == null) {
+            return false;
+        }
+        Location at = player.getLocation();
+        int[] spot = Rescue.nearest(at.getBlockX(), at.getBlockY(), at.getBlockZ(), m.facing().step(),
+                (x, y, z) -> standable(world, x, y, z));
+        Location target;
+        if (spot != null) {
+            target = new Location(world, spot[0] + 0.5, spot[1], spot[2] + 0.5, at.getYaw(), at.getPitch());
+        } else {
+            int top = world.getHighestBlockYAt(at.getBlockX(), at.getBlockZ());
+            target = new Location(world, at.getBlockX() + 0.5, top + 1, at.getBlockZ() + 0.5, at.getYaw(),
+                    at.getPitch());
+        }
+        player.setFallDistance(0);
+        player.teleport(target);
+        Log.get().warn("{} was inside {} #{} at {} ({}): moved to {} {} {}", player.getName(), m.type().id(),
+                m.record().number(), m.anchor(), cause, target.getBlockX(), target.getBlockY(), target.getBlockZ());
+        return true;
+    }
+
+    /** Feet at (x, y, z): two free cells (no carrier, nothing solid, no fluid, no fire) on safe ground. */
+    private boolean standable(World world, int x, int y, int z) {
+        if (y <= world.getMinHeight() || y + 1 >= world.getMaxHeight()) {
+            return false;
+        }
+        String w = world.getKey().asString();
+        for (int dy = 0; dy < 2; dy++) {
+            Block b = world.getBlockAt(x, y + dy, z);
+            if (isCarrier(new Pos(w, x, y + dy, z)) || !b.isPassable() || liquid(b) || hot(b.getType())) {
+                return false;
+            }
+        }
+        Block ground = world.getBlockAt(x, y - 1, z);
+        return !isCarrier(new Pos(w, x, y - 1, z)) && ground.getBlockData().isFaceSturdy(BlockFace.UP,
+                BlockSupport.FULL) && !hot(ground.getType()) && !liquid(ground);
+    }
+
+    private static boolean hot(Material m) {
+        return m == Material.FIRE || m == Material.SOUL_FIRE || m == Material.LAVA || m == Material.MAGMA_BLOCK
+                || m == Material.CAMPFIRE || m == Material.SOUL_CAMPFIRE || m == Material.POWDER_SNOW
+                || m == Material.SWEET_BERRY_BUSH || m == Material.WITHER_ROSE || m == Material.CACTUS;
+    }
+
     /** True if {@code box} comes within {@code distance} blocks of any carrier block (box to box). */
     static boolean near(BoundingBox box, List<Pos> carriers, double distance) {
         for (Pos p : carriers) {
@@ -274,6 +390,14 @@ public final class MachineService {
      * carriers and the record, optionally drops the machine item at the anchor (survival break only).
      */
     public void remove(Machine machine, String why, ItemStack drop) {
+        remove(machine, why, drop, null);
+    }
+
+    /**
+     * Removes a machine; {@code drop} (the machine item, or null) goes into {@code receiver}'s inventory, only what
+     * does not fit is dropped at his feet (never at the anchor, which may hang over lava or the void).
+     */
+    public void remove(Machine machine, String why, ItemStack drop, Player receiver) {
         Threads.requireMain();
         World world = Bukkit.getWorld(org.bukkit.NamespacedKey.fromString(machine.anchor().world()));
         try {
@@ -300,7 +424,10 @@ public final class MachineService {
             if (world.isChunkLoaded(a.chunkX(), a.chunkZ())) {
                 ChunkRecords.remove(world.getChunkAt(a.chunkX(), a.chunkZ()), machine.id());
             }
-            if (drop != null) {
+            if (drop != null && receiver != null && receiver.isOnline()) {
+                giveOrDrop(drop, receiver.getInventory()::addItem,
+                        rest -> receiver.getWorld().dropItem(receiver.getLocation(), rest));
+            } else if (drop != null) {
                 world.dropItemNaturally(new Location(world, a.x() + 0.5, a.y() + 0.5, a.z() + 0.5), drop);
             }
         }
@@ -454,6 +581,7 @@ public final class MachineService {
             case DENIED -> Msg.MACHINE_PLACE_DENIED;
             case CHUNK_BORDER -> Msg.MACHINE_CHUNK_BORDER;
             case PLAYER_NEAR -> Msg.MACHINE_PLAYER_NEAR;
+            case LOGOUT_SPOT -> Msg.MACHINE_LOGOUT_SPOT;
             case PLACED -> null;
         };
         if (msg == Msg.MACHINE_CHUNK_BORDER) {

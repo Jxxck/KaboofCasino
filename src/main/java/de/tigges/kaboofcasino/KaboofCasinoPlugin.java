@@ -17,6 +17,8 @@ import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.machine.BreakListener;
 import de.tigges.kaboofcasino.machine.ChunkListener;
 import de.tigges.kaboofcasino.machine.ItemVetoListener;
+import de.tigges.kaboofcasino.machine.LogoutSpots;
+import de.tigges.kaboofcasino.machine.SafetyListener;
 import de.tigges.kaboofcasino.machine.MachineListener;
 import de.tigges.kaboofcasino.machine.MachineService;
 import de.tigges.kaboofcasino.machine.ProtectionListener;
@@ -131,7 +133,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         MenuSafety safety = new MenuSafety(() -> config, System::currentTimeMillis);
         DangerSweep sweep = new DangerSweep(() -> config, () -> messages, safety);
         menus = new MenuService(Bukkit::getCurrentTick, sweep, () -> messages);
-        machines = new MachineService(() -> config, () -> messages, index, System::currentTimeMillis);
+        LogoutSpots logouts = new LogoutSpots(db);
+        logouts.load();
+        machines = new MachineService(() -> config, () -> messages, index, System::currentTimeMillis, logouts);
         ledger = new LedgerListener(engine, () -> messages, machines::ownsRound);
         PackSessions sessions = new PackSessions();
         sessions.required(config.pack().enabled());
@@ -149,7 +153,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                         () -> config.gui().clickGuardTicks(), () -> messages), safety, ledger,
                 new PackListener(() -> config, () -> messages, pack, sessions),
                 new MachineListener(machines, menus, () -> messages), breaks, new ProtectionListener(machines),
-                new ChunkListener(machines), new ItemVetoListener())) {
+                new ChunkListener(machines), new ItemVetoListener(), new SafetyListener(machines, this))) {
             getServer().getPluginManager().registerEvents(l, this);
         }
         Recipes.load(getClassLoader());

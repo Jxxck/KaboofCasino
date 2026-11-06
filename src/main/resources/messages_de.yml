@@ -31,6 +31,7 @@ machine:
   no-support: "<red>Der Automat braucht festen Boden."
   chunk-border: "<red>Die Maschine passt hier nicht ganz in einen Chunk – stell sie einen Block weiter nach <direction>."
   player-near: "<red>Hier steht jemand zu nah – die Maschine braucht zwei Blöcke Abstand zu anderen Spielern."
+  logout-spot: "<red>Hier ist jemand ausgeloggt – stell die Maschine woanders hin."
   place-denied: "<red>Hier darfst du nichts bauen."
   removed: "<green>Automat entfernt."
   none: "<red>Du schaust auf keinen Casino-Automaten."

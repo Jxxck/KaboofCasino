@@ -170,6 +170,16 @@ The forward has to exist for that mode.
   carrier (`PortalCreateEvent`), fire, `EntityChangeBlockEvent`. `/fill`, `/setblock`, structures, Litematica and the
   piston exploits arrive without events: `MachineService.verify` checks every carrier every `machines.verify-ticks`,
   at chunk load and at every interaction; a missing carrier removes the machine (remaining barriers to air, no drop).
+- Offline players (permadeath): at quit the block box of feet and head is stored (`logouts` table, schema 2, in
+  memory from enable, removed at the player's next join; bots are not recorded). No carrier may lie within one block
+  of such a box ("Hier ist jemand ausgeloggt – stell die Maschine woanders hin."; `machines.refuse-logout-spots`,
+  only switched off for tests). Safety net for every other way into a machine (ender pearls, teleports, old data):
+  at join, one tick later and on suffocation damage (cancelled) a player whose box overlaps a carrier is moved to
+  the nearest spot with two free cells on safe ground (the machine's front first, up to 4 blocks around and 3 up or
+  down; else the highest block above), with a WARN log (`SafetyListener`, `MachineService.rescue`, `Rescue`).
+- Cells with any fluid state (water, lava, waterlogged blocks, seagrass, kelp, bubble columns) are refused.
+- Breaking (owner/OP, survival): the item goes into the breaker's inventory, only if it is full at his feet (never
+  at the anchor, which may hang over lava or the void); creative breaks drop nothing.
 - `verify` skips carriers in unloaded chunks and checks the rest; `remove` never loads a chunk (carriers in unloaded
   chunks stay; with the one-chunk rule that only concerns old data).
 - Idle lights of all machines share `lights.max-updates-per-tick` (default 4, `visual.LightBudget`): a machine that is
@@ -324,7 +334,9 @@ provider definitions from the 26.3 client jar, see its README).
 | Step 2: row cuts across the whole image tear the payout table apart. | Rows are cut in the left panel only; the payout panel keeps window = mod - 20. |
 | Step 2: `Images.argb` returns its argument when it already is ARGB, so a second "copy" aliases the first. | Copies via `Images.crop`. |
 | Step 2: a display is culled by its own box, which grows only upward from the entity; parts one block below vanish when looking down. | 3x3 rigs stand at the machine's bottom centre with a 3.2 x 3.2 box. |
-| Step 2: the wheel pennant at the mod's 36 degree clamp pokes 0.08 px above the machine. | The display clamps at 32 degrees (`WheelGeometryTest`). |
+| The wheel pennant at the mod's 36 degree clamp pokes 0.154 px above the machine, exactly like the mod. | Kept; `WheelGeometryTest` allows it. |
+| games.md lists the roulette's gold confetti as 0xFFD268; the mod has 0xFFD168 (`RouletteBlockEntity.java:36-38`). | 0xFFD168. |
+| A machine placed where a player logged out buries him (only online players are visible to the placement checks). | Logout spots and the rescue net. |
 
 ## 10. Deviations from the mod (step 1)
 
@@ -404,9 +416,10 @@ Look:
 
 - Bets are a selection over nine slots (three per colour; the mod's columns RED, BLACK, GREEN), one colour per spin as
   in the mod; nothing stays on the table when the menu closes (the mod keeps the stake in the table under its owner).
-  Choosing a slot of another colour while one is staked is refused with "Nur eine Farbe behalten"; the slots of the
-  other colours show the mod's veil colour as an item, because a chest title cannot change while it is open (the
-  mod also veils the chips and greys the colour labels; ours stay as drawn).
+  Choosing a slot of another colour while one is staked is refused with "Nur eine Farbe behalten". The other
+  colours are veiled like the mod (chip veil, muted label, the 0xB4313B36 column fill) by one translucent
+  `oversized_in_gui` item per column, because a chest title cannot change while it is open; the fill ends with the
+  last bet frame (the mod's reaches 4 px further, where our button now sits).
 - One player per table at a time (the menu claim); the mod lets others open the menu and watch, but only the stake
   owner can act, so one player's bet per spin either way.
 - All records settle at the result (tick 160); the mod ejects the payout stacks every third game tick from the next
@@ -415,11 +428,16 @@ Look:
   result if nothing is paid), the panel hides 20 ticks after the result, as in the mod.
 - Rotor and ball: 2-tick rotor updates (interpolated, at most 27 degrees per update), 1-tick ball updates (its own
   spin reaches ~80 degrees per tick); both use the light at the display's position (the mod: the table's light).
-- The floating panel is a text display: head + name, the chosen colour's name in a readable colour and the stakes;
-  the mod draws one felt column per colour with a coloured header and the item icons, with per-viewer fades.
-- Placement: the mod's table needs no support below (kept). Like every machine it must fit into one chunk (the
-  message says where to move it: links/rechts/vorne/hinten from the player's view) and keep 2 blocks from other
-  players.
+- The floating panel is a text display: head + name, the chosen colour's header (a gui-font bar in the mod's header
+  colour 0x9B2631 / 0x21252B / 0x1B9656 with the cream label on it) and the stakes; the mod draws one felt column
+  per colour with the item icons and per-viewer fades.
+- Placement (permadeath deviation): the mod's table needs no support below; here at least one of the four cells
+  needs a sturdy block below (`roulette.needs-support: true`, default; `false` restores the mod), so no table hangs
+  over lava or the void. Like every machine it must fit into one chunk (the message says where to move it:
+  links/rechts/vorne/hinten from the player's view), keep 2 blocks from other players and from logout spots.
+- The rig stands at the table centre so the displays' culling boxes cover the whole table; rotor and ball are
+  visible to 64 blocks like the mod's renderer.
+- "Das Roulette dreht sich." when someone clicks a spinning table is our addition (the mod just opens no menu).
 - The colour of a pocket is the mod's parity rule (0 green, odd red, even black), and the converted rotor shows
   exactly that; the ball comes to rest over pocket `3 x frame` (`RouletteGeometryTest`).
 
@@ -464,7 +482,9 @@ testing/craft-test.sh                                                    # craft
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
 - Step 3 ships as `KaboofCasino-0.3.0.jar`: remove `KaboofCasino-0.2.0.jar`. The live `config.yml` gets `roulette:`
-  merged in (natural odds). The recipe book unlocks the table with the roulette mechanism (mod's advancement).
+  (natural odds, `needs-support: true`) and `machines.refuse-logout-spots: true` merged in; `casino.db` migrates to
+  schema 2 (`logouts`) at the first start. Logout spots are recorded from then on: players who logged out before the
+  update are protected by the rescue net only. The recipe book unlocks the table with the roulette mechanism.
 - Step 2 shipped as `KaboofCasino-0.2.0.jar`: remove `KaboofCasino-0.1.0.jar` from `plugins/`. The live `config.yml`
   gets the new keys merged in: `wheel:`/`plinko:` (natural odds), `lights.max-updates-per-tick: 4` and
   `bets.cap-per: slot` (so the live cap becomes 64 per bet slot, 3 x 64 per wheel/Plinko round, like the mod; set

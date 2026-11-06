@@ -207,6 +207,10 @@ class GuiPreviewTest {
         for (int[] size : new int[][] {{480, 270}, {456, 256}, {427, 240}}) {
             render("roulette", title, size[0], size[1], ROULETTE_IMPORTANT, slots, "roulette_on", 109, 14);
         }
+        // red chosen: the veils of black and green (window x of each veil: mod 34 + 56c, frames moved -1 / -3)
+        render("roulette-veiled", title, 427, 240, ROULETTE_IMPORTANT, slots, "roulette_on", 109, 14,
+                List.of(new Overlay("roulette_veil_1", 34 + 56 - 23 - 1, 5),
+                        new Overlay("roulette_veil_2", 34 + 112 - 23 - 3, 5)));
     }
 
     @Test
@@ -267,9 +271,19 @@ class GuiPreviewTest {
         }
     }
 
+    /** An item texture drawn at a window position (oversized GUI items such as the roulette veils). */
+    record Overlay(String texture, int x, int y) {
+    }
+
     private void render(String name, Component title, int width, int height, List<Important> important,
                         java.util.Set<Integer> highlight, String buttonTexture, int buttonY, int buttonH)
             throws IOException {
+        render(name, title, width, height, important, highlight, buttonTexture, buttonY, buttonH, List.of());
+    }
+
+    private void render(String name, Component title, int width, int height, List<Important> important,
+                        java.util.Set<Integer> highlight, String buttonTexture, int buttonY, int buttonH,
+                        List<Overlay> overlays) throws IOException {
         int left = (width - 176) / 2;
         int top = (height - 222) / 2;
         BufferedImage screen = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -307,6 +321,15 @@ class GuiPreviewTest {
         for (int y = 0; y < buttonH; y++) {
             for (int x = 0; x < 72; x++) {
                 blend(screen, left + 53 + x, top + buttonY + y, button.getRGB(x, y));
+            }
+        }
+        for (Overlay o : overlays) {
+            BufferedImage img = ImageIO.read(new ByteArrayInputStream(pack.get(
+                    "assets/kaboofcasino/textures/item/gui/" + o.texture() + ".png")));
+            for (int y = 0; y < img.getHeight(); y++) {
+                for (int x = 0; x < img.getWidth(); x++) {
+                    blend(screen, left + o.x() + x, top + o.y() + y, img.getRGB(x, y));
+                }
             }
         }
         Path out = Path.of("build/reports/gui/" + name + "-preview-" + width + "x" + height + ".png");
