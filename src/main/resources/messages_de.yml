@@ -1,0 +1,90 @@
+# KaboofCasino – alle Texte (MiniMessage). Texte der Spiele stammen aus de_de.json des Mods.
+prefix: "<gold>[Casino]</gold> "
+
+slot:
+  # message.roulettecasino.slot_machine.*
+  no-bet: "<yellow>Setze einen Einsatz, bevor du den Hebel ziehst."
+  busy: "<yellow>Der Automat dreht sich."
+  spacing: "<red>Lass zwischen zwei Spielautomaten einen Block frei."
+
+machine:
+  in-use: "<yellow><name> spielt gerade an diesem Automaten."
+  not-yours: "<red>Diesen Automaten kann nur <name> oder ein Admin abbauen."
+  running: "<yellow>Der Automat läuft gerade. Warte, bis die Runde vorbei ist."
+  no-space: "<red>Hier ist kein Platz für den Automaten."
+  no-support: "<red>Der Automat braucht festen Boden."
+  place-denied: "<red>Hier darfst du nichts bauen."
+  removed: "<green>Automat entfernt."
+  none: "<red>Du schaust auf keinen Casino-Automaten."
+
+bet:
+  not-allowed: "<red><item> ist kein Einsatz."
+  not-plain: "<red>Nur normale Items ohne Namen, Verzauberung oder sonstige Daten zählen als Einsatz."
+  not-enough: "<red>Du hast nicht genug <item>."
+  max: "<yellow>Höchsteinsatz: <max> Items pro Runde."
+
+owed:
+  pending: "<yellow>Hol erst deinen Gewinn ab: <click:run_command:'/casino abholen'><u>/casino abholen</u></click>"
+  delivered: "<green>Nachgeliefert: <items>"
+  remaining: "<yellow>Noch offen: <items>. Mach Platz im Inventar."
+  none: "<gray>Du hast nichts abzuholen."
+
+rounds:
+  full: "<red>Du hast schon zu viele laufende Runden."
+
+error:
+  creative: "<red>Im Kreativ- und Zuschauermodus wird nicht gespielt."
+  not-usable: "<red>Das geht gerade nicht."
+  unsafe: "<red>Nicht jetzt – du bist in Gefahr."
+  danger-close: "<red>Gefahr – Menü zu. Deine Runde läuft weiter."
+  no-pack: "<red>Für das Casino brauchst du das Ressourcenpaket. Nimm es beim nächsten Login an."
+  internal: "<red>Interner Fehler (Code <code>). Sag einem Admin Bescheid."
+  no-permission: "<red>Dazu fehlt dir die Berechtigung."
+
+pack:
+  prompt: "<gold>KaboofCasino</gold>: Grafiken und Sounds von <yellow>MineVegas Casino</yellow> (MIT), curseforge.com/minecraft/mc-mods/minevegas-casino"
+  kick: "<red>Das Casino-Ressourcenpaket ist auf diesem Server Pflicht.</red>\n<gray>Verbinde dich neu und nimm es an (Serverliste: Server-Ressourcenpakete aktivieren)."
+  declined: "<gray>Ohne das Ressourcenpaket siehst du das Casino nicht. Beim nächsten Login kannst du es annehmen."
+
+command:
+  info: "<gold>KaboofCasino</gold> <gray>– Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino abholen · /casino credits"
+  usage: "<gray>/casino [stats|abholen|credits] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
+  give-done: "<green><player> hat <item> bekommen."
+  give-unknown: "<red>Unbekannte Maschine: <name>. Möglich: <list>"
+  player-unknown: "<red>Spieler <name> ist nicht online."
+  reloaded: "<green>KaboofCasino neu geladen (<warnings> Warnungen, siehe Konsole). Das Ressourcenpaket ändert sich erst mit einer neuen Version."
+  stats-header: "<gold>Deine Casino-Statistik</gold> <gray>(<rounds> Runden)"
+  stats-line: "<gray>• <yellow><item></yellow>: gesetzt <staked>, gewonnen <won>"
+  stats-empty: "<gray>Du hast noch nicht gespielt."
+  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Spiele, Modelle, Texturen, GUI-Grafiken, Sounds und Texte: <yellow>MineVegas Casino</yellow> 1.1.0 von byMehd, MIT-Lizenz mit Hinweispflicht:\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>Lounge-Musik des Mods (kommt später): Kevin MacLeod (incompetech.com), CC BY 4.0 – https://creativecommons.org/licenses/by/4.0/\n<gray>Plugin für Kaboof SMP; GUI-Schrift aus der Minecraft-Standardschrift."
+  open-rounds: "<gray>Laufende Runden: <rounds> · offene Gewinne: <owed>"
+
+gui:
+  slot:
+    # block.roulettecasino.slot_machine, gui.roulettecasino.slot.payouts, .bet, .play
+    title: "Spielautomat"
+    payouts: "Gewinne"
+    bet: "EINSATZ"
+    spin: "<gold><b>DREHEN"
+    spin-lore: "<gray>Klick auf ein Item in deinem Inventar setzt es ein:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Shift-Linksklick: alles davon (höchstens <max>)"
+    stake-lore: "<gray>Linksklick: Einsatz zurücknehmen\n<gray>Rechtsklick: eins weniger"
+    collect: "<gold><b>ABHOLEN"
+    collect-lore: "<gray>Erst den offenen Gewinn abholen,\n<gray>dann geht es weiter."
+  bets:
+    # gui.roulettecasino.bets.title
+    title: "<gold>Mögliche Einsätze"
+    lore: "<gray>Blöcke zahlen als Blöcke aus, es gibt keinen ×9-Wert."
+
+item:
+  slot-machine: "Spielautomat"
+  slot-machine-lore: "<gray>MineVegas Casino"
+  slot-machine-reel: "Spielautomaten-Walze"
+  slot-machine-mechanism: "Spielautomaten-Mechanismus"
+
+panel:
+  # gui.roulettecasino.slot.panel_title, result_lose, result_push, result_win, result_jackpot
+  bet: "EINSATZ"
+  lose: "KEIN GEWINN"
+  push: "EINSATZ ZURÜCK"
+  win: "GEWINN <mult>"
+  jackpot: "JACKPOT <mult>"

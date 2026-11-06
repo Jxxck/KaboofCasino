@@ -1,0 +1,6 @@
+build/
+.gradle/
+*.class
+/testing/out/
+/testing/bot/build/
+__pycache__/

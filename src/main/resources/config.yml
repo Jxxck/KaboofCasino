@@ -1,0 +1,74 @@
+# KaboofCasino – Einstellungen. Neue Schlüssel ergänzt das Plugin beim Start selbst.
+
+pack:
+  # Ressourcenpaket überhaupt anbieten.
+  enabled: true
+  # Kill-Switch. false: das Paket wird nur angeboten, niemand wird gekickt.
+  # true erst, wenn der Port von außen geprüft ist (render.md 8.5).
+  enforce: false
+  # Öffentlicher Host in der Download-Adresse http://<url-host>:<port>/pack/<sha1>.zip
+  url-host: 5.9.137.26
+  # TCP-Port des eingebauten HTTP-Servers (muss am Gateway weitergeleitet sein).
+  port: 25580
+  bind: 0.0.0.0
+  # So lange wartet die Configuration-Phase auf die Antwort des Clients (erster Download, Annehmen-Dialog).
+  timeout-seconds: 300
+
+bets:
+  # Höchsteinsatz in Items pro Runde (PLAN Entscheidung 1).
+  max-stake: 64
+  # Erlaubte Einsätze: die 18 Items des Mods. Ausgezahlt wird dasselbe Item × Multiplikator.
+  items:
+    - minecraft:coal
+    - minecraft:coal_block
+    - minecraft:copper_ingot
+    - minecraft:copper_block
+    - minecraft:iron_ingot
+    - minecraft:iron_block
+    - minecraft:gold_ingot
+    - minecraft:gold_block
+    - minecraft:redstone
+    - minecraft:redstone_block
+    - minecraft:lapis_lazuli
+    - minecraft:lapis_block
+    - minecraft:emerald
+    - minecraft:emerald_block
+    - minecraft:diamond
+    - minecraft:diamond_block
+    - minecraft:netherite_ingot
+    - minecraft:netherite_block
+
+rounds:
+  # Höchstens so viele offene Runden pro Spieler (im Spieler-PDC).
+  max-open: 4
+
+owed:
+  # Alle wie viele Ticks offene Gewinne (volles Inventar) nachgeliefert werden.
+  delivery-ticks: 20
+
+machines:
+  # Wer abbauen darf: owner (wer sie aufgestellt hat, plus OPs) oder anyone.
+  break: owner
+  # Alle wie viele Ticks die Barrier-Blöcke geladener Maschinen geprüft werden (/fill, Kolben-Exploits).
+  verify-ticks: 100
+
+safety:
+  # Kein Menü, solange der Spieler vor so vielen Sekunden Schaden genommen oder ausgeteilt hat.
+  combat-seconds: 10
+  # Monster in diesem Umkreis (mit Sichtlinie) schließen das Menü.
+  monster-radius: 12
+  # Gezündetes TNT in diesem Umkreis schließt das Menü.
+  tnt-radius: 8
+  # Gefahren-Prüfung alle so viele Ticks für Spieler mit offenem Casino-Menü.
+  sweep-ticks: 5
+
+gui:
+  # Ein Klick auf DREHEN zählt erst so viele Ticks nach dem Öffnen (Doppelklick-Schutz).
+  click-guard-ticks: 4
+
+slot:
+  # -1 = Quoten wie im Mod (RTP 499/512). 0..100 = erzwungene Gewinnchance in Prozent (CasinoOdds des Mods).
+  win-chance: -1
+  # Lichter im Leerlauf alle so viele Ticks aktualisieren (0 = aus), nur wenn ein Spieler so nah ist.
+  idle-light-ticks: 4
+  idle-light-range: 16

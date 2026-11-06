@@ -1,0 +1,16 @@
+name: KaboofCasino
+version: '${version}'
+main: de.tigges.kaboofcasino.KaboofCasinoPlugin
+api-version: '26.3'
+author: Jack
+description: "Casino des Kaboof SMP: Nachbau von MineVegas Casino (https://www.curseforge.com/minecraft/mc-mods/minevegas-casino)."
+website: https://www.curseforge.com/minecraft/mc-mods/minevegas-casino
+
+# Es gibt kein Rechte-Plugin auf dem Server: kaboofcasino.admin haben nur OPs.
+permissions:
+  kaboofcasino.use:
+    description: Darf Casino-Maschinen benutzen, aufstellen und /casino nutzen.
+    default: true
+  kaboofcasino.admin:
+    description: /casino give, remove, reload; darf fremde Maschinen abbauen.
+    default: op
