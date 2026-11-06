@@ -23,7 +23,9 @@ final class Lang {
             JsonObject all = Json.parse(jar.bytes(path));
             JsonObject kept = tree.has(path) ? Json.parse(tree.get(path)) : new JsonObject();
             for (Map.Entry<String, JsonElement> e : all.entrySet()) {
-                if (prefixes.stream().anyMatch(e.getKey()::startsWith)) {
+                // "key=" names one exact key, anything else is a prefix
+                if (prefixes.stream().anyMatch(p -> p.endsWith("=") ? e.getKey().equals(p.substring(0,
+                        p.length() - 1)) : e.getKey().startsWith(p))) {
                     kept.add(e.getKey(), e.getValue());
                 }
             }

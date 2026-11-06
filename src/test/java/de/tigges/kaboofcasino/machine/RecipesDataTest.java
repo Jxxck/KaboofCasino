@@ -43,6 +43,8 @@ class RecipesDataTest {
         assertEquals("minecraft:gold_ingot", d.get("roulette_mechanism").unlock());
         assertEquals("roulettecasino:roulette_mechanism", d.get("fortune_wheel").unlock());
         assertEquals("minecraft:dropper", d.get("plinko").unlock());
+        assertEquals("roulettecasino:roulette_mechanism", d.get("roulette_table").unlock());
+        assertEquals(List.of("RVN", "GMG", "PSP"), d.get("roulette_table").pattern());
     }
 
     @Test
@@ -72,6 +74,6 @@ class RecipesDataTest {
     /** The shipped set. */
     private static final class Set6 {
         static final java.util.Set<String> IDS = java.util.Set.of("slot_machine_reel", "slot_machine_mechanism",
-                "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko");
+                "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table");
     }
 }

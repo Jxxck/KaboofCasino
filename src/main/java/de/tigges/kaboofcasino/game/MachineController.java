@@ -123,10 +123,15 @@ public abstract class MachineController implements MachineGame {
             return false;
         }
         var range = player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE);
-        double max = (range == null ? 4.5 : range.getValue()) + 4.5;
+        double max = (range == null ? 4.5 : range.getValue()) + menuReach();
         Location eye = player.getEyeLocation();
         return distanceSquaredToBlock(eye.getX(), eye.getY(), eye.getZ(), machine.anchor().x(), machine.anchor().y(),
                 machine.anchor().z()) < max * max;
+    }
+
+    /** Extra reach of the menu beyond the block interaction range (the mod's {@code stillValid}: 4.5, roulette 1.5). */
+    protected double menuReach() {
+        return 4.5;
     }
 
     /** The mod's {@code isWithinBlockInteractionRange}: eye to the nearest point of the anchor block's box. */

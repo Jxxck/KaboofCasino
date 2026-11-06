@@ -69,6 +69,7 @@ public final class ConfigLoader {
                 new CasinoConfig.Gui(r.integer("gui.click-guard-ticks", d.gui().clickGuardTicks(), 0, 40),
                         r.integer("gui.idle-close-seconds", d.gui().idleCloseSeconds(), 0, 3600)),
                 game(r, "slot", d.slot()), game(r, "wheel", d.wheel()), game(r, "plinko", d.plinko()),
+                game(r, "roulette", d.roulette()),
                 new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
                         100)));
     }

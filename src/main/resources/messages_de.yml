@@ -17,6 +17,12 @@ plinko:
   no-bet: "<yellow>Setze einen Einsatz, bevor du die Kugel fallen lässt."
   busy: "<yellow>Eine Runde läuft."
 
+roulette:
+  # message.roulettecasino.no_bet, gui.roulettecasino.roulette.several (busy: the mod opens no menu while it spins)
+  no-bet: "<yellow>Setze einen Einsatz, bevor du das Roulette drehst."
+  busy: "<yellow>Das Roulette dreht sich."
+  several: "<yellow>Nur eine Farbe behalten"
+
 machine:
   in-use: "<yellow><name> spielt gerade an diesem Automaten."
   not-yours: "<red>Diesen Automaten kann nur <name> oder ein Admin abbauen."
@@ -104,6 +110,14 @@ gui:
     bets: "EINSÄTZE"
     ball: "1 Kugel"
     drop: "<gold><b>LOSLASSEN"
+  roulette:
+    # block.roulettecasino.roulette_table, gui.roulettecasino.red/black/green, .play
+    title: "Casino-Roulette"
+    red: "ROT"
+    black: "SCHWARZ"
+    green: "GRÜN"
+    spin: "<gold><b>DREHEN"
+    veil: "<gray>Nur eine Farbe behalten"
   bets:
     # gui.roulettecasino.bets.title
     title: "<gold>Mögliche Einsätze"
@@ -117,6 +131,7 @@ item:
   fortune-wheel: "Glücksrad"
   plinko: "Casino-Plinko"
   roulette-mechanism: "Kugellagermechanismus"
+  roulette-table: "Casino-Roulette"
 
 panel:
   # gui.roulettecasino.slot.panel_title, result_lose, result_push, result_win, result_jackpot

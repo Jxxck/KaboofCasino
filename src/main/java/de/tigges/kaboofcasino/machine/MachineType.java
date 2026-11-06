@@ -12,20 +12,39 @@ import java.util.Optional;
  */
 public enum MachineType {
     /** 1x1x3 column: lower (anchor = the placed cell), upper, top (games.md 6). */
-    SLOT_MACHINE("slot_machine", new int[][] {{0, 0, 0}, {0, 1, 0}, {0, 2, 0}}, 0),
+    SLOT_MACHINE("slot_machine", new int[][] {{0, 0, 0}, {0, 1, 0}, {0, 2, 0}}, 0, false, true),
     /** 3 wide x 3 tall x 1 deep; placed cell = part 1 (bottom middle), anchor = part 4 (centre) (games.md 8). */
-    FORTUNE_WHEEL("fortune_wheel", grid3x3(), 1),
+    FORTUNE_WHEEL("fortune_wheel", grid3x3(), 1, false, true),
     /** Same footprint as the wheel (games.md 9). */
-    PLINKO("plinko", grid3x3(), 1);
+    PLINKO("plinko", grid3x3(), 1, false, true),
+    /**
+     * 2 x 2 x 1 table without facing (games.md 5): the clicked cell is part 0, parts 1..3 at +X, +Z, +X+Z whichever
+     * way the player looks; the mod needs no support below.
+     */
+    ROULETTE_TABLE("roulette_table", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 0, 1}, {1, 0, 1}}, 0, true, false);
 
     private final String id;
     private final int[][] footprint;
     private final int rise;
+    private final boolean fixedFacing;
+    private final boolean support;
 
-    MachineType(String id, int[][] footprint, int rise) {
+    MachineType(String id, int[][] footprint, int rise, boolean fixedFacing, boolean support) {
         this.id = id;
         this.footprint = footprint;
         this.rise = rise;
+        this.fixedFacing = fixedFacing;
+        this.support = support;
+    }
+
+    /** True if the machine has no facing (always the SOUTH frame, footprint not rotated). */
+    public boolean fixedFacing() {
+        return fixedFacing;
+    }
+
+    /** True if the bottom row needs centre support below (the mod's {@code canSurvive}). */
+    public boolean needsSupport() {
+        return support;
     }
 
     /** Parts 0..8 of the mod's 3x3 machines: column {@code part % 3} (viewer's left to right), row {@code part / 3}. */
@@ -75,20 +94,30 @@ public enum MachineType {
     }
 
     /**
-     * Whether the footprint fits into one chunk: 0 if it does, otherwise the shift along the viewer's right that
-     * makes it fit (-1 = one block to the left, +1 = one block to the right), or 2 if neither does.
+     * Whether the footprint fits into one chunk: null if it does, otherwise the world shift {dx, dz} of one block
+     * that makes it fit ({0, 0} if none does). Machines with a facing move along their width only (left/right for
+     * the player in front of them); a table without facing may also move along z or diagonally.
      */
-    public int chunkShift(Pos anchor, Facing facing) {
+    public int[] chunkFit(Pos anchor, Facing facing) {
         if (oneChunk(carriers(anchor, facing))) {
-            return 0;
+            return null;
         }
-        int[] r = right(facing);
-        for (int shift : new int[] {-1, 1}) {
-            if (oneChunk(carriers(anchor.offset(r[0] * shift, 0, r[1] * shift), facing))) {
-                return shift;
+        List<int[]> shifts = new ArrayList<>();
+        if (fixedFacing) {
+            for (int[] d : new int[][] {{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) {
+                shifts.add(d);
+            }
+        } else {
+            int[] r = right(facing);
+            shifts.add(new int[] {-r[0], -r[1]});
+            shifts.add(r);
+        }
+        for (int[] d : shifts) {
+            if (oneChunk(carriers(anchor.offset(d[0], 0, d[1]), facing))) {
+                return d;
             }
         }
-        return 2;
+        return new int[] {0, 0};
     }
 
     private static boolean oneChunk(List<Pos> carriers) {

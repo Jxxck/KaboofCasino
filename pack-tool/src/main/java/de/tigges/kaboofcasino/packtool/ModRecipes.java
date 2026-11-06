@@ -18,7 +18,7 @@ final class ModRecipes {
     static final String FILE = "recipes.json";
     /** The recipes of the machines built so far, in the mod's unlock order. */
     static final List<String> SHIPPED = List.of("slot_machine_reel", "slot_machine_mechanism", "slot_machine",
-            "roulette_mechanism", "fortune_wheel", "plinko");
+            "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table");
 
     private ModRecipes() {
     }

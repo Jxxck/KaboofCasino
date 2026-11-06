@@ -90,9 +90,9 @@ public final class MachineListener implements Listener {
             messages.get().actionBar(player, Msg.ERROR_NO_PERMISSION);
             return;
         }
-        MachineService.PlaceResult result = machines.place(player, type.get(), block, event.getBlockFace(),
+        MachineService.Placement result = machines.place(player, type.get(), block, event.getBlockFace(),
                 event.getHand(), item);
-        if (result == MachineService.PlaceResult.PLACED) {
+        if (result.result() == MachineService.PlaceResult.PLACED) {
             if (player.getGameMode() != GameMode.CREATIVE) {
                 ItemStack rest = item.clone();
                 rest.setAmount(item.getAmount() - 1);

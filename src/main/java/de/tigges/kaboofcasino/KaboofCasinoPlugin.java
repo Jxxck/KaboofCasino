@@ -6,6 +6,7 @@ import de.tigges.kaboofcasino.config.ConfigLoader;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.game.CasinoRandom;
 import de.tigges.kaboofcasino.game.plinko.PlinkoController;
+import de.tigges.kaboofcasino.game.roulette.RouletteController;
 import de.tigges.kaboofcasino.game.slot.SlotController;
 import de.tigges.kaboofcasino.game.wheel.WheelController;
 import de.tigges.kaboofcasino.gui.DangerSweep;
@@ -141,6 +142,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
             case FORTUNE_WHEEL -> new WheelController(machine, ctx);
             case PLINKO -> new PlinkoController(machine, ctx);
+            case ROULETTE_TABLE -> new RouletteController(machine, ctx);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         for (Listener l : List.of(menus, new MenuListener(menus, Bukkit::getCurrentTick,

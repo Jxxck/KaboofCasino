@@ -92,6 +92,14 @@ wheel:
   idle-light-ticks: 4
   idle-light-range: 16
 
+roulette:
+  # Roulette. -1 = Quoten wie im Mod (RTP 36/37 auf jede Farbe). 0..100 = erzwungene Gewinnchance (CasinoOdds des
+  # Mods: auf Rot/Schwarz p/100, auf Grün p/1800).
+  win-chance: -1
+  # Das Roulette hat keine Lichter.
+  idle-light-ticks: 0
+  idle-light-range: 16
+
 lights:
   # Leerlauf-Lichter aller Automaten zusammen: höchstens so viele Updates pro Tick (reihum). Jedes Update schickt
   # alle Lampenfarben eines Automaten an alle Spieler in der Nähe; so bleibt der Verkehr begrenzt, egal wie viele

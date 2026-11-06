@@ -16,7 +16,9 @@ public enum CasinoItem {
             null),
     FORTUNE_WHEEL("fortune_wheel", "roulettecasino:fortune_wheel", Msg.ITEM_FORTUNE_WHEEL,
             MachineType.FORTUNE_WHEEL),
-    PLINKO("plinko", "roulettecasino:plinko", Msg.ITEM_PLINKO, MachineType.PLINKO);
+    PLINKO("plinko", "roulettecasino:plinko", Msg.ITEM_PLINKO, MachineType.PLINKO),
+    ROULETTE_TABLE("roulette_table", "roulettecasino:roulette_table", Msg.ITEM_ROULETTE_TABLE,
+            MachineType.ROULETTE_TABLE);
 
     private final String id;
     private final String model;

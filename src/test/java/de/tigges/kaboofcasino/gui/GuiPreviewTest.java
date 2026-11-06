@@ -165,6 +165,50 @@ class GuiPreviewTest {
             new Important("multiplier column", 250, 32, 287, 176),
             new Important("inventory", 0, 128, 176, 222));
 
+    static final List<Important> ROULETTE_IMPORTANT = List.of(
+            new Important("headline", 60, -8, 118, 0),
+            new Important("payouts header", 220, -6, 262, 2),
+            new Important("chips and colour labels", 15, 7, 165, 43),
+            new Important("bet slots", 24, 52, 152, 108),
+            new Important("button", 53, 109, 125, 123),
+            new Important("payout rows", 190, 32, 290, 165),
+            new Important("inventory", 0, 128, 176, 222));
+
+    @Test
+    void rouletteTitleFitsTheCommonScreens() throws IOException {
+        loadPack();
+        GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
+                .getResourceAsStream("pack/gui-layout.json"));
+        TitleBuilder t = new TitleBuilder(layout);
+        for (int row = 0; row < 2; row++) {
+            for (int col = 0; col < 2; col++) {
+                t.art("roulette_bg_" + col + "_" + row);
+            }
+        }
+        TextColor cream = TextColor.color(0xF3E7BF);
+        TextColor gold = TextColor.color(0xFFD770);
+        t.text("roulette_headline", "ROULETTE", cream);
+        t.text("roulette_payouts", "Gewinne", cream);
+        String[] names = {"ROT", "SCHWARZ", "GRÜN"};
+        for (int c = 0; c < 3; c++) {
+            t.text("roulette_colour_" + c, names[c], cream);
+        }
+        String[] rows = {"GRÜN", "ROT", "SCHWARZ"};
+        String[] odds = {"×36", "×2", "×2"};
+        for (int r = 0; r < 3; r++) {
+            t.text("roulette_payout_label_" + r, rows[r], cream);
+            t.text("roulette_multiplier_" + r, odds[r], gold);
+        }
+        Component title = t.build();
+        java.util.Set<Integer> slots = new java.util.HashSet<>(java.util.Set.of(48, 49, 50));
+        for (int i = 0; i < 9; i++) {
+            slots.add((2 + i / 3) * 9 + new int[] {1, 4, 7}[i % 3]);
+        }
+        for (int[] size : new int[][] {{480, 270}, {456, 256}, {427, 240}}) {
+            render("roulette", title, size[0], size[1], ROULETTE_IMPORTANT, slots, "roulette_on", 109, 14);
+        }
+    }
+
     @Test
     void wheelTitleFitsTheCommonScreens() throws IOException {
         loadPack();

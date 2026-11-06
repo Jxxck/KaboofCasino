@@ -16,7 +16,7 @@ import java.util.Objects;
  * @param slot     slot machine settings
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
-                           Slot slot, Slot wheel, Slot plinko, Lights lights) {
+                           Slot slot, Slot wheel, Slot plinko, Slot roulette, Lights lights) {
 
     /**
      * @param enabled        send the pack at all
@@ -119,5 +119,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Slot(-1, 4, 16),
             new Slot(-1, 4, 16),
             new Slot(-1, 4, 16),
+            new Slot(-1, 0, 16),
             new Lights(4));
 }

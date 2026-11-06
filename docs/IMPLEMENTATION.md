@@ -1,4 +1,4 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
 GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
@@ -50,6 +50,7 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `game.slot` | `SlotGame` (rules), `SlotSpin` (spin plan), `IdleLights`, `SlotController` (runtime), `SlotRig` (entities), `SlotMenu` (GUI), `SlotPanel`, `SlotGeometry` |
 | `game.wheel` | `FortuneWheelGame`, `FortuneWheelSpin`, `FortuneWheelBlur` (verbatim ports), `WheelController`, `WheelRig`, `WheelMenu`, `WheelGeometry` |
 | `game.plinko` | `PlinkoGame`, `PlinkoDrop`, `PlinkoLights` (verbatim ports), `PlinkoController`, `PlinkoRig`, `PlinkoMenu` |
+| `game.roulette` | `RouletteSpin` (verbatim port), `RouletteGame` (colours, payouts, forced pools), `RouletteController`, `RouletteRig`, `RouletteMenu` (9 slots, one colour), `RoulettePanel` |
 | `storage` | SQLite: `Database` (1 connection, 1 thread, migrations), `RoundLog` (RoundSink + stats), `MachineIndex` |
 | `command` | `/casino` (Brigadier `BasicCommand`) |
 | `pack-tool/` | builds the pack (see 6) |
@@ -399,6 +400,29 @@ Look:
   scaling (`CasinoText.fitted`) does not exist in a font, so long labels keep their size.
 - The active empty bet field shows a gold frame; a filled active field glints.
 
+### Step 3 (roulette)
+
+- Bets are a selection over nine slots (three per colour; the mod's columns RED, BLACK, GREEN), one colour per spin as
+  in the mod; nothing stays on the table when the menu closes (the mod keeps the stake in the table under its owner).
+  Choosing a slot of another colour while one is staked is refused with "Nur eine Farbe behalten"; the slots of the
+  other colours show the mod's veil colour as an item, because a chest title cannot change while it is open (the
+  mod also veils the chips and greys the colour labels; ours stay as drawn).
+- One player per table at a time (the menu claim); the mod lets others open the menu and watch, but only the stake
+  owner can act, so one player's bet per spin either way.
+- All records settle at the result (tick 160); the mod ejects the payout stacks every third game tick from the next
+  tick on, aimed at the owner. Here the items go into the inventory (overflow owed) at the result and the coin
+  displays keep the pace and the payout sound. The table unlocks when the last coin is out (the tick after the
+  result if nothing is paid), the panel hides 20 ticks after the result, as in the mod.
+- Rotor and ball: 2-tick rotor updates (interpolated, at most 27 degrees per update), 1-tick ball updates (its own
+  spin reaches ~80 degrees per tick); both use the light at the display's position (the mod: the table's light).
+- The floating panel is a text display: head + name, the chosen colour's name in a readable colour and the stakes;
+  the mod draws one felt column per colour with a coloured header and the item icons, with per-viewer fades.
+- Placement: the mod's table needs no support below (kept). Like every machine it must fit into one chunk (the
+  message says where to move it: links/rechts/vorne/hinten from the player's view) and keep 2 blocks from other
+  players.
+- The colour of a pocket is the mod's parity rule (0 green, odd red, even black), and the converted rotor shows
+  exactly that; the ball comes to rest over pocket `3 x frame` (`RouletteGeometryTest`).
+
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
@@ -406,7 +430,10 @@ Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `Wh
 number pair, 10^7-round simulations of the shipped code path), `WheelGeometryTest` / `PlinkoGeometryTest` (moving
 parts inside the 3x3 footprint at every reachable angle/position), `PackKeysTest` + `WheelPackKeysTest` +
 `PlinkoPackKeysTest`, `RecipesDataTest`, `StakeMenuRulesTest`, the multi-stake engine tests and `GuiPreviewTest`
-(`build/reports/gui/{slot,wheel,plinko}-preview-<W>x<H>.png`). Game-port delivery from outside the JVM:
+(`build/reports/gui/{slot,wheel,plinko,roulette}-preview-<W>x<H>.png`). Step 3 adds `RouletteOddsTest` (36/37 on
+every colour for every stake, the forced pools with 100/1800 parts, the plan always ending on the drawn pocket,
+10^7-round simulations per colour), `RouletteGeometryTest`, `RoulettePackKeysTest` and the roulette chunk-fit cases
+in `PlacementRulesTest`. Game-port delivery from outside the JVM:
 `python3 -I testing/gameport-test.py <port> <sha1>` (GET/HEAD/404/405, status ping, legacy ping, garbage, a silent
 client; refuses the live ports). Smoke test on the default PostMarkt test instance
 (`PostMarkt/testing/ptest.sh`, README there) with the pack-aware bot of this repo:
@@ -414,7 +441,7 @@ client; refuses the live ports). Smoke test on the default PostMarkt test instan
 ```bash
 T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing
 $T/ptest.sh uninstall LodServerSupport DHSupport PostMarkt   # clean instance (done 2026-11-06)
-$T/ptest.sh install build/libs/KaboofCasino-0.2.0.jar
+$T/ptest.sh install build/libs/KaboofCasino-0.3.0.jar
 # plugins/KaboofCasino/config.yml on the instance: url-host 127.0.0.1, url-port 25572 (serve minecraft-port)
 #   or serve http-port with port 25581 + bind 127.0.0.1; slot.win-chance 100 for forced wins
 $T/ptest.sh start
@@ -436,7 +463,9 @@ testing/craft-test.sh                                                    # craft
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
-- Step 2 ships as `KaboofCasino-0.2.0.jar`: remove `KaboofCasino-0.1.0.jar` from `plugins/`. The live `config.yml`
+- Step 3 ships as `KaboofCasino-0.3.0.jar`: remove `KaboofCasino-0.2.0.jar`. The live `config.yml` gets `roulette:`
+  merged in (natural odds). The recipe book unlocks the table with the roulette mechanism (mod's advancement).
+- Step 2 shipped as `KaboofCasino-0.2.0.jar`: remove `KaboofCasino-0.1.0.jar` from `plugins/`. The live `config.yml`
   gets the new keys merged in: `wheel:`/`plinko:` (natural odds), `lights.max-updates-per-tick: 4` and
   `bets.cap-per: slot` (so the live cap becomes 64 per bet slot, 3 x 64 per wheel/Plinko round, like the mod; set
   `round` for 64 per round). Its `rounds.max-open: 4` stays (new installs: 8): one three-slot round plus one more

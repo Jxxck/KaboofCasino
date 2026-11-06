@@ -49,7 +49,14 @@ public final class MachineService {
 
     /** Outcome of {@link #place}. */
     public enum PlaceResult {
-        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_LEFT, CHUNK_RIGHT, CHUNK_BORDER, PLAYER_NEAR
+        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_BORDER, PLAYER_NEAR
+    }
+
+    /** A refused placement and, for {@link PlaceResult#CHUNK_BORDER}, where to move the machine (player-relative). */
+    public record Placement(PlaceResult result, String direction) {
+        static Placement of(PlaceResult result) {
+            return new Placement(result, null);
+        }
     }
 
     /** Other players must keep this distance (blocks, box to box) from every carrier while a machine is placed. */
@@ -115,66 +122,58 @@ public final class MachineService {
      * (protection and LOD plugins; any veto restores all), writes the record, spawns the rig. The caller takes the
      * item on {@link PlaceResult#PLACED}.
      */
-    public PlaceResult place(Player player, MachineType type, Block clicked, BlockFace face, EquipmentSlot hand,
-                             ItemStack item) {
+    public Placement place(Player player, MachineType type, Block clicked, BlockFace face, EquipmentSlot hand,
+                           ItemStack item) {
         Threads.requireMain();
         World world = clicked.getWorld();
         Block placedBlock = clicked.isReplaceable() ? clicked : clicked.getRelative(face);
         Block anchorBlock = placedBlock.getRelative(0, type.rise(), 0);
-        Facing facing = Facing.towardsPlayer(player.getFacing());
+        Facing facing = type.fixedFacing() ? Facing.SOUTH : Facing.towardsPlayer(player.getFacing());
         Pos anchor = Pos.of(anchorBlock);
         List<Pos> carriers = type.carriers(anchor, facing);
         // every part in one chunk: the record lives in the anchor chunk, verify/remove never load a neighbour
-        switch (type.chunkShift(anchor, facing)) {
-            case 0 -> { }
-            case -1 -> {
-                return PlaceResult.CHUNK_LEFT;
-            }
-            case 1 -> {
-                return PlaceResult.CHUNK_RIGHT;
-            }
-            default -> {
-                return PlaceResult.CHUNK_BORDER;
-            }
+        int[] fit = type.chunkFit(anchor, facing);
+        if (fit != null) {
+            return new Placement(PlaceResult.CHUNK_BORDER, direction(player.getFacing(), fit));
         }
         for (Pos p : carriers) {
             if (p.y() < world.getMinHeight() || p.y() >= world.getMaxHeight()) {
-                return PlaceResult.NO_SPACE;
+                return Placement.of(PlaceResult.NO_SPACE);
             }
             Block b = p.block(world);
             if (!b.isReplaceable() || isCarrier(p) || liquid(b)
                     || !world.getWorldBorder().isInside(new Location(world, p.x() + 0.5, p.y(), p.z() + 0.5))) {
-                return PlaceResult.NO_SPACE;
+                return Placement.of(PlaceResult.NO_SPACE);
             }
             BoundingBox box = new BoundingBox(p.x(), p.y(), p.z(), p.x() + 1, p.y() + 1, p.z() + 1);
             for (Entity e : world.getNearbyEntities(box)) {
                 if (e instanceof LivingEntity living && !(living instanceof Player pl && pl.getGameMode()
                         == org.bukkit.GameMode.SPECTATOR)) {
-                    return PlaceResult.NO_SPACE;
+                    return Placement.of(PlaceResult.NO_SPACE);
                 }
             }
         }
-        // the mod's canSurvive: every cell of the bottom row needs centre support below
+        // the mod's canSurvive: every cell of the bottom row needs centre support below (not the roulette table)
         for (Pos p : carriers) {
-            if (p.y() == anchor.y() + type.bottom() && !p.block(world).getRelative(BlockFace.DOWN).getBlockData()
-                    .isFaceSturdy(BlockFace.UP, BlockSupport.CENTER)) {
-                return PlaceResult.NO_SUPPORT;
+            if (type.needsSupport() && p.y() == anchor.y() + type.bottom() && !p.block(world)
+                    .getRelative(BlockFace.DOWN).getBlockData().isFaceSturdy(BlockFace.UP, BlockSupport.CENTER)) {
+                return Placement.of(PlaceResult.NO_SUPPORT);
             }
         }
         if (type == MachineType.SLOT_MACHINE && slotCrowded(anchor, facing)) {
-            return PlaceResult.CROWDED;
+            return Placement.of(PlaceResult.CROWDED);
         }
         if (!player.isOp()) {
             for (Pos p : carriers) {
                 if (underSpawnProtection(world, p)) {
-                    return PlaceResult.DENIED;
+                    return Placement.of(PlaceResult.DENIED);
                 }
             }
         }
         for (Player other : world.getPlayers()) {
             if (!other.equals(player) && other.getGameMode() != org.bukkit.GameMode.SPECTATOR
                     && near(other.getBoundingBox(), carriers, PLAYER_CLEARANCE)) {
-                return PlaceResult.PLAYER_NEAR;
+                return Placement.of(PlaceResult.PLAYER_NEAR);
             }
         }
         List<BlockState> before = new ArrayList<>();
@@ -192,7 +191,7 @@ public final class MachineService {
                 for (BlockState state : before) {
                     state.update(true, false);
                 }
-                return PlaceResult.DENIED;
+                return Placement.of(PlaceResult.DENIED);
             }
         }
         MachineRecord record = new MachineRecord(UUID.randomUUID(), type, anchor, facing, player.getUniqueId(),
@@ -204,7 +203,7 @@ public final class MachineService {
         world.playSound(anchorBlock.getLocation().add(0.5, 0.5, 0.5), org.bukkit.Sound.BLOCK_METAL_PLACE, 1f, 0.8f);
         Log.get().info("{} placed {} #{} at {} facing {}", player.getName(), type.id(), record.number(), anchor,
                 facing);
-        return PlaceResult.PLACED;
+        return Placement.of(PlaceResult.PLACED);
     }
 
     /** Water, lava or a waterlogged block: a barrier there would hold the fluid (refused instead). */
@@ -229,6 +228,21 @@ public final class MachineService {
             }
         }
         return false;
+    }
+
+    /**
+     * A world shift {dx, dz} in words for the player looking along {@code looks}: "links"/"rechts" across, "vorne"
+     * (towards him) / "hinten" (away) along the view; {0, 0} = "zur Seite".
+     */
+    static String direction(BlockFace looks, int[] shift) {
+        int lx = looks.getModX();
+        int lz = looks.getModZ();
+        int along = shift[0] * lx + shift[1] * lz;
+        int across = shift[0] * -lz + shift[1] * lx;
+        String side = across > 0 ? "rechts" : across < 0 ? "links" : "";
+        String depth = along > 0 ? "hinten" : along < 0 ? "vorne" : "";
+        String both = (side + " " + depth).strip();
+        return both.isEmpty() ? "zur Seite" : both;
     }
 
     /** True if {@code box} comes within {@code distance} blocks of any carrier block (box to box). */
@@ -431,20 +445,19 @@ public final class MachineService {
     }
 
     /** Message for a refused placement. */
-    public void tell(Player player, PlaceResult result) {
+    public void tell(Player player, Placement placement) {
+        PlaceResult result = placement.result();
         Msg msg = switch (result) {
             case NO_SPACE -> Msg.MACHINE_NO_SPACE;
             case NO_SUPPORT -> Msg.MACHINE_NO_SUPPORT;
             case CROWDED -> Msg.SLOT_SPACING;
             case DENIED -> Msg.MACHINE_PLACE_DENIED;
-            case CHUNK_LEFT, CHUNK_RIGHT, CHUNK_BORDER -> Msg.MACHINE_CHUNK_BORDER;
+            case CHUNK_BORDER -> Msg.MACHINE_CHUNK_BORDER;
             case PLAYER_NEAR -> Msg.MACHINE_PLAYER_NEAR;
             case PLACED -> null;
         };
         if (msg == Msg.MACHINE_CHUNK_BORDER) {
-            messages.get().actionBar(player, msg, Messages.text("direction",
-                    result == PlaceResult.CHUNK_LEFT ? "links" : result == PlaceResult.CHUNK_RIGHT ? "rechts"
-                            : "zur Seite"));
+            messages.get().actionBar(player, msg, Messages.text("direction", placement.direction()));
         } else if (msg != null) {
             messages.get().actionBar(player, msg);
         }

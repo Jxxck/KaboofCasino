@@ -95,15 +95,19 @@ public final class PackTool {
         WheelGui.add(jar, tree, font, text);
         PlinkoPack.add(jar, tree, packSrc);
         PlinkoGui.add(jar, tree, font, text);
+        RoulettePack.add(jar, tree, packSrc);
+        RouletteGui.add(jar, tree, font, text);
         SlotMachineGui.button(tree, text, "collect_low", "ABHOLEN", true, 14, 4.5, 11.5);
         stakeMarker(tree);
         List<String> events = new java.util.ArrayList<>(SlotMachinePack.SOUND_EVENTS);
         events.addAll(WheelPack.SOUND_EVENTS);
         events.addAll(PlinkoPack.SOUND_EVENTS);
+        events.addAll(RoulettePack.SOUND_EVENTS);
         Sounds.write(jar, tree, events);
         List<String> prefixes = new java.util.ArrayList<>(SlotMachinePack.LANG_PREFIXES);
         prefixes.addAll(WheelPack.LANG_PREFIXES);
         prefixes.addAll(PlinkoPack.LANG_PREFIXES);
+        prefixes.addAll(RoulettePack.LANG_PREFIXES);
         Lang.filter(jar, tree, "roulettecasino", prefixes);
         tree.put("assets/kaboofcasino/items/gui/blank.json",
                 Json.bytes(Json.object("model", Json.object("type", new com.google.gson.JsonPrimitive(
