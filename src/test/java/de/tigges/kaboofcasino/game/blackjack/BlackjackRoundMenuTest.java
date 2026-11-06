@@ -172,19 +172,23 @@ class BlackjackRoundMenuTest {
     }
 
     @Test
-    void stakesShowCountsAndDoubledBaseCounts() {
+    void stakesShowCountsAndDoubledBaseCountsOnlyAbove99() {
         List<ItemAmount> two = List.of(new ItemAmount("minecraft:diamond", 128), new ItemAmount("minecraft:coal", 6));
         BlackjackRoundMenu.Cell[] c = new BlackjackRoundMenu.View().cells(snap(BlackjackSnapshot.PHASE_DEALER,
                 List.of(8, 1, 3), List.of(0L, 0L, 0L), List.of(9, 20), List.of(0L, 0L), 0, 0,
                 flags(false, false, false, true, false), two, 50), false);
         assertEquals("minecraft:diamond", c[27].item());
-        assertEquals(64, c[27].amount());
-        assertEquals(3, c[28].amount());
+        assertEquals(64, c[27].amount()); // 128 does not fit a slot: the base count next to the x2
+        assertEquals(6, c[28].amount()); // the mod: the doubled count with the x2
         assertEquals(M + "doubled", model(c[BlackjackRoundMenu.DOUBLED]));
         c = new BlackjackRoundMenu.View().cells(snap(BlackjackSnapshot.PHASE_TURN, List.of(8, 1), List.of(0L, 0L),
                 List.of(9, -1), List.of(0L, 0L), 100, 0, flags(true, true, true, false, true), two, 50), false);
         assertEquals(99, c[27].amount()); // never above what a slot can show
         assertNull(c[BlackjackRoundMenu.DOUBLED]);
+        assertEquals(99, BlackjackRoundMenu.shownCount(99, true));
+        assertEquals(50, BlackjackRoundMenu.shownCount(100, true));
+        assertEquals(64, BlackjackRoundMenu.shownCount(128, true));
+        assertEquals(2, BlackjackRoundMenu.shownCount(2, true));
     }
 
     @Test

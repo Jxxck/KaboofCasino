@@ -263,18 +263,26 @@ public final class BlackjackRoundMenu extends GameMenu {
         }
     }
 
+    /** The count a stake slot shows: the (doubled) count up to 99; a doubled count above 99 as its base count. */
+    static int shownCount(long count, boolean doubled) {
+        if (count <= 99) {
+            return (int) count;
+        }
+        return (int) Math.min(99, doubled ? count / 2 : count);
+    }
+
     /**
-     * The stake row ({@code extractPanel}): before the result the items with their counts (doubled: the base count,
-     * "x2" next to it), at the result the mod's net labels: two stakes or fewer and not doubled bold to the right of
-     * the item (columns 0 / 3, labels 1 / 4), else plain over the item's lower right (columns 0 / 2 / 4).
+     * The stake row ({@code extractPanel}): before the result the items with their counts (doubled: the doubled
+     * count and "x2" like the mod, while it fits a slot's 99; above that the base count next to the "x2"), at the
+     * result the mod's net labels: two stakes or fewer and not doubled bold to the right of the item (columns 0 / 3,
+     * labels 1 / 4), else plain over the item's lower right (columns 0 / 2 / 4).
      */
     static void stakes(Cell[] out, BlackjackSnapshot s) {
         List<ItemAmount> stakes = s.stakes().subList(0, Math.min(3, s.stakes().size()));
         boolean decided = s.phase() == BlackjackSnapshot.PHASE_RESULT && s.result() != 0;
         if (!decided) {
             for (int i = 0; i < stakes.size(); i++) {
-                long count = stakes.get(i).count();
-                out[STAKE_ROW + i] = Cell.stake(stakes.get(i), (int) Math.min(99, s.doubled() ? count / 2 : count));
+                out[STAKE_ROW + i] = Cell.stake(stakes.get(i), shownCount(stakes.get(i).count(), s.doubled()));
             }
             return;
         }

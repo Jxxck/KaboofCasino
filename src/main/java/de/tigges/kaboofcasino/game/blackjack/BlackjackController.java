@@ -8,6 +8,7 @@ import de.tigges.kaboofcasino.game.MachineController;
 import de.tigges.kaboofcasino.game.StakeMenu;
 import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.gui.Usability;
+import de.tigges.kaboofcasino.machine.Heartbeat;
 import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
@@ -88,8 +89,15 @@ public final class BlackjackController extends MachineController {
         final String name;
         final int spot;
         final long seed;
-        /** Game tick of the DEAL click; the round's clock starts on the next tick (round tick 1 = start + 1). */
+        /**
+         * World game time of the DEAL click (the clock of the view, the rig and the menu, like the mod's level game
+         * time); the round's clock starts on the next game tick (round tick 1 = start + 1).
+         */
         final long start;
+        /** The last game tick the round ticked at: the round pauses while the world does not tick (/tick freeze). */
+        long ticked;
+        /** The records' scheduled end (last revision + 60 s): the watchdog's grace counts from here. */
+        long endsMillis;
         final int bias;
         final BlackjackTableState view;
         final List<Seat> seats;
@@ -111,6 +119,7 @@ public final class BlackjackController extends MachineController {
             this.seed = seed;
             this.bias = bias;
             this.start = start;
+            this.ticked = start;
             this.view = new BlackjackTableState(start, spot);
             this.view.phaseChanged(BlackjackRound.Phase.DEALING, 0);
             this.seats = new ArrayList<>(seats);
@@ -303,7 +312,9 @@ public final class BlackjackController extends MachineController {
             return;
         }
         if (rig == null) {
-            rig = new BlackjackRig(machine.record(), world);
+            // the budget is shared with the other machines' idle lights, which count server ticks: same clock here
+            rig = new BlackjackRig(machine.record(), world,
+                    gameTime -> ctx.lights().grant(machine.id(), Bukkit.getCurrentTick()));
         }
         rig.spawn();
         shownPanel = null;
@@ -320,11 +331,17 @@ public final class BlackjackController extends MachineController {
     @Override
     public boolean ownsRound(UUID roundId) {
         Hand h = hand;
-        long now = ctx.clock().getAsLong();
-        if (h == null || h.settled || !heartbeat.owns(now, now)) {
-            return false;
-        }
-        return h.seats.stream().anyMatch(s -> s.round().equals(roundId));
+        return h != null && owns(heartbeat, ctx.clock().getAsLong(), h.endsMillis, h.settled)
+                && h.seats.stream().anyMatch(s -> s.round().equals(roundId));
+    }
+
+    /**
+     * The hand still settles its records itself: not settled yet, the controller ran its hand logic within the
+     * last 2 s, and the records were revised (deal, hit, double, result) less than their 60 s end plus the 60 s grace
+     * ago ({@link Heartbeat#owns}); a stuck hand (exception loop, no rig) hands them to the ledger watchdog.
+     */
+    static boolean owns(Heartbeat heartbeat, long nowMillis, long endsMillis, boolean settled) {
+        return !settled && heartbeat.owns(nowMillis, endsMillis);
     }
 
     @Override
@@ -405,7 +422,9 @@ public final class BlackjackController extends MachineController {
         }
         double[] p = tablePosition(player.getLocation());
         int spot = BlackjackLayout.nearestSpot(p[0], p[1]);
-        Hand h = new Hand(player.getUniqueId(), player.getName(), spot, seed, bias, Bukkit.getCurrentTick(), seats);
+        World w = player.getWorld();
+        Hand h = new Hand(player.getUniqueId(), player.getName(), spot, seed, bias, w.getGameTime(), seats);
+        h.endsMillis = ends;
         hand = h;
         h.round = new BlackjackRound(shoe, h, bias);
         claimant = player.getUniqueId();
@@ -517,7 +536,11 @@ public final class BlackjackController extends MachineController {
                         payout, old.created(), ends, detail(s.slot(), h.round.player(), h.round.dealer(),
                         h.round.doubled() || !extra.isEmpty(), null, why)));
             }
-            return ctx.engine().revise(account, revised, extra);
+            WagerEngine.Revision r = ctx.engine().revise(account, revised, extra);
+            if (r == WagerEngine.Revision.DONE) {
+                h.endsMillis = ends;
+            }
+            return r;
         } catch (LedgerCodec.CorruptLedgerException e) {
             Log.critical("LEDGER_UNREADABLE", "blackjack {} for {} refused: {}", why, player.getName(),
                     e.getMessage());
@@ -575,18 +598,24 @@ public final class BlackjackController extends MachineController {
 
     // ---- ticking ---------------------------------------------------------------------------------------------------
 
+    /**
+     * Every server tick while loaded. Blackjack runs on the world's game time like the mod's block entity and
+     * renderer (the view's times, the dealer's idle phase, the round menu's card delays): one clock everywhere. The
+     * heartbeat beats only after the hand logic ran, so an exception loop or a missing rig stops owning the records.
+     */
     @Override
-    public void tick(long now) {
-        heartbeat.beat(ctx.clock().getAsLong());
+    public void tick(long tick) {
         World world = world();
         if (world == null || rig == null) {
             return;
         }
+        long now = world.getGameTime();
         rig.tickCoins(now);
         Hand h = hand;
         if (h != null) {
             runHand(world, h, now);
         }
+        heartbeat.beat(ctx.clock().getAsLong());
         Hand current = hand;
         rig.update(current != null ? current.view : idleView, now);
         panel(current);
@@ -609,9 +638,10 @@ public final class BlackjackController extends MachineController {
         if (h.ownerGone && h.round.canStand()) {
             h.round.stand();
         }
-        if (now <= h.start) {
+        if (now <= h.ticked) {
             return;
         }
+        h.ticked = now;
         h.round.tick();
         int at = h.round.now();
         for (int i = h.sounds.size() - 1; i >= 0; i--) {
@@ -669,7 +699,8 @@ public final class BlackjackController extends MachineController {
 
     /** The round menu's state ({@code refreshSnapshot}). */
     BlackjackSnapshot snapshot(Player viewer) {
-        long now = Bukkit.getCurrentTick();
+        World w = world();
+        long now = w != null ? w.getGameTime() : viewer.getWorld().getGameTime();
         Hand h = hand;
         if (h == null || !h.player.equals(viewer.getUniqueId())) {
             return BlackjackSnapshot.betting(now);

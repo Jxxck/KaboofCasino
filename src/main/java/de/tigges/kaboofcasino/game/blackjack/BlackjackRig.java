@@ -42,8 +42,10 @@ import org.bukkit.util.Transformation;
  * grab from the shoe turns a card by up to 55 degrees per tick, so the client's slerp needs tick-sized steps; a new
  * card appears with its pose of {@code now + 1}); dealer gestures (also the watch fade and its finger tap) every tick
  * with the pose of {@code now + 2} and interpolation 2 (no stall when a packet is late; for linear motion equal to
- * the true pose at every tick); the dealer's idle loop and the steady watch every 4 ticks with the pose of
- * {@code now + 5} and interpolation 5, only while a player is within 32 blocks (gestures: within 64, the view range).
+ * the true pose at every tick); the dealer's idle loop and the steady watch every 8 ticks (4 during the loop's quick
+ * moves, {@link #idleEvery}) with the pose of {@code now + n + 1} and interpolation n + 1, only while a player is
+ * within 32 blocks and the shared idle budget ({@code lights.max-updates-per-tick}) grants it (gestures: within 64,
+ * the view range). All times are the world's game time (the mod's renderer clock), also at spawn.
  * A transformation equal to the last one sent is not sent again (cards at rest, the legs). Thread: MAIN.
  */
 public final class BlackjackRig {
@@ -59,8 +61,9 @@ public final class BlackjackRig {
     static final double PANEL_Y = 2.25;
     static final int CARD_DURATION = 1;
     static final int FAST_DURATION = 2;
-    static final int IDLE_EVERY = 4;
-    static final int IDLE_DURATION = 5;
+    /** Idle sends: every 8 ticks in the calm parts of the 480-tick loop, every 4 in its quick moves. */
+    static final int IDLE_EVERY = 8;
+    static final int IDLE_EVERY_QUICK = 4;
     static final int IDLE_RANGE = 32;
     static final int GESTURE_RANGE = 64;
     static final int LIGHT_EVERY = 40;
@@ -73,6 +76,7 @@ public final class BlackjackRig {
     private final World world;
     private final Facing facing;
     private final long phase;
+    private final java.util.function.LongPredicate idleGrant;
     private final List<ItemDisplay> body = new ArrayList<>();
     private final ItemDisplay[] dealer = new ItemDisplay[BlackjackDealerRig.PARTS.length];
     private final Transformation[] dealerSent = new Transformation[BlackjackDealerRig.PARTS.length];
@@ -106,6 +110,16 @@ public final class BlackjackRig {
     }
 
     public BlackjackRig(MachineRecord record, World world) {
+        this(record, world, now -> true);
+    }
+
+    /**
+     * @param idleGrant the shared per-tick budget for idle updates of all machines
+     *                  ({@code lights.max-updates-per-tick}, {@link de.tigges.kaboofcasino.visual.LightBudget}); asked
+     *                  only when this table's idle dealer is due
+     */
+    public BlackjackRig(MachineRecord record, World world, java.util.function.LongPredicate idleGrant) {
+        this.idleGrant = idleGrant;
         this.record = record;
         this.world = world;
         this.facing = record.facing();
@@ -324,6 +338,17 @@ public final class BlackjackRig {
 
     // ---- dealer -----------------------------------------------------------------------------------------------------
 
+    /**
+     * The idle cadence at game tick {@code now}: 4 ticks while {@code DealerIdleAnimation} runs its quick moves (the
+     * shoulder sweep, period 38, loop ticks 150-235; the elbow tweak, period 26, 296-362; the finger tap, period 20,
+     * 392-438; each with a margin), 8 ticks in the calm rest of the loop (breathing 90, head turns over 35+ ticks).
+     */
+    static int idleEvery(long now, long phase) {
+        long t = Math.floorMod(now + phase, (long) DealerIdleAnimation.LOOP);
+        boolean quick = (t >= 140 && t <= 240) || (t >= 288 && t <= 366) || (t >= 384 && t <= 442);
+        return quick ? IDLE_EVERY_QUICK : IDLE_EVERY;
+    }
+
     private void updateDealer(BlackjackTableState view, long now) {
         if (now - lastLight >= LIGHT_EVERY) {
             lastLight = now;
@@ -343,10 +368,12 @@ public final class BlackjackRig {
             }
             duration = FAST_DURATION;
         } else {
-            if (now - lastDealer < IDLE_EVERY || !playerWithin(IDLE_RANGE)) {
+            int every = idleEvery(now, phase);
+            // the shared idle budget (lights.max-updates-per-tick) is asked only when this table is due
+            if (now - lastDealer < every || !playerWithin(IDLE_RANGE) || !idleGrant.test(now)) {
                 return;
             }
-            duration = IDLE_DURATION;
+            duration = every + 1;
         }
         lastDealer = now;
         Transformation[] t = BlackjackDealerRig.transforms(facing,

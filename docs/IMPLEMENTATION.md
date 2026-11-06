@@ -156,6 +156,9 @@ The forward has to exist for that mode.
   death, the watchdog and the join after a crash therefore need no game logic: they settle the stored payout, which
   is exactly what the table then shows (the live hand stands as soon as its owner is gone). The double down is the
   game's rule: neither `bets.max-stake` nor the owed list stops it (the mod checks neither).
+  A PLAYING record's `ends` is its last revision + 60 s (deal, hit, double, result); the table owns its records
+  while its hand logic ran within 2 s (the heartbeat beats only after it) and until `ends` + 60 s grace, so a stuck
+  hand (exception loop, missing rig) hands them to the watchdog (`BlackjackOwnershipTest`).
 - Ledger version 2 = PLAYING exists; it is written only while such a record is open (`LedgerCodec.version`), so a
   ledger without one stays version 1 and readable by 0.3.x; version-1 ledgers read unchanged.
 - The round log row gets the final stake, payout and detail at settlement (a blackjack hand changes them while it
@@ -358,6 +361,15 @@ provider definitions from the 26.3 client jar, see its README).
 | games.md lists the roulette's gold confetti as 0xFFD268; the mod has 0xFFD168 (`RouletteBlockEntity.java:36-38`). | 0xFFD168. |
 | A machine placed where a player logged out buries him (only online players are visible to the placement checks). | Logout spots and the rescue net. |
 
+- **One clock per game** (step 5 review): Blackjack runs on the world's game time (`World#getGameTime`, the mod's
+  renderer clock) for the hand's view, the rig (idle phase, cadence, light refresh, coins) and the round menu's card
+  delays; the server tick (`Bukkit.getCurrentTick`, the uptime) only feeds the shared `LightBudget`, whose queue
+  counts server ticks for every machine. Mixing them froze the idle dealer on old worlds (live game time 33 M,
+  uptime hours: "now - last" stayed negative). The other games use the game time only as the idle-light pattern's
+  clock and the server tick for their spins and cadences, never comparing the two. Test worlds: the overworld's game
+  time lives in `dimensions/minecraft/overworld/data/paper/level_overrides.dat` (`data.game_time`), not only in
+  `level.dat`; the test instance now runs at 50 M.
+
 ## 10. Deviations from the mod (step 1)
 
 Bets and payouts:
@@ -509,8 +521,14 @@ that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound 
   `DealerIdleAnimation`/`DealerPlayAnimation`/`DealerKinematics` (idle phase from the anchor, all gestures and the
   turn toward the player's spot); one display per card from `BlackjackCardMotion.pose` (53 two-sided models from
   `blackjack_cards.png`, padded 350 → 352 px) plus up to seven shoe cards while shuffling. Cadence: moving cards every
-  tick (interpolation 1), dealer gestures every tick while a player is within 64 blocks, idle every 4 ticks
-  (interpolation 5) only within 32 blocks; unchanged transformations are not resent. Idle 17 entities, one more per
+  tick (interpolation 1), dealer gestures every tick while a player is within 64 blocks, the idle loop every 8 ticks
+  (every 4 during its quick moves: shoulder sweep, elbow tweak, finger tap; interpolation n + 1) only within 32
+  blocks and only when the shared idle budget `lights.max-updates-per-tick` (with the other machines' idle lights)
+  grants it; unchanged transformations are not resent. Idle traffic per table and tracking player: 30.6 → 22.4
+  metadata packets/s (`BlackjackIdleCadenceTest`, game time 1 M; 30.0 → 22.1 at the live world's 33.4 M). Displays
+  are tracked to 128 blocks (`spigot.yml` `display: 128`) whatever their view range, so idle sends cannot be limited
+  to near players without per-player hiding (not done: it would also hide the dealer between 32 and 64 blocks, where
+  the mod still draws him). A hand stays at the mod's per-tick motion (gestures 8 parts, moving cards). Idle 17 entities, one more per
   visible card. All displays stand at the anchor's bottom centre with a 5.2 x 2.25 culling box covering table,
   dealer and every card pose in all facings (`BlackjackGeometryTest`). The dealer's light is the renderer's
   `dealerLight` (the anchor and the two cells behind the table), refreshed every 40 ticks; item lighting instead of
@@ -525,7 +543,8 @@ that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound 
   `shadow_color`). The mod never draws `place_bet` or `header_*`, so neither do we. The round view is a second chest
   (new title, opened in the DEAL click) carrying the mod's 160 x 196 panel rebuilt 288 px wide: dealer cards in slots
   0-8, player cards 18-26 (oversized card items; 27 px step up to five cards, 18 px up to nine), totals 17/35,
-  stakes 27-32 (a doubled stake shows the base count plus "x2": a slot cannot show 128), timer bar 39, status/result
+  stakes 27-32 (doubled: the doubled count and "x2" like the mod; above 99, which a slot cannot show, the base count
+  next to the "x2"), timer bar 39, status/result
   40, KARTE / HALTEN / DOPPELN 52 x 17 over 45-47 / 48-50 / 51-53 (DOPPELN greyed when the hand cannot double or the
   items are missing). The mod's timing: cards appear 22 ticks after the deal, the hole card's face 8 ticks after the
   reveal, buttons locked 6 ticks after a press. It is a chest in the middle of the screen, not a side panel, and the
@@ -534,8 +553,9 @@ that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound 
   it when the hand is over; a right-click by the owner reopens it during the hand.
 - Recipe: the mod's (`WWW/GBG/PRP` with the Croupier's Badge), unlocked by holding a badge. Badges come from hiring a
   croupier (step 8); until then tables come from `/casino give blackjack_table` (the badge is giveable too).
-- Placement (permadeath deviation, like the roulette): at least one of the eight cells needs a sturdy block below
-  (`blackjack.needs-support: true`; `false` = the mod).
+- Placement (permadeath deviation, like the roulette): `blackjack.needs-support: true` (default) wants at least one of
+  the eight cells on a sturdy block; the mod's `BlackjackTableBlock.canSurvive` is always true (`false` restores
+  that). One supported cell is enough, so a table can still reach over a hole, as the roulette.
 
 ## 11. Testing
 

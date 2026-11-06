@@ -390,7 +390,7 @@ class BlackjackGeometryTest {
             BlackjackTableState view = demoView();
             for (long now = 990; now < 1400; now++) {
                 int step = BlackjackDealerRig.fast(BlackjackDealerRig.input(view, now)) ? BlackjackRig.FAST_DURATION
-                        : BlackjackRig.IDLE_DURATION;
+                        : BlackjackRig.idleEvery(now, phase) + 1;
                 Transformation[] a = BlackjackDealerRig.transforms(facing, BlackjackDealerRig.pose(view, now, phase));
                 Transformation[] b = BlackjackDealerRig.transforms(facing,
                         BlackjackDealerRig.pose(view, now + step, phase));
