@@ -141,11 +141,91 @@ class GuiPreviewTest {
         }
         Component title = t.build();
         for (int[] size : new int[][] {{480, 270}, {456, 256}, {427, 240}}) {
-            render(title, size[0], size[1]);
+            render("slot", title, size[0], size[1], IMPORTANT, java.util.Set.of(31, 39, 40, 41), "spin_on", 97, 18);
         }
     }
 
-    private void render(Component title, int width, int height) throws IOException {
+    static final List<Important> WHEEL_IMPORTANT = List.of(
+            new Important("headline", 60, -8, 118, 0),
+            new Important("payouts header", 220, -6, 262, 2),
+            new Important("disc", 61, 8, 117, 72),
+            new Important("EINSATZ", 70, 74, 108, 82),
+            new Important("bet slots", 41, 87, 135, 109),
+            new Important("button", 53, 109, 125, 123),
+            new Important("multiplier column", 250, 26, 287, 181),
+            new Important("inventory", 0, 128, 176, 222));
+
+    static final List<Important> PLINKO_IMPORTANT = List.of(
+            new Important("headline", 60, -8, 118, 0),
+            new Important("payouts header", 220, -6, 262, 2),
+            new Important("EINSÄTZE", 10, 12, 50, 20),
+            new Important("ball labels and slots", -7, 33, 63, 91),
+            new Important("board picture", 72, 10, 162, 107),
+            new Important("button", 53, 109, 125, 123),
+            new Important("multiplier column", 250, 32, 287, 176),
+            new Important("inventory", 0, 128, 176, 222));
+
+    @Test
+    void wheelTitleFitsTheCommonScreens() throws IOException {
+        loadPack();
+        GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
+                .getResourceAsStream("pack/gui-layout.json"));
+        TitleBuilder t = new TitleBuilder(layout);
+        for (int row = 0; row < 2; row++) {
+            for (int col = 0; col < 2; col++) {
+                t.art("wheel_bg_" + col + "_" + row);
+            }
+        }
+        t.artAt("wheel_disc_9", "wheel_disc");
+        TextColor cream = TextColor.color(0xF3E7BF);
+        t.text("wheel_headline", "Glücksrad", cream);
+        t.text("wheel_payouts", "Gewinne", cream);
+        t.text("wheel_bet", "EINSATZ", cream);
+        int[] quarters = {20, 8, 6, 4, 3, 2, 1, 0};
+        for (int row = 0; row < quarters.length; row++) {
+            t.text("wheel_multiplier_" + row, de.tigges.kaboofcasino.game.PanelText.multiplier(quarters[row]),
+                    row == 0 ? TextColor.color(0xFFD770) : cream);
+        }
+        Component title = t.build();
+        for (int[] size : new int[][] {{480, 270}, {456, 256}, {427, 240}}) {
+            render("wheel", title, size[0], size[1], WHEEL_IMPORTANT, java.util.Set.of(38, 40, 42, 48, 49, 50),
+                    "wheel_on", 109, 14);
+        }
+    }
+
+    @Test
+    void plinkoTitleFitsTheCommonScreens() throws IOException {
+        loadPack();
+        GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
+                .getResourceAsStream("pack/gui-layout.json"));
+        TitleBuilder t = new TitleBuilder(layout);
+        for (int row = 0; row < 2; row++) {
+            for (int col = 0; col < 2; col++) {
+                t.art("plinko_bg_" + col + "_" + row);
+            }
+        }
+        TextColor cream = TextColor.color(0xF3E7BF);
+        t.text("plinko_headline", "Casino-Plinko", cream);
+        t.text("plinko_payouts", "Gewinne", cream);
+        t.text("plinko_bets", "EINSÄTZE", cream);
+        for (int i = 0; i < 3; i++) {
+            t.text("plinko_ball_" + i, "1 Kugel", cream);
+        }
+        int[] quarters = {32, 12, 8, 2, 1};
+        for (int row = 0; row < quarters.length; row++) {
+            t.text("plinko_multiplier_" + row, de.tigges.kaboofcasino.game.PanelText.multiplier(quarters[row]),
+                    row == 0 ? TextColor.color(0xFFD770) : cream);
+        }
+        Component title = t.build();
+        for (int[] size : new int[][] {{480, 270}, {456, 256}, {427, 240}}) {
+            render("plinko", title, size[0], size[1], PLINKO_IMPORTANT, java.util.Set.of(11, 20, 29, 48, 49, 50),
+                    "plinko_on", 109, 14);
+        }
+    }
+
+    private void render(String name, Component title, int width, int height, List<Important> important,
+                        java.util.Set<Integer> highlight, String buttonTexture, int buttonY, int buttonH)
+            throws IOException {
         int left = (width - 176) / 2;
         int top = (height - 222) / 2;
         BufferedImage screen = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -174,18 +254,18 @@ class GuiPreviewTest {
         for (int r = 0; r < 6; r++) {
             for (int col = 0; col < 9; col++) {
                 outline(screen, left + 8 + 18 * col, top + 18 + 18 * r, 16, 16,
-                        r == 3 && col == 4 || r == 4 && col >= 3 && col <= 5 ? 0xffff3030 : 0x60ffffff);
+                        highlight.contains(9 * r + col) ? 0xffff3030 : 0x60ffffff);
             }
         }
-        // the SPIN button item (72x18 at window 53, 97) as the client would draw it over slot (4, 4)
+        // the play button item (72 x buttonH at window 53, buttonY) as the client draws it over its slot
         BufferedImage button = ImageIO.read(new ByteArrayInputStream(pack.get(
-                "assets/kaboofcasino/textures/item/gui/spin_on.png")));
-        for (int y = 0; y < 18; y++) {
+                "assets/kaboofcasino/textures/item/gui/" + buttonTexture + ".png")));
+        for (int y = 0; y < buttonH; y++) {
             for (int x = 0; x < 72; x++) {
-                blend(screen, left + 53 + x, top + 97 + y, button.getRGB(x, y));
+                blend(screen, left + 53 + x, top + buttonY + y, button.getRGB(x, y));
             }
         }
-        Path out = Path.of("build/reports/gui/slot-preview-" + width + "x" + height + ".png");
+        Path out = Path.of("build/reports/gui/" + name + "-preview-" + width + "x" + height + ".png");
         Files.createDirectories(out.getParent());
         BufferedImage big = new BufferedImage(width * 2, height * 2, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < height * 2; y++) {
@@ -197,9 +277,9 @@ class GuiPreviewTest {
         assertTrue(minX >= 0, width + "x" + height + ": art left of the screen: " + minX);
         assertTrue(maxX <= width, width + "x" + height + ": art right of the screen: " + maxX);
         assertTrue(maxX - (left + 176) <= 125, "right overhang beyond the chest: " + (maxX - left - 176));
-        for (Important i : IMPORTANT) {
+        for (Important i : important) {
             assertTrue(left + i.x0() >= 0 && left + i.x1() <= width && top + i.y0() >= 0 && top + i.y1() <= height,
-                    width + "x" + height + ": " + i.name() + " is clipped");
+                    name + " " + width + "x" + height + ": " + i.name() + " is clipped");
         }
     }
 

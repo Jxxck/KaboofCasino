@@ -7,7 +7,8 @@ import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.gui.Usability;
 import de.tigges.kaboofcasino.machine.Heartbeat;
 import de.tigges.kaboofcasino.machine.Machine;
-import de.tigges.kaboofcasino.machine.MachineGame;
+import de.tigges.kaboofcasino.game.GameMenu;
+import de.tigges.kaboofcasino.game.MachineController;
 import de.tigges.kaboofcasino.util.ItemNames;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
@@ -42,7 +43,7 @@ import org.bukkit.inventory.ItemStack;
  * player per machine (the mod's {@code CasinoWagerRouting}): the claim is taken when the menu opens and released
  * when it closes without a spin, or when the spin ends. Thread: MAIN.
  */
-public final class SlotController implements MachineGame {
+public final class SlotController extends MachineController {
 
     static final String GAME = "slot_machine";
     private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(16765288), 1.25f);
@@ -50,17 +51,13 @@ public final class SlotController implements MachineGame {
     private static final Particle.DustOptions GREEN_CONFETTI = new Particle.DustOptions(Color.fromRGB(3594374),
             1.15f);
 
-    private final Machine machine;
-    private final CasinoContext ctx;
     private SlotRig rig;
     private int[] stops;
-    private UUID claimant;
     private Spin spin;
     /** The plan whose lights still blend back to idle after the spin unlocked. */
     private SlotSpin.Plan lightsPlan;
     private long lightsStart;
     private long panelUntil = -1;
-    private final Heartbeat heartbeat = new Heartbeat();
 
     /** A running spin. */
     private static final class Spin {
@@ -91,8 +88,7 @@ public final class SlotController implements MachineGame {
     }
 
     public SlotController(Machine machine, CasinoContext ctx) {
-        this.machine = machine;
-        this.ctx = ctx;
+        super(machine, ctx);
         this.stops = parseStops(machine.record().data());
     }
 
@@ -109,10 +105,6 @@ public final class SlotController implements MachineGame {
             }
         }
         return out;
-    }
-
-    private World world() {
-        return Bukkit.getWorld(NamespacedKey.fromString(machine.anchor().world()));
     }
 
     // ---- MachineGame -----------------------------------------------------------------------------------------------
@@ -138,8 +130,18 @@ public final class SlotController implements MachineGame {
     }
 
     @Override
-    public boolean busy() {
+    protected boolean running() {
         return spin != null;
+    }
+
+    @Override
+    protected Msg busyMessage() {
+        return Msg.SLOT_BUSY;
+    }
+
+    @Override
+    protected GameMenu newMenu(Player player) {
+        return new SlotMenu(player.getUniqueId(), SlotMenu.title(ctx, stops), this, ctx);
     }
 
     @Override
@@ -166,99 +168,12 @@ public final class SlotController implements MachineGame {
         closeMenus();
     }
 
-    @Override
-    public void interact(Player player) {
-        Messages m = ctx.messages().get();
-        if (spin != null) {
-            m.actionBar(player, Msg.SLOT_BUSY);
-            return;
-        }
-        if (!Usability.usable(player)) {
-            m.actionBar(player, Usability.creativeOrSpectator(player) ? Msg.ERROR_CREATIVE : Msg.ERROR_NOT_USABLE);
-            return;
-        }
-        if (!player.hasPermission("kaboofcasino.use")) {
-            m.actionBar(player, Msg.ERROR_NO_PERMISSION);
-            return;
-        }
-        if (!ctx.packs().hasPack(player.getUniqueId())) {
-            m.send(player, Msg.ERROR_NO_PACK);
-            return;
-        }
-        if (ctx.ledger().blocked(player.getUniqueId())) {
-            m.send(player, Msg.ERROR_INTERNAL, Messages.text("code", "LEDGER"));
-            return;
-        }
-        if (claimant != null && !claimant.equals(player.getUniqueId()) && claimantActive()) {
-            Player other = Bukkit.getPlayer(claimant);
-            m.actionBar(player, Msg.MACHINE_IN_USE, Messages.text("name", other == null ? "?" : other.getName()));
-            return;
-        }
-        claimant = player.getUniqueId();
-        SlotMenu menu = new SlotMenu(player.getUniqueId(), SlotMenu.title(ctx, stops), this, ctx);
-        if (!ctx.menus().open(player, menu)) {
-            claimant = null;
-        }
-    }
-
-    private boolean claimantActive() {
-        Player p = Bukkit.getPlayer(claimant);
-        return p != null && MenuService.openMenu(p) instanceof SlotMenu menu && menu.stillValid(p);
-    }
-
-    /** Menu stays valid while the machine is loaded and idle and the player is in range (mod: range + 4.5). */
-    boolean menuValid(Player player) {
-        if (spin != null || ctx.machines().byId(machine.id()).isEmpty()) {
-            return false;
-        }
-        World w = world();
-        if (w == null || !player.getWorld().equals(w)) {
-            return false;
-        }
-        var range = player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE);
-        double max = (range == null ? 4.5 : range.getValue()) + 4.5;
-        Location eye = player.getEyeLocation();
-        return distanceSquaredToBlock(eye.getX(), eye.getY(), eye.getZ(), machine.anchor().x(), machine.anchor().y(),
-                machine.anchor().z()) < max * max;
-    }
-
-    /** The mod's {@code isWithinBlockInteractionRange}: eye to the nearest point of the lower block's box. */
-    static double distanceSquaredToBlock(double x, double y, double z, int bx, int by, int bz) {
-        double dx = Math.max(Math.max(bx - x, 0), x - (bx + 1));
-        double dy = Math.max(Math.max(by - y, 0), y - (by + 1));
-        double dz = Math.max(Math.max(bz - z, 0), z - (bz + 1));
-        return dx * dx + dy * dy + dz * dz;
-    }
-
-    void menuClosed(Player player) {
-        if (spin == null && player.getUniqueId().equals(claimant)) {
-            claimant = null;
-        }
-    }
-
-    private void closeMenus() {
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (MenuService.openMenu(p) instanceof SlotMenu menu && menu.stillValidFor(this)) {
-                p.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
-            }
-        }
-    }
-
     // ---- SPIN ------------------------------------------------------------------------------------------------------
 
     /** The SPIN button (commit click): decide, commit (stake out + record in, one tick), start the animation. */
     void spin(Player player, SlotMenu menu) {
         Messages m = ctx.messages().get();
-        if (spin != null) {
-            m.actionBar(player, Msg.SLOT_BUSY);
-            return;
-        }
-        if (!Usability.usable(player) || !player.getUniqueId().equals(claimant)) {
-            return;
-        }
-        if (!ctx.menus().safe(player)) {
-            m.actionBar(player, Msg.ERROR_UNSAFE);
-            player.closeInventory(org.bukkit.event.inventory.InventoryCloseEvent.Reason.PLUGIN);
+        if (!mayCommit(player)) {
             return;
         }
         ItemAmount stake = menu.selection();
@@ -275,23 +190,13 @@ public final class SlotController implements MachineGame {
         long now = Bukkit.getCurrentTick();
         long ends = ctx.clock().getAsLong() + settleTick(plan, payout) * 50L;
         String detail = "stops=" + next[0] + "," + next[1] + "," + next[2] + " x" + result.multiplier();
-        WagerEngine.Commit commit;
-        try {
-            commit = ctx.engine().commit(new PlayerAccount(player), new WagerEngine.Request(machine.id(), GAME, stake,
-                    payout, ends, detail));
-        } catch (LedgerCodec.CorruptLedgerException e) {
-            Log.critical("LEDGER_UNREADABLE", "spin refused for {}: {}", player.getName(), e.getMessage());
-            m.send(player, Msg.ERROR_INTERNAL, Messages.text("code", "LEDGER"));
-            return;
-        }
-        if (commit instanceof WagerEngine.Refused refused) {
-            refuse(player, refused.refusal(), stake);
+        List<UUID> rounds = commit(player, List.of(new WagerEngine.Request(machine.id(), GAME, stake, payout, ends,
+                detail)), Msg.SLOT_NO_BET);
+        if (rounds == null) {
             menu.render();
             return;
         }
-        WagerEngine.Committed committed = (WagerEngine.Committed) commit;
-        spin = new Spin(player.getUniqueId(), player.getName(), committed.round().id(), stake, payout, plan, now,
-                ends);
+        spin = new Spin(player.getUniqueId(), player.getName(), rounds.getFirst(), stake, payout, plan, now, ends);
         lightsPlan = plan;
         lightsStart = now;
         stops = next;
@@ -304,21 +209,6 @@ public final class SlotController implements MachineGame {
         panelUntil = -1;
         Log.get().info("{} spins slot machine #{} with {}: {}", player.getName(), machine.record().number(), stake,
                 detail);
-    }
-
-    private void refuse(Player player, WagerEngine.Refusal refusal, ItemAmount stake) {
-        Messages m = ctx.messages().get();
-        switch (refusal) {
-            case OWED_PENDING -> m.send(player, Msg.OWED_PENDING);
-            case ROUNDS_FULL -> m.actionBar(player, Msg.ROUNDS_FULL);
-            case NOT_ALLOWED -> m.actionBar(player, Msg.BET_NOT_ALLOWED, Messages.component("item",
-                    ItemNames.name(stake.item())));
-            case BAD_COUNT -> m.actionBar(player, Msg.SLOT_NO_BET);
-            case MAX_STAKE -> m.actionBar(player, Msg.BET_MAX, Messages.text("max",
-                    Integer.toString(ctx.config().get().bets().maxStake())));
-            case NOT_ENOUGH -> m.actionBar(player, Msg.BET_NOT_ENOUGH, Messages.component("item",
-                    ItemNames.name(stake.item())));
-        }
     }
 
     // ---- ticking ---------------------------------------------------------------------------------------------------
@@ -386,11 +276,7 @@ public final class SlotController implements MachineGame {
             int interval = s.coins > 48 ? 1 : s.coins > 16 ? 2 : 3;
             if (now % interval == 0) {
                 s.coins--;
-                Player p = Bukkit.getPlayer(s.player);
-                Location target = p != null && p.getWorld().equals(world)
-                        && p.getLocation().distanceSquared(centre(world)) < 100 ? p.getLocation().add(0, 1.0, 0)
-                        : centre(world).add(stepFront(1.2));
-                rig.coin(PlayerAccount.material(s.payout.getFirst().item()), target, now);
+                rig.coin(PlayerAccount.material(s.payout.getFirst().item()), coinTarget(world, s.player), now);
                 if (interval > 1 || now % 2 == 0) {
                     sound(world, "slot_payout", SlotGeometry.MOUTH_SOUND, 0.5f,
                             0.9f + ctx.random().nextFloat() * 0.25f);
@@ -418,27 +304,8 @@ public final class SlotController implements MachineGame {
             return;
         }
         s.settled = true;
-        Player p = Bukkit.getPlayer(s.player);
-        if (p != null && !p.isDead()) {
-            try {
-                ctx.engine().settle(new PlayerAccount(p), s.round, reason);
-                List<ItemAmount> owed = new PlayerAccount(p).ledger().owed();
-                if (!owed.isEmpty()) {
-                    ctx.messages().get().send(p, Msg.OWED_REMAINING, Messages.component("items",
-                            ItemNames.list(owed)));
-                }
-            } catch (LedgerCodec.CorruptLedgerException e) {
-                Log.critical("LEDGER_UNREADABLE", "settlement of {} for {} failed: {}", s.round, s.name,
-                        e.getMessage());
-            }
-        }
-        // offline or dead: the quit/death hook already settled it; after a crash the join does
-        long stacks = 0;
-        for (ItemAmount a : s.payout) {
-            int max = PlayerAccount.material(a.item()).getMaxStackSize();
-            stacks += (a.count() + max - 1) / max;
-        }
-        s.coins = (int) Math.min(stacks, 200);
+        settleRound(s.player, s.name, s.round, reason);
+        s.coins = stacks(s.payout);
     }
 
     private void lights(World world, long now) {
@@ -480,16 +347,6 @@ public final class SlotController implements MachineGame {
             colors[i + 1] = (float) IdleLights.bulb(i, 15, t);
         }
         return colors;
-    }
-
-    private boolean playerNear(World world, int range) {
-        Location c = centre(world);
-        for (Player p : world.getPlayers()) {
-            if (p.getLocation().distanceSquared(c) <= (double) range * range) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // ---- sounds and particles (positions: SlotMachineBlockEntity.world -> SlotMachineLayout.toBlock) --------------
@@ -565,30 +422,4 @@ public final class SlotController implements MachineGame {
         }
     }
 
-    private Location at(World world, double[] px) {
-        double[] b = machine.facing().toBlock(px[0], px[1], px[2]);
-        return new Location(world, machine.anchor().x() + b[0], machine.anchor().y() + b[1],
-                machine.anchor().z() + b[2]);
-    }
-
-    private Location centre(World world) {
-        return new Location(world, machine.anchor().x() + 0.5, machine.anchor().y() + 1.0,
-                machine.anchor().z() + 0.5);
-    }
-
-    private org.bukkit.util.Vector stepFront(double distance) {
-        int[] step = machine.facing().step();
-        return new org.bukkit.util.Vector(step[0] * distance, 0, step[1] * distance);
-    }
-
-    private void sound(World world, String id, double[] px, float volume, float pitch) {
-        Location l = at(world, px);
-        world.playSound(Sound.sound(Key.key("roulettecasino", id), Sound.Source.BLOCK, volume, pitch), l.getX(),
-                l.getY(), l.getZ());
-    }
-
-    private <T> void particle(World world, Particle particle, double[] px, int count, double dx, double dy, double dz,
-                              double speed, T data) {
-        world.spawnParticle(particle, at(world, px), count, dx, dy, dz, speed, data);
-    }
 }

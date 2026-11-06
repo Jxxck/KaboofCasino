@@ -2,7 +2,9 @@ package de.tigges.kaboofcasino.game.slot;
 
 import de.tigges.kaboofcasino.machine.Facing;
 import de.tigges.kaboofcasino.machine.MachineRecord;
+import de.tigges.kaboofcasino.visual.Coins;
 import de.tigges.kaboofcasino.visual.Displays;
+import de.tigges.kaboofcasino.visual.FloatingPanel;
 import de.tigges.kaboofcasino.visual.RigMath;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.CustomModelData;
@@ -42,26 +44,15 @@ final class SlotRig {
     private final double[] reelTurn = new double[3];
     private ItemDisplay lever;
     private ItemDisplay lights;
-    private TextDisplay panel;
+    private final FloatingPanel panel;
     private boolean flashDim;
-    private final List<Coin> coins = new ArrayList<>();
-
-    private static final class Coin {
-        final ItemDisplay display;
-        final long removeAt;
-        final Location target;
-        boolean moved;
-
-        Coin(ItemDisplay display, long removeAt, Location target) {
-            this.display = display;
-            this.removeAt = removeAt;
-            this.target = target;
-        }
-    }
+    private final Coins coins;
 
     SlotRig(MachineRecord record, World world) {
         this.record = record;
         this.world = world;
+        this.panel = new FloatingPanel(record.id());
+        this.coins = new Coins(record.id());
     }
 
     private Location base() {
@@ -109,7 +100,7 @@ final class SlotRig {
                 return true;
             }
         }
-        return panel != null && !panel.isValid();
+        return panel.broken();
     }
 
     void despawn() {
@@ -117,11 +108,7 @@ final class SlotRig {
         parts.clear();
         lever = null;
         lights = null;
-        Displays.remove(panel);
-        panel = null;
-        for (Coin c : coins) {
-            Displays.remove(c.display);
-        }
+        panel.hide();
         coins.clear();
         for (int k = 0; k < 3; k++) {
             reels[k] = null;
@@ -219,27 +206,12 @@ final class SlotRig {
     // ---- floating panel ------------------------------------------------------------------------------------------
 
     void panel(Component text) {
-        if (panel == null || !panel.isValid()) {
-            Location at = new Location(world, record.anchor().x() + 0.5, record.anchor().y() + SlotGeometry.PANEL_Y,
-                    record.anchor().z() + 0.5);
-            panel = Displays.text(world, at, record.id(), d -> {
-                d.setViewRange(10f / 64f);
-                d.setBackgroundColor(Color.fromARGB(-266188488));
-                d.setShadowed(true);
-                d.setLineWidth(400);
-                d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
-                        new Vector3f(0.44f, 0.44f, 0.44f), new Quaternionf()));
-                d.setBrightness(FULL);
-                d.text(text);
-            });
-        } else {
-            panel.text(text);
-        }
+        panel.show(world, new Location(world, record.anchor().x() + 0.5, record.anchor().y() + SlotGeometry.PANEL_Y,
+                record.anchor().z() + 0.5), text);
     }
 
     void hidePanel() {
-        Displays.remove(panel);
-        panel = null;
+        panel.hide();
     }
 
     // ---- payout coins --------------------------------------------------------------------------------------------
@@ -248,37 +220,15 @@ final class SlotRig {
     void coin(Material material, Location target, long now) {
         double[] m = SlotGeometry.COIN_MOUTH;
         double[] at = facing().toBlock(m[0], m[1], m[2]);
-        Location from = new Location(world, record.anchor().x() + at[0], record.anchor().y() + at[1],
-                record.anchor().z() + at[2]);
-        ItemDisplay d = world.spawn(from, ItemDisplay.class, x -> {
-            x.setPersistent(false);
-            x.setItemStack(ItemStack.of(material));
-            x.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
-            x.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
-                    new Vector3f(0.6f, 0.6f, 0.6f), new Quaternionf()));
-            x.setTeleportDuration(10);
-            x.setViewRange(0.5f);
-            x.getPersistentDataContainer().set(de.tigges.kaboofcasino.util.Keys.PART,
-                    org.bukkit.persistence.PersistentDataType.STRING, record.id().toString());
-        });
-        coins.add(new Coin(d, now + 12, target));
+        coins.spawn(world, new Location(world, record.anchor().x() + at[0], record.anchor().y() + at[1],
+                record.anchor().z() + at[2]), material, target, now);
     }
 
-    /** Moves fresh coins one tick after their spawn (teleport interpolation needs a spawned entity) and expires them. */
     void tickCoins(long now) {
-        for (Iterator<Coin> it = coins.iterator(); it.hasNext(); ) {
-            Coin c = it.next();
-            if (!c.display.isValid() || now >= c.removeAt) {
-                Displays.remove(c.display);
-                it.remove();
-            } else if (!c.moved) {
-                c.moved = true;
-                c.display.teleport(c.target);
-            }
-        }
+        coins.tick(now);
     }
 
     boolean coinsFlying() {
-        return !coins.isEmpty();
+        return coins.flying();
     }
 }

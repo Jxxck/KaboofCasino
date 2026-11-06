@@ -1,8 +1,8 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
-GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what step 1
-built, how the next six games plug in, and the pitfalls found on the way.
+GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
+and 2 built, how the next games plug in, and the pitfalls found on the way.
 
 Licence: MineVegas Casino is MIT with an attribution condition. Every public description must link
 https://www.curseforge.com/minecraft/mc-mods/minevegas-casino (it is in `pack.mcmeta`, `credits/CREDITS.md` in the
@@ -43,11 +43,13 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `config` | `config.yml` → `CasinoConfig` (validated, defaults merged into the live file), `messages_de.yml` → `Messages`/`Msg` |
 | `pack` | `PackFile` (embedded zip, re-hashed), `GamePortPack` + `PackSniffer` + `HttpSniff` (HTTP on the game port), `PackHttpServer` (own port), `PackListener` (configuration phase), `PackSessions` |
 | `wager` | the bet engine: `WagerEngine` (pure), `Ledger`/`RoundRecord`/`ItemAmount`, `Account` (port) + `PlayerAccount` (Bukkit), `LedgerCodec` (player PDC), `LedgerListener` (quit/death/join/timer/disable) |
-| `machine` | `MachineType` (footprints), `Facing`, `MachineRecord` + `ChunkRecords` (chunk PDC), `MachineService` (index, place, remove, verify, tick), listeners for interaction, breaking, protection, chunks, item vetoes; `CasinoItem(s)`, `Recipes` |
-| `visual` | `RigMath` (display transformations), `Displays` (non-persistent spawn helpers) |
+| `machine` | `MachineType` (footprints), `Facing`, `MachineRecord` + `ChunkRecords` (chunk PDC), `MachineService` (index, place, remove, verify, tick), listeners for interaction, breaking, protection, chunks, item vetoes; `CasinoItem(s)`, `Recipes` (from `pack/recipes.json`), `Heartbeat` |
+| `visual` | `RigMath` (display transformations), `Displays` (non-persistent spawn helpers), `Coins` (payout coin displays), `FloatingPanel` (bet/result panel) |
 | `gui` | PostMarkt's selection-model framework (`Menu`, `MenuService`, `MenuListener`, `ClickRoute`, `ClickRules`, `OpenRules`, `DisplayCopies`, `DisplayPurge`), `MenuSafety` (copied) + `DangerSweep` (5-tick), `GuiLayout` + `TitleBuilder` (font-glyph titles) |
-| `game` | `Odds` (the mod's forced win-chance pools), `CasinoRandom` (L64X128MixRandom from SecureRandom) |
+| `game` | `MachineController` (what every machine game shares: interact checks, claim, range, menus, commit, settle, heartbeat, coin target, sounds/particles at local px), `GameMenu`, `StakeMenu` (three bet slots), `PanelText`, `Odds` (the mod's forced win-chance pools), `FairPayout` (verbatim port), `CasinoRandom` (L64X128MixRandom from SecureRandom) |
 | `game.slot` | `SlotGame` (rules), `SlotSpin` (spin plan), `IdleLights`, `SlotController` (runtime), `SlotRig` (entities), `SlotMenu` (GUI), `SlotPanel`, `SlotGeometry` |
+| `game.wheel` | `FortuneWheelGame`, `FortuneWheelSpin`, `FortuneWheelBlur` (verbatim ports), `WheelController`, `WheelRig`, `WheelMenu`, `WheelGeometry` |
+| `game.plinko` | `PlinkoGame`, `PlinkoDrop`, `PlinkoLights` (verbatim ports), `PlinkoController`, `PlinkoRig`, `PlinkoMenu` |
 | `storage` | SQLite: `Database` (1 connection, 1 thread, migrations), `RoundLog` (RoundSink + stats), `MachineIndex` |
 | `command` | `/casino` (Brigadier `BasicCommand`) |
 | `pack-tool/` | builds the pack (see 6) |
@@ -112,10 +114,13 @@ The forward has to exist for that mode.
 
 ## 3. The bet engine (PLAN decision 2)
 
-- **Commit** (`WagerEngine.commit`, one tick): checks (owed empty, open rounds < `rounds.max-open`, item in
-  `bets.items`, 1..`bets.max-stake`, enough *plain* items in storage slots 0-35), then the take (one take per slot,
-  clone + `setItem`) and the ledger write with the round record. The game decides the outcome **before** the commit,
-  so the record holds the final payout (`RoundState.DECIDED`).
+- **Commit** (`WagerEngine.commitAll`, one tick): one record per stake (the slot machine has one, a wheel or Plinko
+  round up to three, each paid in its own item). Checks for all stakes together: owed empty, open records + stakes
+  <= `rounds.max-open` (default 8), every item in `bets.items`, every count >= 1, the stakes together at most
+  `bets.max-stake` (PLAN decision 1: per round), enough *plain* items of every item (stakes of the same item add
+  up). Then the takes (one take per inventory slot, clone + `setItem`) and **one** ledger write with all records;
+  all or nothing. The game decides the outcome **before** the commit, so every record holds its final payout
+  (`RoundState.DECIDED`).
 - **Settle** (one tick): record out + payout into `owed` in one write, then `deliverOwed` gives what fits and keeps the
   rest owed. `deliverOwed` gives one item type at a time and writes the ledger right after each give, so an
   exception in the middle can never pay something twice. Settling a missing record is a no-op, so every path may
@@ -248,34 +253,43 @@ Slot specifics:
 
 ## 7. Pack tool (`pack-tool/`)
 
-`PackTool.build`: `ModJar` (pinned SHA-1) → `PackTree` (sorted path → bytes; conflicting writes fail) →
-`Credits` → `SlotMachinePack` (models, items, entity sheet into the blocks atlas, meshes, lights, drums, sounds,
-lang) → `SlotMachineGui` (tiles, reel/symbol glyphs, buttons) → `TextGlyphs` (text fonts) → `GuiFont` (gui font +
-manifest) → `TexturePadding` (atlas textures to multiples of 16, UVs rescaled; animated or item/generated odd textures
+`PackTool.build`: `ModJar` (pinned SHA-1; assets plus the recipe and recipe-advancement data) → `PackTree` (sorted
+path → bytes; different contents for one path fail) → `Credits` → `SlotMachinePack` / `WheelPack` / `PlinkoPack`
+(models, items, entity sheets into the blocks atlas, meshes, lights, drums/plates) → `SlotMachineGui` / `WheelGui` /
+`PlinkoGui` (tiles, glyphs, anchors, buttons; the 3x3 screens through `MachineGuiArt`) → the 72x14 collect button
+and the stake marker → `Sounds` + `Lang` (once, for all shipped games) → `TextGlyphs` (text fonts) → `GuiFont` (gui
+font + manifest) → `TexturePadding` (atlas textures to multiples of 16, UVs rescaled; animated or item/generated odd textures
 fail) → `ZipOut` (sorted, fixed DOS time, PNG/OGG stored, rest deflated 9). Byte-identical output for identical
-inputs (`PackBuildTest`).
+inputs (`PackBuildTest`). Next to the zip it writes `gui-layout.json` (glyphs, anchors, text rows) and
+`recipes.json` (`ModRecipes`: the shipped recipes and their unlock items from the mod's JSON).
 
-`pack-src/`: `meshes/slot_*.json` (converted by `tools/meshes/convert-slot.sh` with the research's `mesh2json.py`,
-which re-bakes every quad with a port of the 26.3 FaceBakery: 0 mismatches), `vanilla/` (default-font bitmaps and
+`pack-src/`: `meshes/slot_*.json`, `wheel_pennant.json`, `plinko_{ball,lamp,bulb,rim,glow}.json` (converted by
+`tools/meshes/convert-{slot,wheel,plinko}.sh` with the research's `mesh2json.py`, which re-bakes every quad with a
+port of the 26.3 FaceBakery: 0 mismatches), `vanilla/` (default-font bitmaps and
 provider definitions from the 26.3 client jar, see its README).
 
 ## 8. Extension points for the next games
 
-1. `MachineType`: new constant with its footprint (offsets rotate with the facing).
-2. `CasinoItem`: the placing item (+ intermediates), `Msg` names, `Recipes` (paper rule per recipe).
-3. A `MachineGame` implementation (one per machine; `spawn/despawn/tick/busy/interact/removed/ownsRound/checkRig`);
-   register it in the `machines.games(...)` switch in `KaboofCasinoPlugin`.
-4. Rounds go through `WagerEngine`. Instant games (wheel, Plinko, roulette): decide → `commit` → animate →
-   `settle(NORMAL)` at the payout tick, exactly like `SlotController`. Blackjack/poker need `RoundState.PLAYING` with the
+1. `MachineType`: new constant with its footprint (offsets rotate with the facing) and `rise` (placed cell to
+   anchor).
+2. `CasinoItem`: the placing item (+ intermediates), `Msg` names; add the recipe ids to `ModRecipes.SHIPPED` (the
+   recipe, its unlock and the paper rule come from the mod's JSON).
+3. A `MachineController` subclass (one per machine: `running/busyMessage/newMenu` plus
+   `spawn/despawn/tick/removed/ownsRound/checkRig`); its menu extends `GameMenu` (or `StakeMenu` for three bet
+   slots); register it in the `machines.games(...)` switch in `KaboofCasinoPlugin`.
+4. Rounds go through `WagerEngine.commitAll` via `MachineController.commit`. Instant games (roulette next): decide →
+   commit → animate → `settleRound(NORMAL)` per record at the mod's payout tick, exactly like the wheel. Blackjack/poker need `RoundState.PLAYING` with the
    card order and decisions in the record and the mod's timeout rule (stand/fold) in the settlement of QUIT/STOP/
    JOIN_RECOVERY/TIMEOUT; double down = a second take + record update in one tick. Derby: `ENROLLED` (refund on
    quit/death) → `DECIDED` at the race start. Bump `LedgerCodec.VERSION` and keep reading v1.
 5. Pack: a `<Game>Pack` + `<Game>Gui` class in the pack tool; GUI art glyphs go through `GuiFont.art/grid` with their
    window position, text positions are anchors (`GuiFont.anchor`, drawn with `TitleBuilder.text(anchor, …)`). Check
    `slot-preview-<W>x<H>.png`-style previews at 480×270, 456×256 and 427×240 (copy
-   `GuiPreviewTest`). Keep sounds/lang filtered to what ships.
-6. Exchange rules, `win_chance` per machine, the croupier's hand, names: not built; `slot.win-chance` is global.
-   `Odds` already ports the mod's pools for all games.
+   `GuiPreviewTest`). Add the game's sound events and lang prefixes to the lists `PackTool` passes to `Sounds`/`Lang`.
+   Every literal model key and every `sound(world, "...")` is checked against the pack (`PackKeysTest`); keys built at
+   run time need a `modelKeys()` test like `WheelPackKeysTest`.
+6. Exchange rules, `win_chance` per machine, the croupier's hand, names: not built; `slot.win-chance`,
+   `wheel.win-chance`, `plinko.win-chance` are global per type. `Odds` already ports the mod's pools for all games.
 
 ## 9. Pitfalls found in step 1 (in addition to PostMarkt's section 7)
 
@@ -297,6 +311,11 @@ provider definitions from the 26.3 client jar, see its README).
 | Most players use GUI scale "Auto": 427×240 scaled pixels on 720p, 1440p and 4K. | The slot art is re-composed to 324 px; previews at three sizes. |
 | `ChannelInitializeListenerHolder` is only in the server jar; vanilla's `ReadTimeoutHandler` ("timeout") cuts a long HTTP download at 30 s. | Compile against an extract of the server jar; remove "timeout" when answering HTTP. |
 | `EmbeddedChannel` runs scheduled tasks only with `advanceTimeBy` + `runScheduledPendingTasks`. | Used in `PackSnifferTest`. |
+| Step 2: the mod's 3x3 screens need 36 px above the chest for the title; the bet slots and the button leave no felt to cut between them. | Upper part 20 px higher, felt rows below the button cut, a 72x14 button (`MachineGuiArt`). |
+| Step 2: row cuts across the whole image tear the payout table apart. | Rows are cut in the left panel only; the payout panel keeps window = mod - 20. |
+| Step 2: `Images.argb` returns its argument when it already is ARGB, so a second "copy" aliases the first. | Copies via `Images.crop`. |
+| Step 2: a display is culled by its own box, which grows only upward from the entity; parts one block below vanish when looking down. | 3x3 rigs stand at the machine's bottom centre with a 3.2 x 3.2 box. |
+| Step 2: the wheel pennant at the mod's 36 degree clamp pokes 0.08 px above the machine. | The display clamps at 32 degrees (`WheelGeometryTest`). |
 
 ## 10. Deviations from the mod (step 1)
 
@@ -337,9 +356,49 @@ Look:
 Same as the mod (fixed in this round): losing spins unlock at the result tick, the panel hides 70 ticks after the
 result, recipes unlock along the mod's advancement chain, the range check uses the block's box.
 
+### Step 2 (fortune wheel, Plinko)
+
+Bets and payouts:
+- Three bet slots as a selection (the slot machine's model, per slot; see `StakeMenu`); nothing stays in the machine
+  when the menu closes (the mod keeps stakes in the block entity, owner-locked, and ejects them when the machine
+  breaks).
+- The three slots together hold at most `bets.max-stake` (64) items (PLAN decision 1, per round); the mod allows a
+  stack per slot (192).
+- Each slot is one record; a paying slot settles where the mod starts ejecting (wheel: result + 12; Plinko: that
+  ball's landing + 10), a slot that pays nothing at the result (wheel) or at its landing (Plinko). Winnings go into the
+  inventory (overflow owed) instead of owner-locked item entities; the ejection pace (1/2/3 ticks by stacks pending,
+  per ball in Plinko) and the payout sound are kept as coin displays.
+- Fair rounding, the slot index in the roll (also for Plinko balls), the weighted wheel table, the binomial Plinko
+  paths and the forced pools are the mod's (verbatim ports; RTP 250/256 and 998/1024 exact and simulated).
+- The machine unlocks like the mod: when everything is out, the result is shown (Plinko) and `readyTick` passed.
+
+Look:
+- Plate blur: the mod cross-fades two blur levels with a translucent second pass; a display cannot fade, so it
+  shows the level that has more than half the weight.
+- Wheel flash: brightness 9/15 instead of the grey tint 0.62.
+- Pennant: clamped at 32 instead of 36 degrees (stays inside the machine; see the pitfalls).
+- Plinko pocket glow (translucent, alpha 0..97) is not drawn; the rims (grey tint) mark the pockets, and while any
+  pocket glows all nine rims are shown (the mod draws only those above 0.01).
+- Plinko's lamps, bulbs, rims and the wheel's bulbs are self-lit full bright like the mod; the faces of the converted
+  meshes keep their per-face shading (the mod forces an up normal).
+- Machine labels (creative + Croupier's Hand only in the mod) are not built; the floating panel is a text display:
+  head + name, title, the stake icons, Plinko's landed multipliers and the result line, without the felt and brass
+  frame, the 3D item icons and the per-viewer fades.
+- GUI: upper part 20 px higher, felt rows under the button removed, the button 72x14 instead of 72x18; the left panel
+  19 px and the payout panels 15 px narrower (wheel: columns 304..318; Plinko: 261..266 and 312..320) with the
+  lettering re-centred; the wheel's bet frames moved by -5/0/+5 px, Plinko's by (+2, +7/+3/-1) px onto the grid,
+  Plinko's bullet dots 6 px and "1 Kugel" labels 8 px left (the mod shrinks the label into 31 px). The mod's text
+  scaling (`CasinoText.fitted`) does not exist in a font, so long labels keep their size.
+- The active empty bet field shows a gold frame; a filled active field glints.
+
 ## 11. Testing
 
-Unit tests: `./gradlew build` (see the final report for counts). Game-port delivery from outside the JVM:
+Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
+(exact RTP by enumeration for every stake size, the forced pools at several chances by enumerating every random
+number pair, 10^7-round simulations of the shipped code path), `WheelGeometryTest` / `PlinkoGeometryTest` (moving
+parts inside the 3x3 footprint at every reachable angle/position), `PackKeysTest` + `WheelPackKeysTest` +
+`PlinkoPackKeysTest`, `RecipesDataTest`, `StakeMenuRulesTest`, the multi-stake engine tests and `GuiPreviewTest`
+(`build/reports/gui/{slot,wheel,plinko}-preview-<W>x<H>.png`). Game-port delivery from outside the JVM:
 `python3 -I testing/gameport-test.py <port> <sha1>` (GET/HEAD/404/405, status ping, legacy ping, garbage, a silent
 client; refuses the live ports). Smoke test on the default PostMarkt test instance
 (`PostMarkt/testing/ptest.sh`, README there) with the pack-aware bot of this repo:
@@ -347,7 +406,7 @@ client; refuses the live ports). Smoke test on the default PostMarkt test instan
 ```bash
 T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing
 $T/ptest.sh uninstall LodServerSupport DHSupport PostMarkt   # clean instance (done 2026-11-06)
-$T/ptest.sh install build/libs/KaboofCasino-0.1.0.jar
+$T/ptest.sh install build/libs/KaboofCasino-0.2.0.jar
 # plugins/KaboofCasino/config.yml on the instance: url-host 127.0.0.1, url-port 25572 (serve minecraft-port)
 #   or serve http-port with port 25581 + bind 127.0.0.1; slot.win-chance 100 for forced wins
 $T/ptest.sh start
@@ -369,3 +428,7 @@ testing/craft-test.sh                                                    # craft
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
+- Step 2 ships as `KaboofCasino-0.2.0.jar`: remove `KaboofCasino-0.1.0.jar` from `plugins/`. The live `config.yml`
+  gets the new `wheel:`/`plinko:` sections merged in (natural odds); its `rounds.max-open: 4` stays (new installs: 8).
+  With 4, one three-slot round plus one more stake fit at a time; two three-slot rounds at once are refused
+  ("rounds.full").

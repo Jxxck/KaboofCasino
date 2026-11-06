@@ -29,7 +29,8 @@ public final class PackTool {
     }
 
     /** The result of one build. */
-    record Result(byte[] zip, String sha1, byte[] layout, int files, List<TexturePadding.Padded> padded) {
+    record Result(byte[] zip, String sha1, byte[] layout, byte[] recipes, int files,
+                  List<TexturePadding.Padded> padded) {
     }
 
     public static void main(String[] args) {
@@ -46,6 +47,7 @@ public final class PackTool {
             Files.write(out.resolve(ZIP), result.zip());
             Files.writeString(out.resolve(ZIP + ".sha1"), result.sha1() + "\n", StandardCharsets.UTF_8);
             Files.write(out.resolve(LAYOUT), result.layout());
+            Files.write(out.resolve(ModRecipes.FILE), result.recipes());
         } catch (IOException e) {
             throw new UncheckedIOException("cannot write to " + out, e);
         }
@@ -61,6 +63,24 @@ public final class PackTool {
         return value;
     }
 
+    /** The marker of the active empty bet field: a gold 1 px frame on a 16x16 item (item/generated). */
+    static void stakeMarker(PackTree tree) {
+        java.awt.image.BufferedImage img = Images.blank(16, 16);
+        int gold = 0xFFFFD770;
+        Images.fill(img, 0, 0, 16, 1, gold);
+        Images.fill(img, 0, 15, 16, 1, gold);
+        Images.fill(img, 0, 0, 1, 16, gold);
+        Images.fill(img, 15, 0, 1, 16, gold);
+        tree.put("assets/kaboofcasino/textures/item/gui/stake_active.png", Images.write(img));
+        JsonObject model = new JsonObject();
+        model.addProperty("parent", "minecraft:item/generated");
+        model.add("textures", Json.object("layer0", new com.google.gson.JsonPrimitive(
+                "kaboofcasino:item/gui/stake_active")));
+        tree.put("assets/kaboofcasino/models/gui/stake_active.json", Json.bytes(model));
+        tree.put("assets/kaboofcasino/items/gui/stake_active.json",
+                Json.bytes(Json.itemDefinition("kaboofcasino:gui/stake_active")));
+    }
+
     /** Builds the whole pack in memory. */
     static Result build(Path modJar, String modSha1, Path packSrc) {
         ModJar jar = ModJar.open(modJar, modSha1);
@@ -71,6 +91,20 @@ public final class PackTool {
         Credits.add(jar, tree);
         SlotMachinePack.add(jar, tree, packSrc);
         SlotMachineGui.add(jar, tree, font, text);
+        WheelPack.add(jar, tree, packSrc);
+        WheelGui.add(jar, tree, font, text);
+        PlinkoPack.add(jar, tree, packSrc);
+        PlinkoGui.add(jar, tree, font, text);
+        SlotMachineGui.button(tree, text, "collect_low", "ABHOLEN", true, 14, 4.5, 11.5);
+        stakeMarker(tree);
+        List<String> events = new java.util.ArrayList<>(SlotMachinePack.SOUND_EVENTS);
+        events.addAll(WheelPack.SOUND_EVENTS);
+        events.addAll(PlinkoPack.SOUND_EVENTS);
+        Sounds.write(jar, tree, events);
+        List<String> prefixes = new java.util.ArrayList<>(SlotMachinePack.LANG_PREFIXES);
+        prefixes.addAll(WheelPack.LANG_PREFIXES);
+        prefixes.addAll(PlinkoPack.LANG_PREFIXES);
+        Lang.filter(jar, tree, "roulettecasino", prefixes);
         tree.put("assets/kaboofcasino/items/gui/blank.json",
                 Json.bytes(Json.object("model", Json.object("type", new com.google.gson.JsonPrimitive(
                         "minecraft:empty")))));
@@ -80,6 +114,7 @@ public final class PackTool {
 
         byte[] zip = ZipOut.write(tree.files());
         JsonObject layout = font.manifest(text);
-        return new Result(zip, ModJar.sha1Hex(zip), Json.bytes(layout), tree.size(), padded);
+        return new Result(zip, ModJar.sha1Hex(zip), Json.bytes(layout), Json.bytes(ModRecipes.build(jar)), tree.size(),
+                padded);
     }
 }

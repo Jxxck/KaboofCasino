@@ -66,9 +66,13 @@ public final class ConfigLoader {
                         r.integer("safety.sweep-ticks", d.safety().sweepTicks(), 1, 20)),
                 new CasinoConfig.Gui(r.integer("gui.click-guard-ticks", d.gui().clickGuardTicks(), 0, 40),
                         r.integer("gui.idle-close-seconds", d.gui().idleCloseSeconds(), 0, 3600)),
-                new CasinoConfig.Slot(r.integer("slot.win-chance", d.slot().winChance(), -1, 100),
-                        r.integer("slot.idle-light-ticks", d.slot().idleLightTicks(), 0, 200),
-                        r.integer("slot.idle-light-range", d.slot().idleLightRange(), 0, 128)));
+                game(r, "slot", d.slot()), game(r, "wheel", d.wheel()), game(r, "plinko", d.plinko()));
+    }
+
+    private static CasinoConfig.Slot game(Reader r, String section, CasinoConfig.Slot d) {
+        return new CasinoConfig.Slot(r.integer(section + ".win-chance", d.winChance(), -1, 100),
+                r.integer(section + ".idle-light-ticks", d.idleLightTicks(), 0, 200),
+                r.integer(section + ".idle-light-range", d.idleLightRange(), 0, 128));
     }
 
     /** Typed, range-checked reads with warnings. */

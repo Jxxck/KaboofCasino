@@ -46,8 +46,9 @@ bets:
     - minecraft:netherite_block
 
 rounds:
-  # Höchstens so viele offene Runden pro Spieler (im Spieler-PDC).
-  max-open: 4
+  # Höchstens so viele offene Einsätze pro Spieler (im Spieler-PDC). Jedes Einsatzfeld zählt einzeln:
+  # eine Glücksrad- oder Plinko-Runde mit drei Feldern belegt drei.
+  max-open: 8
 
 owed:
   # Alle wie viele Ticks offene Gewinne (volles Inventar) nachgeliefert werden.
@@ -79,5 +80,18 @@ slot:
   # -1 = Quoten wie im Mod (RTP 499/512). 0..100 = erzwungene Gewinnchance in Prozent (CasinoOdds des Mods).
   win-chance: -1
   # Lichter im Leerlauf alle so viele Ticks aktualisieren (0 = aus), nur wenn ein Spieler so nah ist.
+  idle-light-ticks: 4
+  idle-light-range: 16
+
+wheel:
+  # Glücksrad. -1 = Quoten wie im Mod (RTP 250/256). 0..100 = erzwungene Gewinnchance (CasinoOdds des Mods).
+  win-chance: -1
+  idle-light-ticks: 4
+  idle-light-range: 16
+
+plinko:
+  # Plinko. -1 = Quoten wie im Mod (RTP 998/1024). 0..100 = erzwungene Gewinnchance je Kugel (CasinoOdds des Mods).
+  win-chance: -1
+  # 63 Lampen pro Update: seltener als 4 Ticks lohnt den Verkehr nicht.
   idle-light-ticks: 4
   idle-light-range: 16

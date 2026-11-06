@@ -67,12 +67,8 @@ final class SlotPanel {
                 .decoration(TextDecoration.BOLD, true);
     }
 
-    /** The bet item as an 8x8 atlas sprite: items from the items atlas, blocks from the blocks atlas. */
+    /** The bet item as an 8x8 atlas sprite ({@link de.tigges.kaboofcasino.game.PanelText#sprite}). */
     static Component sprite(String itemKey) {
-        String path = itemKey.substring(itemKey.indexOf(':') + 1);
-        boolean block = path.endsWith("_block");
-        Key atlas = Key.key(block ? "minecraft:blocks" : "minecraft:items");
-        Key sprite = Key.key("minecraft", (block ? "block/" : "item/") + path);
-        return Component.object(ObjectContents.sprite(atlas, sprite));
+        return de.tigges.kaboofcasino.game.PanelText.sprite(itemKey);
     }
 }

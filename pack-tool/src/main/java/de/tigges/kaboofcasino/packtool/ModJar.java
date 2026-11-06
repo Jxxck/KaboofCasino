@@ -44,7 +44,8 @@ final class ModJar {
                 ZipEntry entry = all.nextElement();
                 String name = entry.getName();
                 if (entry.isDirectory() || !(name.startsWith("assets/") || name.startsWith("LICENSE")
-                        || name.equals("MUSIC-CREDITS.md"))) {
+                        || name.equals("MUSIC-CREDITS.md") || name.startsWith("data/roulettecasino/recipe/")
+                        || name.startsWith("data/roulettecasino/advancement/recipes/"))) {
                     continue;
                 }
                 try (InputStream in = zip.getInputStream(entry)) {

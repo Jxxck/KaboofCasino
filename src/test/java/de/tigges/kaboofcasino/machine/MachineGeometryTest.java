@@ -35,7 +35,36 @@ class MachineGeometryTest {
             assertEquals(List.of(anchor, anchor.offset(0, 1, 0), anchor.offset(0, 2, 0)),
                     MachineType.SLOT_MACHINE.carriers(anchor, f));
         }
-        assertEquals(3, MachineType.SLOT_MACHINE.height());
+        assertEquals(0, MachineType.SLOT_MACHINE.bottom());
+        assertEquals(0, MachineType.SLOT_MACHINE.rise());
+    }
+
+    @Test
+    void wheelAndPlinkoAre3x3AroundTheAnchorAcrossTheFacing() {
+        Pos anchor = new Pos("minecraft:overworld", 10, 64, -5);
+        for (MachineType type : List.of(MachineType.FORTUNE_WHEEL, MachineType.PLINKO)) {
+            assertEquals(1, type.rise(), "placed cell = part 1, anchor = part 4 one block up");
+            assertEquals(-1, type.bottom());
+            // facing south/north: the row runs along x; west/east: along z (the machine is one block deep)
+            for (Facing f : Facing.values()) {
+                List<Pos> c = type.carriers(anchor, f);
+                assertEquals(9, c.size());
+                assertEquals(9, new java.util.HashSet<>(c).size());
+                for (Pos p : c) {
+                    if (f == Facing.SOUTH || f == Facing.NORTH) {
+                        assertEquals(anchor.z(), p.z());
+                        assertTrue(Math.abs(p.x() - anchor.x()) <= 1);
+                    } else {
+                        assertEquals(anchor.x(), p.x());
+                        assertTrue(Math.abs(p.z() - anchor.z()) <= 1);
+                    }
+                    assertTrue(Math.abs(p.y() - anchor.y()) <= 1);
+                }
+                // part 1 (bottom middle) is the placed cell below the anchor
+                assertEquals(anchor.offset(0, -1, 0), c.get(1));
+                assertEquals(anchor, c.get(4));
+            }
+        }
     }
 
     @Test

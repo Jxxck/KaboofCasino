@@ -101,9 +101,10 @@ public final class ItemVetoListener implements Listener {
         if (stack == null || stack.isEmpty()) {
             return;
         }
-        org.bukkit.NamespacedKey recipe = Recipes.unlockedBy(stack);
-        if (recipe != null && !player.hasDiscoveredRecipe(recipe)) {
-            player.discoverRecipe(recipe);
+        for (org.bukkit.NamespacedKey recipe : Recipes.unlockedBy(stack)) {
+            if (!player.hasDiscoveredRecipe(recipe)) {
+                player.discoverRecipe(recipe);
+            }
         }
     }
 }

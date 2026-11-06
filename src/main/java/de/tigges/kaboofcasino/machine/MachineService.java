@@ -116,7 +116,8 @@ public final class MachineService {
                              ItemStack item) {
         Threads.requireMain();
         World world = clicked.getWorld();
-        Block anchorBlock = clicked.isReplaceable() ? clicked : clicked.getRelative(face);
+        Block placedBlock = clicked.isReplaceable() ? clicked : clicked.getRelative(face);
+        Block anchorBlock = placedBlock.getRelative(0, type.rise(), 0);
         Facing facing = Facing.towardsPlayer(player.getFacing());
         Pos anchor = Pos.of(anchorBlock);
         List<Pos> carriers = type.carriers(anchor, facing);
@@ -137,8 +138,12 @@ public final class MachineService {
                 }
             }
         }
-        if (!anchorBlock.getRelative(BlockFace.DOWN).getBlockData().isFaceSturdy(BlockFace.UP, BlockSupport.CENTER)) {
-            return PlaceResult.NO_SUPPORT;
+        // the mod's canSurvive: every cell of the bottom row needs centre support below
+        for (Pos p : carriers) {
+            if (p.y() == anchor.y() + type.bottom() && !p.block(world).getRelative(BlockFace.DOWN).getBlockData()
+                    .isFaceSturdy(BlockFace.UP, BlockSupport.CENTER)) {
+                return PlaceResult.NO_SUPPORT;
+            }
         }
         if (type == MachineType.SLOT_MACHINE && slotCrowded(anchor, facing)) {
             return PlaceResult.CROWDED;

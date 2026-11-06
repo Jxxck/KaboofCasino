@@ -5,7 +5,9 @@ import de.tigges.kaboofcasino.config.CasinoConfig;
 import de.tigges.kaboofcasino.config.ConfigLoader;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.game.CasinoRandom;
+import de.tigges.kaboofcasino.game.plinko.PlinkoController;
 import de.tigges.kaboofcasino.game.slot.SlotController;
+import de.tigges.kaboofcasino.game.wheel.WheelController;
 import de.tigges.kaboofcasino.gui.DangerSweep;
 import de.tigges.kaboofcasino.gui.GuiLayout;
 import de.tigges.kaboofcasino.gui.MenuListener;
@@ -131,6 +133,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                 menus, sessions, ledger, machines, System::currentTimeMillis);
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
+            case FORTUNE_WHEEL -> new WheelController(machine, ctx);
+            case PLINKO -> new PlinkoController(machine, ctx);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         for (Listener l : List.of(menus, new MenuListener(menus, Bukkit::getCurrentTick,
@@ -140,6 +144,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                 new ChunkListener(machines), new ItemVetoListener())) {
             getServer().getPluginManager().registerEvents(l, this);
         }
+        Recipes.load(getClassLoader());
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->

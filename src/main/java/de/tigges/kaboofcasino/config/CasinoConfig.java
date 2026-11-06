@@ -16,7 +16,7 @@ import java.util.Objects;
  * @param slot     slot machine settings
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
-                           Slot slot) {
+                           Slot slot, Slot wheel, Slot plinko) {
 
     /**
      * @param enabled        send the pack at all
@@ -74,7 +74,11 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     public record Gui(int clickGuardTicks, int idleCloseSeconds) {
     }
 
-    /** @param winChance -1 = natural odds (the mod's default); 0..100 = forced pools (CasinoOdds) */
+    /**
+     * Per machine type ({@code slot:}, {@code wheel:}, {@code plinko:}).
+     *
+     * @param winChance -1 = natural odds (the mod's default); 0..100 = forced pools (CasinoOdds)
+     */
     public record Slot(int winChance, int idleLightTicks, int idleLightRange) {
     }
 
@@ -92,10 +96,12 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     public static final CasinoConfig DEFAULTS = new CasinoConfig(
             new Pack(true, false, Pack.MINECRAFT_PORT, "5.9.137.26", 25565, 25580, "0.0.0.0", 300),
             new Bets(64, DEFAULT_BET_ITEMS),
-            new Rounds(4),
+            new Rounds(8),
             new Owed(20),
             new Machines("owner", 100),
             new Safety(10, 12, 8, 5),
             new Gui(4, 120),
+            new Slot(-1, 4, 16),
+            new Slot(-1, 4, 16),
             new Slot(-1, 4, 16));
 }

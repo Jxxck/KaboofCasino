@@ -91,8 +91,6 @@ final class SlotMachinePack {
                 }
             }
         }
-        sounds(jar, tree);
-        Lang.filter(jar, tree, "roulettecasino", LANG_PREFIXES);
     }
 
     /** Writes {@code models/<path>.json} (one texture, the sheet) and its plain item definition. */
@@ -184,23 +182,4 @@ final class SlotMachinePack {
         return out;
     }
 
-    /** {@code sounds.json} reduced to the slot events, plus their .ogg files. */
-    private static void sounds(ModJar jar, PackTree tree) {
-        JsonObject all = Json.parse(jar.bytes("assets/roulettecasino/sounds.json"));
-        JsonObject out = new JsonObject();
-        for (String event : SOUND_EVENTS) {
-            JsonObject entry = all.getAsJsonObject(event);
-            if (entry == null) {
-                throw new IllegalStateException("sounds.json has no " + event);
-            }
-            out.add(event, entry);
-            for (JsonElement s : entry.getAsJsonArray("sounds")) {
-                String name = s.isJsonPrimitive() ? s.getAsString() : s.getAsJsonObject().get("name").getAsString();
-                ModelCopier.Id id = ModelCopier.Id.parse(name);
-                String path = "assets/" + id.namespace() + "/sounds/" + id.path() + ".ogg";
-                tree.put(path, jar.bytes(path));
-            }
-        }
-        tree.put("assets/roulettecasino/sounds.json", Json.bytes(out));
-    }
 }

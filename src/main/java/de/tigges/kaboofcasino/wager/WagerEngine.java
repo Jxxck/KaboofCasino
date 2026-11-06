@@ -34,10 +34,22 @@ public final class WagerEngine {
     public sealed interface Commit permits Committed, Refused {
     }
 
-    public record Committed(RoundRecord round) implements Commit {
+    /** The committed records, one per stake (a slot machine round has one, a wheel or Plinko round up to 3). */
+    public record Committed(List<RoundRecord> rounds) implements Commit {
+        public Committed {
+            rounds = List.copyOf(rounds);
+        }
+
+        public RoundRecord round() {
+            return rounds.getFirst();
+        }
     }
 
-    public record Refused(Refusal refusal) implements Commit {
+    /** @param item the stake item the refusal is about (null if none) */
+    public record Refused(Refusal refusal, String item) implements Commit {
+        public Refused(Refusal refusal) {
+            this(refusal, null);
+        }
     }
 
     /** What a game asks to commit. The outcome is already drawn; the payout is fixed. */
@@ -69,43 +81,80 @@ public final class WagerEngine {
 
     /** The checks of {@link #commit} without mutating anything (GUI hints). */
     public Refusal check(Account account, ItemAmount stake) {
+        Refused r = checkAll(account, List.of(stake));
+        return r == null ? null : r.refusal();
+    }
+
+    /**
+     * The checks of {@link #commitAll}: owed list empty, room for one open record per stake, every item a bet item,
+     * every count >= 1, the stakes together at most {@code bets.max-stake} (PLAN decision 1: per round), and enough
+     * plain items of every item in the storage slots (stakes of the same item add up).
+     */
+    public Refused checkAll(Account account, List<ItemAmount> stakes) {
         Ledger ledger = account.ledger();
         if (!ledger.owed().isEmpty()) {
-            return Refusal.OWED_PENDING;
+            return new Refused(Refusal.OWED_PENDING);
         }
-        if (ledger.rounds().size() >= limits.maxOpenRounds()) {
-            return Refusal.ROUNDS_FULL;
+        if (stakes.isEmpty()) {
+            return new Refused(Refusal.BAD_COUNT);
         }
-        if (!limits.betItems().contains(stake.item())) {
-            return Refusal.NOT_ALLOWED;
+        if (ledger.rounds().size() + stakes.size() > limits.maxOpenRounds()) {
+            return new Refused(Refusal.ROUNDS_FULL);
         }
-        if (stake.count() < 1) {
-            return Refusal.BAD_COUNT;
+        long total = 0;
+        for (ItemAmount stake : stakes) {
+            if (!limits.betItems().contains(stake.item())) {
+                return new Refused(Refusal.NOT_ALLOWED, stake.item());
+            }
+            if (stake.count() < 1) {
+                return new Refused(Refusal.BAD_COUNT, stake.item());
+            }
+            total += stake.count();
         }
-        if (stake.count() > limits.maxStake()) {
-            return Refusal.MAX_STAKE;
+        if (total > limits.maxStake()) {
+            return new Refused(Refusal.MAX_STAKE);
         }
-        if (account.countPlain(stake.item()) < stake.count()) {
-            return Refusal.NOT_ENOUGH;
+        for (ItemAmount need : ItemAmount.merge(stakes)) {
+            if (account.countPlain(need.item()) < need.count()) {
+                return new Refused(Refusal.NOT_ENOUGH, need.item());
+            }
         }
         return null;
     }
 
     /** Takes the stake and writes the round in one tick, or refuses without changing anything. */
     public Commit commit(Account account, Request request) {
+        return commitAll(account, List.of(request));
+    }
+
+    /**
+     * Takes every stake and writes one record per stake in one ledger write (one tick), or refuses without changing
+     * anything. All or nothing: the checks cover all stakes together.
+     */
+    public Commit commitAll(Account account, List<Request> requests) {
         Threads.requireMain();
-        Refusal refusal = check(account, request.stake());
-        if (refusal != null) {
-            return new Refused(refusal);
+        Refused refused = checkAll(account, requests.stream().map(Request::stake).toList());
+        if (refused != null) {
+            return refused;
         }
         long now = clock.getAsLong();
-        RoundRecord round = new RoundRecord(UUID.randomUUID(), request.machine(), request.game(), RoundState.DECIDED,
-                request.stake(), request.payout(), now, request.endsMillis(), request.detail());
-        Ledger next = account.ledger().withRound(round);
-        account.take(request.stake().item(), request.stake().count());
+        List<RoundRecord> rounds = new java.util.ArrayList<>();
+        Ledger next = account.ledger();
+        for (Request request : requests) {
+            RoundRecord round = new RoundRecord(UUID.randomUUID(), request.machine(), request.game(),
+                    RoundState.DECIDED, request.stake(), request.payout(), now, request.endsMillis(),
+                    request.detail());
+            rounds.add(round);
+            next = next.withRound(round);
+        }
+        for (Request request : requests) {
+            account.take(request.stake().item(), request.stake().count());
+        }
         account.ledger(next);
-        sink.started(account.id(), account.name(), round);
-        return new Committed(round);
+        for (RoundRecord round : rounds) {
+            sink.started(account.id(), account.name(), round);
+        }
+        return new Committed(rounds);
     }
 
     /**

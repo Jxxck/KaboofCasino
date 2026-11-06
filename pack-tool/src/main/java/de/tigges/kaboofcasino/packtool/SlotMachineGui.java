@@ -148,16 +148,24 @@ final class SlotMachineGui {
      * mod's button at window 53..125 x 97..115 (centre 89/106: +1 right, +8 down = model +0.5 x, -4 y).
      */
     static void button(PackTree tree, TextGlyphs text, String name, String label, boolean enabled) {
-        BufferedImage img = Images.blank(72, 18);
+        button(tree, text, name, label, enabled, 18, -0.5, 8.5);
+    }
+
+    /**
+     * A 72 x {@code h} button item; {@code yFrom..yTo} are the model units of the quad (2 GUI px per unit around the
+     * model centre: a slot's item area top is at unit 12).
+     */
+    static void button(PackTree tree, TextGlyphs text, String name, String label, boolean enabled, int h,
+                       double yFrom, double yTo) {
+        BufferedImage img = Images.blank(72, h);
         int w = 72;
-        int h = 18;
         Images.fill(img, 0, 0, w, h, -15719140);
         Images.fill(img, 1, 1, w - 2, h - 2, enabled ? -4878005 : -11773114);
         Images.fill(img, 2, 2, w - 4, h - 4, enabled ? -13938371 : -14139856);
         Images.fill(img, 2, 2, w - 4, 1, enabled ? -11373737 : -12956100);
         Images.fill(img, 2, h - 3, w - 4, 1, -15257821);
         int width = text.width(label);
-        text.draw(img, label, w / 2 - width / 2, 5, enabled ? -792641 : -8153987, true);
+        text.draw(img, label, w / 2 - width / 2, (h - 8) / 2, enabled ? -792641 : -8153987, true);
         String texture = "kaboofcasino:item/gui/" + name;
         tree.put("assets/kaboofcasino/textures/item/gui/" + name + ".png", Images.write(img));
 
@@ -165,8 +173,8 @@ final class SlotMachineGui {
         face.add("uv", Json.array(0, 0, 16, 16));
         face.addProperty("texture", "#t");
         JsonObject element = new JsonObject();
-        element.add("from", Json.array(-9.5, -0.5, 8));
-        element.add("to", Json.array(26.5, 8.5, 8));
+        element.add("from", Json.array(-9.5, yFrom, 8));
+        element.add("to", Json.array(26.5, yTo, 8));
         element.add("faces", Json.object("south", face));
         JsonArray elements = new JsonArray();
         elements.add(element);

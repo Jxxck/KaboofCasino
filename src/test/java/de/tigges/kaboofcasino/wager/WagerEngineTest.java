@@ -93,13 +93,51 @@ class WagerEngineTest {
     @Test
     void refusalsChangeNothing() {
         FakeAccount a = new FakeAccount().with(DIAMOND, 3).with("minecraft:dirt", 5);
-        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.NOT_ENOUGH), engine.commit(a, request(DIAMOND, 4, 0)));
-        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.NOT_ALLOWED),
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.NOT_ENOUGH, DIAMOND),
+                engine.commit(a, request(DIAMOND, 4, 0)));
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.NOT_ALLOWED, "minecraft:dirt"),
                 engine.commit(a, request("minecraft:dirt", 1, 0)));
         assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.MAX_STAKE), engine.commit(a, request(DIAMOND, 65, 0)));
         assertEquals(3, a.count(DIAMOND));
         assertTrue(a.ledger().isEmpty());
         assertEquals(0, a.ledgerWrites);
+    }
+
+    @Test
+    void severalStakesCommitTogetherOrNotAtAll() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 10).with(IRON_BLOCK, 5);
+        List<WagerEngine.Request> three = List.of(request(DIAMOND, 4, 8), request(IRON_BLOCK, 5, 0),
+                request(DIAMOND, 6, 3));
+        WagerEngine.Committed c = assertInstanceOf(WagerEngine.Committed.class, engine.commitAll(a, three));
+        assertEquals(3, c.rounds().size());
+        assertEquals(0, a.count(DIAMOND));
+        assertEquals(0, a.count(IRON_BLOCK));
+        assertEquals(c.rounds(), a.ledger().rounds());
+        assertEquals(1, a.ledgerWrites, "one ledger write for all stakes");
+
+        // stakes of the same item add up: 4 + 4 diamonds with 6 owned is refused as a whole
+        FakeAccount b = new FakeAccount().with(DIAMOND, 6).with(IRON_BLOCK, 1);
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.NOT_ENOUGH, DIAMOND),
+                engine.commitAll(b, List.of(request(IRON_BLOCK, 1, 0), request(DIAMOND, 4, 0),
+                        request(DIAMOND, 4, 0))));
+        assertEquals(6, b.count(DIAMOND));
+        assertEquals(1, b.count(IRON_BLOCK));
+        assertEquals(0, b.ledgerWrites);
+    }
+
+    @Test
+    void theStakeCapCoversTheWholeRoundAndEveryStakeNeedsARecordSlot() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 64).with(IRON_BLOCK, 64);
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.MAX_STAKE),
+                engine.commitAll(a, List.of(request(DIAMOND, 40, 0), request(IRON_BLOCK, 25, 0))));
+        assertInstanceOf(WagerEngine.Committed.class,
+                engine.commitAll(a, List.of(request(DIAMOND, 40, 0), request(IRON_BLOCK, 24, 0))));
+        // 2 of 4 record slots used: three more stakes do not fit, two do
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.ROUNDS_FULL), engine.commitAll(a,
+                List.of(request(DIAMOND, 1, 0), request(DIAMOND, 1, 0), request(DIAMOND, 1, 0))));
+        assertInstanceOf(WagerEngine.Committed.class,
+                engine.commitAll(a, List.of(request(DIAMOND, 1, 0), request(DIAMOND, 1, 0))));
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.BAD_COUNT), engine.commitAll(a, List.of()));
     }
 
     @Test

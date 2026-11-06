@@ -4,7 +4,7 @@ import de.tigges.kaboofcasino.CasinoContext;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.gui.Button;
 import de.tigges.kaboofcasino.gui.DisplayCopies;
-import de.tigges.kaboofcasino.gui.Menu;
+import de.tigges.kaboofcasino.game.GameMenu;
 import de.tigges.kaboofcasino.gui.TitleBuilder;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.Ledger;
@@ -27,7 +27,7 @@ import org.bukkit.inventory.ItemStack;
  * Selection model: clicking an item in the own inventory selects the stake (left: that stack, right: +1, shift-left:
  * all of that item, capped at {@code bets.max-stake}); nothing moves until SPIN commits the round.
  */
-final class SlotMenu extends Menu {
+final class SlotMenu extends GameMenu {
 
     /** Grid slot (4, 3): the mod's bet slot at mod (104, 96). */
     static final int STAKE_SLOT = 31;
@@ -44,7 +44,7 @@ final class SlotMenu extends Menu {
     private ItemAmount selection;
 
     SlotMenu(UUID viewer, Component title, SlotController controller, CasinoContext ctx) {
-        super(viewer, 6, title);
+        super(viewer, title);
         this.controller = controller;
         this.ctx = ctx;
     }
@@ -175,21 +175,7 @@ final class SlotMenu extends Menu {
     }
 
     @Override
-    public boolean closesWhenIdle() {
-        return true;
-    }
-
-    boolean stillValidFor(SlotController c) {
-        return controller == c;
-    }
-
-    @Override
-    public boolean stillValid(Player player) {
-        return controller.menuValid(player);
-    }
-
-    @Override
-    public void onClose(Player player) {
-        controller.menuClosed(player);
+    public SlotController controller() {
+        return controller;
     }
 }

@@ -7,6 +7,16 @@ slot:
   busy: "<yellow>Der Automat dreht sich."
   spacing: "<red>Lass zwischen zwei Spielautomaten einen Block frei."
 
+wheel:
+  # message.roulettecasino.fortune_wheel.*
+  no-bet: "<yellow>Setze einen Einsatz, bevor du das Rad drehst."
+  busy: "<yellow>Das Rad dreht sich."
+
+plinko:
+  # message.roulettecasino.plinko.*
+  no-bet: "<yellow>Setze einen Einsatz, bevor du die Kugel fallen lässt."
+  busy: "<yellow>Eine Runde läuft."
+
 machine:
   in-use: "<yellow><name> spielt gerade an diesem Automaten."
   not-yours: "<red>Diesen Automaten kann nur <name> oder ein Admin abbauen."
@@ -71,6 +81,25 @@ gui:
     stake-lore: "<gray>Linksklick: Einsatz zurücknehmen\n<gray>Rechtsklick: eins weniger"
     collect: "<gold><b>ABHOLEN"
     collect-lore: "<gray>Erst den offenen Gewinn abholen,\n<gray>dann geht es weiter."
+  stake:
+    # Einsatzfelder von Glücksrad und Plinko (Auswahl statt Hineinlegen)
+    lore: "<gray>Linksklick: Feld wählen, nochmal: leeren\n<gray>Rechtsklick: eins weniger"
+    active: "<gold>Gewähltes Feld"
+    active-lore: "<gray>Klick auf ein Item in deinem Inventar:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Shift-Linksklick: alles davon\n<gray>Alle Felder zusammen höchstens <max> Items."
+    empty: "<gray>Leeres Feld"
+    empty-lore: "<gray>Linksklick: dieses Feld wählen"
+    play-lore: "<gray>Jedes Feld ist ein eigener Einsatz\n<gray>und zahlt im eigenen Item aus.\n<gray>Zusammen höchstens <max> Items."
+  wheel:
+    # block.roulettecasino.fortune_wheel, gui.roulettecasino.wheel.bet, .play
+    title: "Glücksrad"
+    bet: "EINSATZ"
+    spin: "<gold><b>DREHEN"
+  plinko:
+    # block.roulettecasino.plinko, gui.roulettecasino.plinko.bet, .one_ball, .play
+    title: "Casino-Plinko"
+    bets: "EINSÄTZE"
+    ball: "1 Kugel"
+    drop: "<gold><b>LOSLASSEN"
   bets:
     # gui.roulettecasino.bets.title
     title: "<gold>Mögliche Einsätze"
@@ -81,11 +110,18 @@ item:
   slot-machine-lore: "<gray>MineVegas Casino"
   slot-machine-reel: "Spielautomaten-Walze"
   slot-machine-mechanism: "Spielautomaten-Mechanismus"
+  fortune-wheel: "Glücksrad"
+  plinko: "Casino-Plinko"
+  roulette-mechanism: "Kugellagermechanismus"
 
 panel:
   # gui.roulettecasino.slot.panel_title, result_lose, result_push, result_win, result_jackpot
   bet: "EINSATZ"
   lose: "KEIN GEWINN"
   push: "EINSATZ ZURÜCK"
+  # gui.roulettecasino.plinko.panel_title, wheel/plinko.result_partial, plinko.result_big
+  bets: "EINSÄTZE"
+  partial: "ERSTATTET <mult>"
+  big: "GROSSGEWINN <mult>"
   win: "GEWINN <mult>"
   jackpot: "JACKPOT <mult>"

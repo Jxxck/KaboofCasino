@@ -101,7 +101,19 @@ class PackBuildTest {
         }
         assertTrue(entries.keySet().stream().noneMatch(p -> p.contains("/blockstates/")));
         assertTrue(entries.keySet().stream().noneMatch(p -> p.contains("sounds/music")), "no music in step 1");
-        assertTrue(!entries.containsKey("assets/kaboofcasino/font/t_100.json"), "only the rows the GUIs use");
+        assertTrue(!entries.containsKey("assets/kaboofcasino/font/t_101.json"), "only the rows the GUIs use");
+        for (String path : List.of("assets/roulettecasino/items/block/fortune_wheel_8.json",
+                "assets/roulettecasino/items/block/plinko_0.json", "assets/roulettecasino/items/fortune_wheel.json",
+                "assets/roulettecasino/items/plinko.json", "assets/roulettecasino/items/roulette_mechanism.json",
+                "assets/kaboofcasino/items/wheel/plate_2.json", "assets/kaboofcasino/items/wheel/pennant.json",
+                "assets/kaboofcasino/items/wheel/bulbs.json", "assets/kaboofcasino/items/plinko/ball.json",
+                "assets/kaboofcasino/items/plinko/lights.json", "assets/kaboofcasino/items/plinko/rims.json",
+                "assets/roulettecasino/textures/block/casino_entity/fortune_wheel.png",
+                "assets/roulettecasino/textures/block/casino_entity/plinko.png",
+                "assets/kaboofcasino/items/gui/wheel_on.json", "assets/kaboofcasino/items/gui/plinko_off.json",
+                "assets/kaboofcasino/items/gui/collect_low.json", "assets/kaboofcasino/items/gui/stake_active.json")) {
+            assertTrue(entries.containsKey(path), path);
+        }
         assertTrue(!entries.containsKey("assets/kaboofcasino/textures/font/text_h64.png"), "no unused sheet");
     }
 
