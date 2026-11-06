@@ -5,6 +5,7 @@ import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.gui.Usability;
+import de.tigges.kaboofcasino.machine.Heartbeat;
 import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.MachineGame;
 import de.tigges.kaboofcasino.util.ItemNames;
@@ -33,8 +34,9 @@ import org.bukkit.inventory.ItemStack;
 /**
  * One slot machine (games.md 6). The round is decided and committed at SPIN (stake out, record in, one tick); the
  * world then plays the mod's spin plan: cues, reels, lever, lights, tease sparks, the result announcement with its
- * bursts, and at {@code resultTick + 12} the settlement (payout into the inventory, overflow owed) followed by the
- * cosmetic coin shower at the mod's pace. The machine unlocks when the shower is done and {@code readyTick} passed.
+ * bursts, and the settlement (a win at {@code resultTick + 12}: payout into the inventory, overflow owed, then the
+ * cosmetic coin shower at the mod's pace; a loss at the result). The machine unlocks when the shower is done and
+ * {@code readyTick} passed; the panel disappears 70 ticks after the result.
  *
  * <p>The round never depends on this object: a quit, death, crash or removal settles it through the ledger. One
  * player per machine (the mod's {@code CasinoWagerRouting}): the claim is taken when the menu opens and released
@@ -58,6 +60,7 @@ public final class SlotController implements MachineGame {
     private SlotSpin.Plan lightsPlan;
     private long lightsStart;
     private long panelUntil = -1;
+    private final Heartbeat heartbeat = new Heartbeat();
 
     /** A running spin. */
     private static final class Spin {
@@ -68,13 +71,15 @@ public final class SlotController implements MachineGame {
         final List<ItemAmount> payout;
         final SlotSpin.Plan plan;
         final long start;
+        final long ends;
         int cue;
         boolean announced;
         boolean settled;
         int coins;
 
         Spin(UUID player, String name, UUID round, ItemAmount stake, List<ItemAmount> payout, SlotSpin.Plan plan,
-             long start) {
+             long start, long ends) {
+            this.ends = ends;
             this.player = player;
             this.name = name;
             this.round = round;
@@ -139,7 +144,8 @@ public final class SlotController implements MachineGame {
 
     @Override
     public boolean ownsRound(UUID roundId) {
-        return spin != null && !spin.settled && spin.round.equals(roundId);
+        return spin != null && !spin.settled && spin.round.equals(roundId)
+                && heartbeat.owns(ctx.clock().getAsLong(), spin.ends);
     }
 
     @Override
@@ -205,14 +211,23 @@ public final class SlotController implements MachineGame {
         if (spin != null || ctx.machines().byId(machine.id()).isEmpty()) {
             return false;
         }
-        Location centre = new Location(world(), machine.anchor().x() + 0.5, machine.anchor().y() + 0.5,
-                machine.anchor().z() + 0.5);
-        if (!player.getWorld().equals(centre.getWorld())) {
+        World w = world();
+        if (w == null || !player.getWorld().equals(w)) {
             return false;
         }
         var range = player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE);
         double max = (range == null ? 4.5 : range.getValue()) + 4.5;
-        return player.getEyeLocation().distanceSquared(centre) <= max * max;
+        Location eye = player.getEyeLocation();
+        return distanceSquaredToBlock(eye.getX(), eye.getY(), eye.getZ(), machine.anchor().x(), machine.anchor().y(),
+                machine.anchor().z()) < max * max;
+    }
+
+    /** The mod's {@code isWithinBlockInteractionRange}: eye to the nearest point of the lower block's box. */
+    static double distanceSquaredToBlock(double x, double y, double z, int bx, int by, int bz) {
+        double dx = Math.max(Math.max(bx - x, 0), x - (bx + 1));
+        double dy = Math.max(Math.max(by - y, 0), y - (by + 1));
+        double dz = Math.max(Math.max(bz - z, 0), z - (bz + 1));
+        return dx * dx + dy * dy + dz * dz;
     }
 
     void menuClosed(Player player) {
@@ -258,7 +273,7 @@ public final class SlotController implements MachineGame {
         long seed = ctx.random().nextLong();
         SlotSpin.Plan plan = SlotSpin.plan(stops, next, seed);
         long now = Bukkit.getCurrentTick();
-        long ends = ctx.clock().getAsLong() + plan.payoutTick() * 50L;
+        long ends = ctx.clock().getAsLong() + settleTick(plan, payout) * 50L;
         String detail = "stops=" + next[0] + "," + next[1] + "," + next[2] + " x" + result.multiplier();
         WagerEngine.Commit commit;
         try {
@@ -275,7 +290,8 @@ public final class SlotController implements MachineGame {
             return;
         }
         WagerEngine.Committed committed = (WagerEngine.Committed) commit;
-        spin = new Spin(player.getUniqueId(), player.getName(), committed.round().id(), stake, payout, plan, now);
+        spin = new Spin(player.getUniqueId(), player.getName(), committed.round().id(), stake, payout, plan, now,
+                ends);
         lightsPlan = plan;
         lightsStart = now;
         stops = next;
@@ -309,6 +325,7 @@ public final class SlotController implements MachineGame {
 
     @Override
     public void tick(long now) {
+        heartbeat.beat(ctx.clock().getAsLong());
         World world = world();
         if (world == null || rig == null) {
             return;
@@ -318,7 +335,7 @@ public final class SlotController implements MachineGame {
             runSpin(world, now);
         }
         lights(world, now);
-        if (panelUntil >= 0 && now >= panelUntil && spin == null) {
+        if (panelUntil >= 0 && now >= panelUntil) {
             rig.hidePanel();
             panelUntil = -1;
         }
@@ -338,8 +355,14 @@ public final class SlotController implements MachineGame {
                 particle(world, Particle.END_ROD, SlotGeometry.WINDOW_FRONT, 3, 0.38, 0.22, 0.04, 0.02, null);
             }
         }
-        if (elapsed <= plan.land(2) + 14 && elapsed % 2 == 0) {
-            rig.reels(plan, elapsed + 2, 3);
+        if (elapsed <= plan.land(2) + 14) {
+            // every tick while a reel is fast (face swaps jump), else every 2 ticks with interpolation
+            boolean fast = plan.speed(0, elapsed) > 0.3 || plan.speed(1, elapsed) > 0.3 || plan.speed(2, elapsed) > 0.3;
+            if (fast) {
+                rig.reels(plan, elapsed + 1, 1);
+            } else if (elapsed % 2 == 0) {
+                rig.reels(plan, elapsed + 2, 3);
+            }
         }
         if (elapsed <= 28) {
             rig.lever(plan.lever(elapsed + 1), 1);
@@ -356,7 +379,7 @@ public final class SlotController implements MachineGame {
         if (s.announced) {
             afterburst(world, plan.result().kind(), elapsed - plan.resultTick());
         }
-        if (!s.settled && elapsed >= plan.payoutTick()) {
+        if (!s.settled && elapsed >= settleTick(plan, s.payout)) {
             settle(SettleReason.NORMAL);
         }
         if (s.settled && s.coins > 0) {
@@ -380,7 +403,15 @@ public final class SlotController implements MachineGame {
         }
     }
 
-    /** Settles the spin's round now (normally at {@code resultTick + 12}) and queues the coin shower. */
+    /**
+     * When the round settles: a win at {@code resultTick + 12} (where the mod starts ejecting), a loss at the result
+     * (nothing to pay; the mod unlocks at {@code readyTick} = result).
+     */
+    static int settleTick(SlotSpin.Plan plan, List<ItemAmount> payout) {
+        return payout.isEmpty() ? plan.resultTick() : plan.payoutTick();
+    }
+
+    /** Settles the spin's round now and queues the coin shower. */
     private void settle(SettleReason reason) {
         Spin s = spin;
         if (s == null || s.settled) {

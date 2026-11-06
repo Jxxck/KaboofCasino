@@ -49,7 +49,10 @@ final class SlotMenu extends Menu {
         this.ctx = ctx;
     }
 
-    /** The title: background tiles, the reel faces of the last stops, headline, labels and multipliers. */
+    /**
+     * The title: background tiles, the reel faces of the last stops, headline, labels and multipliers, all at the
+     * positions the pack declares ({@code gui-layout.json} anchors).
+     */
     static Component title(CasinoContext ctx, int[] stops) {
         TitleBuilder t = new TitleBuilder(ctx.layout());
         for (int row = 0; row < 2; row++) {
@@ -58,15 +61,14 @@ final class SlotMenu extends Menu {
             }
         }
         for (int k = 0; k < 3; k++) {
-            t.art("slot_reel_" + k + "_" + Math.floorMod(stops[k], 8), 25 + 44 * k);
+            t.artAt("slot_reel_" + k + "_" + Math.floorMod(stops[k], 8), "slot_reel_" + k);
         }
         var m = ctx.messages().get();
-        t.text(m.raw(Msg.GUI_SLOT_TITLE), 89, -12, CREAM, TitleBuilder.Align.CENTER);
-        t.text(m.raw(Msg.GUI_SLOT_PAYOUTS), 268, -10, CREAM, TitleBuilder.Align.CENTER);
-        t.text(m.raw(Msg.GUI_SLOT_BET), 89, 58, CREAM, TitleBuilder.Align.CENTER);
+        t.text("slot_headline", m.raw(Msg.GUI_SLOT_TITLE), CREAM);
+        t.text("slot_payouts", m.raw(Msg.GUI_SLOT_PAYOUTS), CREAM);
+        t.text("slot_bet", m.raw(Msg.GUI_SLOT_BET), CREAM);
         for (int row = 0; row < SlotGame.PAYTABLE.length; row++) {
-            t.text("×" + SlotGame.PAYTABLE[row].multiplier(), 320, 22 + 21 * row, row == 0 ? GOLD : CREAM,
-                    TitleBuilder.Align.RIGHT);
+            t.text("slot_multiplier_" + row, "×" + SlotGame.PAYTABLE[row].multiplier(), row == 0 ? GOLD : CREAM);
         }
         return t.build();
     }
@@ -170,6 +172,11 @@ final class SlotMenu extends Menu {
             player.playSound(player, org.bukkit.Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
         }
         render();
+    }
+
+    @Override
+    public boolean closesWhenIdle() {
+        return true;
     }
 
     boolean stillValidFor(SlotController c) {

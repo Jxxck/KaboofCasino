@@ -4,11 +4,18 @@ pack:
   # Ressourcenpaket überhaupt anbieten.
   enabled: true
   # Kill-Switch. false: das Paket wird nur angeboten, niemand wird gekickt.
-  # true erst, wenn der Port von außen geprüft ist (render.md 8.5).
+  # true erst, wenn der Download von außen geprüft ist (render.md 8.5).
   enforce: false
-  # Öffentlicher Host in der Download-Adresse http://<url-host>:<port>/pack/<sha1>.zip
+  # Wo das Paket ausgeliefert wird:
+  #   minecraft-port: über den Minecraft-Port selbst (HTTP-Anfragen werden am Anfang jeder Verbindung erkannt,
+  #                   alles andere geht unverändert an Minecraft). Keine Portweiterleitung nötig.
+  #   http-port:      eigener HTTP-Server auf "port" (muss am Gateway weitergeleitet sein).
+  serve: minecraft-port
+  # Öffentlicher Host in der Download-Adresse http://<url-host>:<Port>/pack/<sha1>.zip
   url-host: 5.9.137.26
-  # TCP-Port des eingebauten HTTP-Servers (muss am Gateway weitergeleitet sein).
+  # Öffentlicher Port in der Adresse bei serve: minecraft-port (der Minecraft-Port).
+  url-port: 25565
+  # Nur bei serve: http-port: TCP-Port und Bind-Adresse des eigenen HTTP-Servers (auch Port in der Adresse).
   port: 25580
   bind: 0.0.0.0
   # So lange wartet die Configuration-Phase auf die Antwort des Clients (erster Download, Annehmen-Dialog).
@@ -65,6 +72,8 @@ safety:
 gui:
   # Ein Klick auf DREHEN zählt erst so viele Ticks nach dem Öffnen (Doppelklick-Schutz).
   click-guard-ticks: 4
+  # Ein Automaten-Menü ohne Dreh schließt nach so vielen Sekunden und gibt den Automaten frei (0 = nie).
+  idle-close-seconds: 120
 
 slot:
   # -1 = Quoten wie im Mod (RTP 499/512). 0..100 = erzwungene Gewinnchance in Prozent (CasinoOdds des Mods).

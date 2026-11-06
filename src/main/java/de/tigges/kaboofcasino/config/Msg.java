@@ -14,6 +14,7 @@ public enum Msg {
     MACHINE_PLACE_DENIED("machine.place-denied"),
     MACHINE_REMOVED("machine.removed"),
     MACHINE_NONE("machine.none"),
+    MACHINE_IDLE_CLOSED("machine.idle-closed"),
     BET_NOT_ALLOWED("bet.not-allowed"),
     BET_NOT_PLAIN("bet.not-plain"),
     BET_NOT_ENOUGH("bet.not-enough"),

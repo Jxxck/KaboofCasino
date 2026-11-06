@@ -30,7 +30,10 @@ final class SlotMachinePack {
     static final double RADIUS = 7.002817496043395;
     static final double ROW_ZERO = 682.0;
     static final int[] STRIP_X = {0, 40, 80, 120, 160, 200, 240, 280, 320};
-    static final int DRUM_FACETS = 48;
+    /** Facets of 7.5 degrees on each side of the front: the arc covers +-82.5 degrees. */
+    static final int DRUM_HALF_FACETS = 11;
+    static final double FACET_DEGREES = 7.5;
+    static final double AXIS_Z = 4.497182503956605;
     /** {@code SlotMachineRenderGeometry.BULBS}: 15 x (x, y, z) px in lower-block coordinates. */
     static final double[] BULBS = {
         -2.0, 36.5, 13.06, 0.5, 37.0, 13.06, 3.0, 37.0, 13.06, 5.5, 37.0, 13.06, 8.0, 37.5, 13.06,
@@ -83,7 +86,9 @@ final class SlotMachinePack {
 
         for (int reel = 0; reel < 3; reel++) {
             for (int level = 0; level < 3; level++) {
-                model(tree, "slot/drum_" + reel + "_" + level, drum(reel, level));
+                for (int face = 0; face < 8; face++) {
+                    model(tree, "slot/drum_" + reel + "_" + level + "_" + face, drum(reel, level, face));
+                }
             }
         }
         sounds(jar, tree);
@@ -138,30 +143,33 @@ final class SlotMachinePack {
     }
 
     /**
-     * A full 360-degree reel drum about the model centre (axis along X through y = z = 8), 48 facets of 7.5 degrees.
-     * The mod draws 16 facets over +-60 degrees and scrolls the texture: {@code v = (682 - 44 turn + 8 r a) / 1056}
-     * px per radian, i.e. exactly 45 degrees per symbol. Here the texture is fixed at turn 0 (face 0 at the front,
-     * angle a = 0 = +Z) and the display rotates the drum by {@code turn x 45} degrees about X instead.
-     * Angle a grows from +Z toward -Y ({@code y = -r sin a, z = r cos a}), so each facet is a south face at the chord
-     * distance, rotated about X by its mid angle (JOML right-handed: the +Z normal goes to (-sin a, cos a)).
+     * A partial reel drum about the model centre (axis along X through y = z = 8) with face {@code face} at the front:
+     * 22 facets of 7.5 degrees covering +-82.5 degrees. The mod draws 16 facets over +-60 degrees and scrolls the
+     * texture ({@code v = (682 - 44 turn + 8 r a) / 1056}: exactly 45 degrees per symbol). Here the display shows the
+     * model of the nearest face and turns it by {@code (turn - round(turn)) x 45} degrees (at most 22.5), so the window
+     * (+-60) stays covered while the drum never reaches behind the cabinet's back plate (z >= 2 px; the lowest facet
+     * corner is at 4.497 + 7.003 cos(105) = 2.69 px). Angle a grows from +Z toward -Y ({@code y = -r sin a,
+     * z = r cos a}); each facet is a south face at the chord distance, rotated about X by its mid angle (JOML
+     * right-handed: the +Z normal goes to (-sin a, cos a)).
      */
-    static JsonArray drum(int reel, int level) {
-        double step = 2 * Math.PI / DRUM_FACETS;
+    static JsonArray drum(int reel, int level, int face) {
+        double step = Math.toRadians(FACET_DEGREES);
         double half = RADIUS * Math.sin(step / 2);
         double chord = RADIUS * Math.cos(step / 2);
         int sheetX = STRIP_X[3 * reel + level];
         double u0 = (sheetX + 0.5) / SHEET_W * 16;
         double u1 = (sheetX + 40 - 0.5) / SHEET_W * 16;
+        double row = ROW_ZERO - 44.0 * face;
         JsonArray out = new JsonArray();
-        for (int j = 0; j < DRUM_FACETS; j++) {
-            double a0 = -Math.PI + j * step;
+        for (int j = -DRUM_HALF_FACETS; j < DRUM_HALF_FACETS; j++) {
+            double a0 = j * step;
             double a1 = a0 + step;
             double mid = a0 + step / 2;
-            double v0 = (ROW_ZERO + 8 * RADIUS * a0) / SHEET_H * 16;
-            double v1 = (ROW_ZERO + 8 * RADIUS * a1) / SHEET_H * 16;
-            JsonObject face = new JsonObject();
-            face.add("uv", Json.array(u0, v0, u1, v1));
-            face.addProperty("texture", "#sheet");
+            double v0 = (row + 8 * RADIUS * a0) / SHEET_H * 16;
+            double v1 = (row + 8 * RADIUS * a1) / SHEET_H * 16;
+            JsonObject faceJson = new JsonObject();
+            faceJson.add("uv", Json.array(u0, v0, u1, v1));
+            faceJson.addProperty("texture", "#sheet");
             JsonObject rotation = new JsonObject();
             rotation.add("origin", Json.array(8, 8, 8));
             rotation.addProperty("axis", "x");
@@ -170,7 +178,7 @@ final class SlotMachinePack {
             element.add("from", Json.array(5.5, 8 - half, 8 + chord));
             element.add("to", Json.array(10.5, 8 + half, 8 + chord));
             element.add("rotation", rotation);
-            element.add("faces", Json.object("south", face));
+            element.add("faces", Json.object("south", faceJson));
             out.add(element);
         }
         return out;

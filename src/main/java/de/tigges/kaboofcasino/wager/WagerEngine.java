@@ -17,7 +17,8 @@ import java.util.function.Predicate;
  *       then {@link #deliverOwed} puts what fits into the inventory and keeps the rest owed. Never anything on the
  *       ground. Settling a round that is no longer in the ledger is a no-op (idempotent).</li>
  *   <li>New rounds are refused while anything is owed, so owed never grows past one round's overflow.</li>
- *   <li><b>Death</b>: {@link #drainForDeath} empties the ledger into the death drops.</li>
+ *   <li><b>Death</b>: {@link #drainForDeath} moves the ledger into the death drops as far as the grave holds it; the
+ *       rest stays owed.</li>
  * </ul>
  * Because the ledger lives in the player PDC, the server saves it in the same file as the inventory: a crash rolls
  * both back together (no dupe, no loss). Thread: MAIN.
@@ -157,51 +158,86 @@ public final class WagerEngine {
     }
 
     /**
-     * Gives as much of the owed list as fits; the rest stays owed.
+     * Gives as much of the owed list as fits; the rest stays owed. One item at a time: give it, then write the ledger
+     * at once, so an exception in a later item can neither dupe nor lose an earlier one.
      *
      * @return what was delivered (merged)
      */
     public List<ItemAmount> deliverOwed(Account account) {
         Threads.requireMain();
-        Ledger ledger = account.ledger();
-        if (ledger.owed().isEmpty()) {
+        if (account.ledger().owed().isEmpty()) {
             return List.of();
         }
-        List<ItemAmount> left = ItemAmount.merge(account.give(ledger.owed()));
-        account.ledger(ledger.withOwed(left));
         List<ItemAmount> delivered = new ArrayList<>();
-        for (ItemAmount owed : ledger.owed()) {
-            long rest = ItemAmount.total(left, owed.item());
-            if (owed.count() > rest) {
-                delivered.add(new ItemAmount(owed.item(), owed.count() - rest));
+        for (ItemAmount owed : account.ledger().owed()) {
+            long rest = ItemAmount.total(account.give(List.of(owed)), owed.item());
+            long given = owed.count() - rest;
+            if (given <= 0) {
+                continue;
             }
+            Ledger current = account.ledger();
+            List<ItemAmount> next = new ArrayList<>();
+            for (ItemAmount o : current.owed()) {
+                if (!o.item().equals(owed.item())) {
+                    next.add(o);
+                } else if (o.count() - given > 0) {
+                    next.add(new ItemAmount(o.item(), o.count() - given));
+                }
+            }
+            account.ledger(current.withOwed(next));
+            delivered.add(new ItemAmount(owed.item(), given));
         }
         return List.copyOf(delivered);
     }
 
+    /** Where death winnings go: puts what fits into the death drops and returns the rest. */
+    public interface DropTarget {
+        /**
+         * Must validate everything before it changes the drops (an exception then changes nothing).
+         *
+         * @return what did not fit (stays owed)
+         */
+        List<ItemAmount> put(List<ItemAmount> items);
+    }
+
     /**
-     * Death: every open round's payout and the whole owed list leave the ledger, which is cleared in one write. The
-     * caller adds the result to the death drops (DeathBan builds the grave from them).
+     * Death: every open round's payout and the owed list go into the death drops as far as DeathBan's grave holds
+     * them ({@link DeathDrops}); the rest stays owed. The drops change first, the ledger is written last (no rounds,
+     * owed = what did not fit).
+     *
+     * @return what went into the drops
      */
-    public List<ItemAmount> drainForDeath(Account account) {
+    public List<ItemAmount> drainForDeath(Account account, DropTarget drops) {
         Threads.requireMain();
         Ledger ledger = account.ledger();
         if (ledger.isEmpty()) {
             return List.of();
         }
         List<ItemAmount> all = new ArrayList<>(ledger.owed());
-        long now = clock.getAsLong();
         for (RoundRecord round : ledger.rounds()) {
             all.addAll(round.payout());
         }
-        account.ledger(Ledger.EMPTY);
+        all = ItemAmount.merge(all);
+        List<ItemAmount> kept = ItemAmount.merge(drops.put(all));
+        account.ledger(new Ledger(List.of(), kept));
+        long now = clock.getAsLong();
         for (RoundRecord round : ledger.rounds()) {
             sink.settled(account.id(), round, SettleReason.DEATH, now);
         }
-        return ItemAmount.merge(all);
+        List<ItemAmount> dropped = new ArrayList<>();
+        for (ItemAmount a : all) {
+            long rest = a.count() - ItemAmount.total(kept, a.item());
+            if (rest > 0) {
+                dropped.add(new ItemAmount(a.item(), rest));
+            }
+        }
+        return List.copyOf(dropped);
     }
 
-    /** The death event was cancelled after {@link #drainForDeath}: the items go back (inventory, then owed). */
+    /**
+     * The death event was cancelled after {@link #drainForDeath}: what was found back in the drops goes back
+     * (inventory, then owed).
+     */
     public void restoreAfterCancelledDeath(Account account, List<ItemAmount> items) {
         Threads.requireMain();
         account.ledger(account.ledger().plusOwed(items));

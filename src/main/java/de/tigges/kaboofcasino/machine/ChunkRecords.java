@@ -38,68 +38,100 @@ public final class ChunkRecords {
     }
 
     public static List<MachineRecord> read(Chunk chunk) {
-        PersistentDataContainer pdc = chunk.getPersistentDataContainer();
-        List<PersistentDataContainer> list = pdc.getOrDefault(Keys.MACHINES, PersistentDataType.LIST.dataContainers(),
-                List.of());
         String world = chunk.getWorld().getKey().asString();
         List<MachineRecord> out = new ArrayList<>();
-        for (PersistentDataContainer c : list) {
+        for (PersistentDataContainer c : raw(chunk)) {
             try {
-                MachineType type = MachineType.byId(c.get(TYPE, PersistentDataType.STRING)).orElseThrow();
-                out.add(new MachineRecord(UUID.fromString(c.get(ID, PersistentDataType.STRING)), type,
-                        new Pos(world, c.get(X, PersistentDataType.INTEGER), c.get(Y, PersistentDataType.INTEGER),
-                                c.get(Z, PersistentDataType.INTEGER)),
-                        Facing.valueOf(c.get(FACING, PersistentDataType.STRING)),
-                        UUID.fromString(c.get(PLACER, PersistentDataType.STRING)),
-                        c.get(PLACED, PersistentDataType.LONG),
-                        c.getOrDefault(NUMBER, PersistentDataType.INTEGER, 0),
-                        c.getOrDefault(DATA, PersistentDataType.STRING, "")));
+                out.add(decode(world, c));
             } catch (RuntimeException e) {
-                Log.critical("MACHINE_RECORD_UNREADABLE", "chunk {} {},{} holds an unreadable machine record "
-                        + "(skipped, machine inactive): {}", world, chunk.getX(), chunk.getZ(), e.toString());
+                Log.critical("MACHINE_RECORD_UNREADABLE", "chunk {} {},{} holds an unreadable machine record (kept "
+                        + "unchanged in the chunk, machine inactive): {}", world, chunk.getX(), chunk.getZ(),
+                        e.toString());
             }
         }
         return out;
     }
 
-    public static void write(Chunk chunk, List<MachineRecord> records) {
+    private static List<PersistentDataContainer> raw(Chunk chunk) {
+        return chunk.getPersistentDataContainer().getOrDefault(Keys.MACHINES,
+                PersistentDataType.LIST.dataContainers(), List.of());
+    }
+
+    private static MachineRecord decode(String world, PersistentDataContainer c) {
+        MachineType type = MachineType.byId(c.get(TYPE, PersistentDataType.STRING)).orElseThrow();
+        return new MachineRecord(UUID.fromString(c.get(ID, PersistentDataType.STRING)), type,
+                new Pos(world, c.get(X, PersistentDataType.INTEGER), c.get(Y, PersistentDataType.INTEGER),
+                        c.get(Z, PersistentDataType.INTEGER)),
+                Facing.valueOf(c.get(FACING, PersistentDataType.STRING)),
+                UUID.fromString(c.get(PLACER, PersistentDataType.STRING)),
+                c.get(PLACED, PersistentDataType.LONG),
+                c.getOrDefault(NUMBER, PersistentDataType.INTEGER, 0),
+                c.getOrDefault(DATA, PersistentDataType.STRING, ""));
+    }
+
+    /** The id string of a raw record, or null if it has none (such entries are kept as they are). */
+    private static String idOf(PersistentDataContainer c) {
+        try {
+            return c.get(ID, PersistentDataType.STRING);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static PersistentDataContainer encode(PersistentDataAdapterContext ctx, MachineRecord r) {
+        PersistentDataContainer c = ctx.newPersistentDataContainer();
+        c.set(V, PersistentDataType.INTEGER, MachineRecord.VERSION);
+        c.set(ID, PersistentDataType.STRING, r.id().toString());
+        c.set(TYPE, PersistentDataType.STRING, r.type().id());
+        c.set(X, PersistentDataType.INTEGER, r.anchor().x());
+        c.set(Y, PersistentDataType.INTEGER, r.anchor().y());
+        c.set(Z, PersistentDataType.INTEGER, r.anchor().z());
+        c.set(FACING, PersistentDataType.STRING, r.facing().name());
+        c.set(PLACER, PersistentDataType.STRING, r.placer().toString());
+        c.set(PLACED, PersistentDataType.LONG, r.placedAt());
+        c.set(NUMBER, PersistentDataType.INTEGER, r.number());
+        c.set(DATA, PersistentDataType.STRING, r.data());
+        return c;
+    }
+
+    /** Writes the raw list back (removes the key when empty). */
+    private static void writeRaw(Chunk chunk, List<PersistentDataContainer> list) {
         PersistentDataContainer pdc = chunk.getPersistentDataContainer();
-        if (records.isEmpty()) {
+        if (list.isEmpty()) {
             pdc.remove(Keys.MACHINES);
-            return;
+        } else {
+            pdc.set(Keys.MACHINES, PersistentDataType.LIST.dataContainers(), list);
         }
-        PersistentDataAdapterContext ctx = pdc.getAdapterContext();
-        List<PersistentDataContainer> list = new ArrayList<>();
-        for (MachineRecord r : records) {
-            PersistentDataContainer c = ctx.newPersistentDataContainer();
-            c.set(V, PersistentDataType.INTEGER, MachineRecord.VERSION);
-            c.set(ID, PersistentDataType.STRING, r.id().toString());
-            c.set(TYPE, PersistentDataType.STRING, r.type().id());
-            c.set(X, PersistentDataType.INTEGER, r.anchor().x());
-            c.set(Y, PersistentDataType.INTEGER, r.anchor().y());
-            c.set(Z, PersistentDataType.INTEGER, r.anchor().z());
-            c.set(FACING, PersistentDataType.STRING, r.facing().name());
-            c.set(PLACER, PersistentDataType.STRING, r.placer().toString());
-            c.set(PLACED, PersistentDataType.LONG, r.placedAt());
-            c.set(NUMBER, PersistentDataType.INTEGER, r.number());
-            c.set(DATA, PersistentDataType.STRING, r.data());
-            list.add(c);
-        }
-        pdc.set(Keys.MACHINES, PersistentDataType.LIST.dataContainers(), list);
     }
 
-    /** Adds or replaces one record (by id) in its anchor chunk. */
+    /**
+     * Adds or replaces one record (by id) in its anchor chunk. Every other entry, also an unreadable one, is written
+     * back verbatim (never dropped silently).
+     */
     public static void put(Chunk chunk, MachineRecord record) {
-        List<MachineRecord> records = new ArrayList<>(read(chunk));
-        records.removeIf(r -> r.id().equals(record.id()));
-        records.add(record);
-        write(chunk, records);
+        String id = record.id().toString();
+        List<PersistentDataContainer> list = new ArrayList<>();
+        for (PersistentDataContainer c : raw(chunk)) {
+            if (!id.equals(idOf(c))) {
+                list.add(c);
+            }
+        }
+        list.add(encode(chunk.getPersistentDataContainer().getAdapterContext(), record));
+        writeRaw(chunk, list);
     }
 
+    /** Removes one record by id; other entries stay verbatim. */
     public static void remove(Chunk chunk, UUID id) {
-        List<MachineRecord> records = new ArrayList<>(read(chunk));
-        if (records.removeIf(r -> r.id().equals(id))) {
-            write(chunk, records);
+        String key = id.toString();
+        List<PersistentDataContainer> before = raw(chunk);
+        List<PersistentDataContainer> list = new ArrayList<>();
+        for (PersistentDataContainer c : before) {
+            if (!key.equals(idOf(c))) {
+                list.add(c);
+            }
+        }
+        if (list.size() != before.size()) {
+            writeRaw(chunk, list);
         }
     }
 }

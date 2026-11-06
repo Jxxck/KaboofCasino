@@ -55,6 +55,17 @@ public final class TitleBuilder {
         return this;
     }
 
+    /** Draws {@code text} at a named anchor of the pack's layout. */
+    public TitleBuilder text(String anchor, String text, TextColor color) {
+        GuiLayout.Anchor a = layout.anchor(anchor);
+        return text(text, a.x(), a.y(), color, a.align());
+    }
+
+    /** Draws an art glyph at the x of a named anchor. */
+    public TitleBuilder artAt(String glyph, String anchor) {
+        return art(glyph, layout.anchor(anchor).x());
+    }
+
     public TitleBuilder moveTo(int x) {
         int delta = x - pen;
         if (delta != 0) {

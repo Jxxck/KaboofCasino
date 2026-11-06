@@ -37,6 +37,22 @@ public final class Recipes {
     private Recipes() {
     }
 
+    /** The recipe a held item unlocks (the mod's {@code advancement/recipes/*}: inventory_changed triggers). */
+    public static NamespacedKey unlockedBy(ItemStack stack) {
+        if (stack.getType() == Material.DIAMOND) {
+            return REEL;
+        }
+        Optional<CasinoItem> item = CasinoItems.of(stack);
+        if (item.isEmpty()) {
+            return null;
+        }
+        return switch (item.get()) {
+            case SLOT_MACHINE_REEL -> MECHANISM;
+            case SLOT_MACHINE_MECHANISM -> SLOT_MACHINE;
+            default -> null;
+        };
+    }
+
     public static Optional<PaperRule> paperRule(NamespacedKey key) {
         return Optional.ofNullable(RULES.get(key));
     }

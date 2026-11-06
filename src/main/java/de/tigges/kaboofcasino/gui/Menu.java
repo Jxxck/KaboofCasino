@@ -90,6 +90,11 @@ public abstract class Menu implements InventoryHolder {
         return true;
     }
 
+    /** True for menus that close after {@code gui.idle-close-seconds} (machine menus release their machine). */
+    public boolean closesWhenIdle() {
+        return false;
+    }
+
     public final boolean isBusy() {
         return busy;
     }

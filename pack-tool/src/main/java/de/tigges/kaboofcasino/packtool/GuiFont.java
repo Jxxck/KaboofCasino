@@ -32,6 +32,21 @@ final class GuiFont {
     }
 
     private final JsonArray providers = new JsonArray();
+    private final java.util.List<Anchor> anchors = new java.util.ArrayList<>();
+
+    /**
+     * A named position of a screen for the plugin: window x (left, centre or right edge per {@code align}) and y (the
+     * cap top of text, the top of a glyph). Text anchors also decide which text fonts the pack contains.
+     */
+    record Anchor(String name, int x, int y, String align, boolean text) {
+        static Anchor text(String name, int x, int y, String align) {
+            return new Anchor(name, x, y, align, true);
+        }
+
+        static Anchor glyph(String name, int x, int y) {
+            return new Anchor(name, x, y, "left", false);
+        }
+    }
     private final Map<String, Glyph> glyphs = new LinkedHashMap<>();
     private final PackTree tree;
     private int next = FIRST_GLYPH;
@@ -128,6 +143,22 @@ final class GuiFont {
         return provider;
     }
 
+    /** A named text/glyph position for the plugin; text anchors also select which text fonts are built. */
+    void anchor(Anchor a) {
+        anchors.add(a);
+    }
+
+    /** The window rows text is drawn at (one text font each). */
+    java.util.SortedSet<Integer> textRows() {
+        java.util.SortedSet<Integer> rows = new java.util.TreeSet<>();
+        for (Anchor a : anchors) {
+            if (a.text()) {
+                rows.add(a.y());
+            }
+        }
+        return rows;
+    }
+
     void write() {
         tree.put(FONT_PATH, Json.bytes(Json.object("providers", providers)));
     }
@@ -154,10 +185,20 @@ final class GuiFont {
             all.add(g.name(), o);
         }
         root.add("glyphs", all);
+        JsonObject anchorJson = new JsonObject();
+        for (Anchor a : anchors) {
+            JsonObject o = new JsonObject();
+            o.addProperty("x", a.x());
+            o.addProperty("y", a.y());
+            o.addProperty("align", a.align());
+            anchorJson.add(a.name(), o);
+        }
+        root.add("anchors", anchorJson);
         JsonObject t = new JsonObject();
         t.addProperty("fontPrefix", TextGlyphs.FONT_PREFIX);
-        t.addProperty("minY", TextGlyphs.MIN_Y);
-        t.addProperty("maxY", TextGlyphs.MAX_Y);
+        JsonArray rows = new JsonArray();
+        textRows().forEach(rows::add);
+        t.add("rows", rows);
         JsonObject advances = new JsonObject();
         for (Map.Entry<Character, Integer> e : text.advances().entrySet()) {
             advances.addProperty(e.getKey().toString(), e.getValue());

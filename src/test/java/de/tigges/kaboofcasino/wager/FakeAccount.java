@@ -21,6 +21,8 @@ final class FakeAccount implements Account {
     private Ledger ledger = Ledger.EMPTY;
     int capacityStacks = 36;
     int ledgerWrites;
+    /** give() throws for this item before changing anything (exception-safety tests). */
+    String failOn;
 
     FakeAccount with(String item, long count) {
         inventory.merge(item, count, Long::sum);
@@ -88,6 +90,9 @@ final class FakeAccount implements Account {
     public List<ItemAmount> give(List<ItemAmount> items) {
         List<ItemAmount> left = new ArrayList<>();
         for (ItemAmount a : items) {
+            if (a.item().equals(failOn)) {
+                throw new IllegalStateException("give fails for " + failOn);
+            }
             long rest = a.count();
             // first top up the partial stack of the same item, then free slots
             long have = count(a.item());

@@ -40,7 +40,10 @@ public final class ConfigLoader {
         CasinoConfig.Pack pack = new CasinoConfig.Pack(
                 r.bool("pack.enabled", d.pack().enabled()),
                 r.bool("pack.enforce", d.pack().enforce()),
+                r.string("pack.serve", d.pack().serve(), s -> s.equals(CasinoConfig.Pack.MINECRAFT_PORT)
+                        || s.equals(CasinoConfig.Pack.HTTP_PORT)),
                 r.string("pack.url-host", d.pack().urlHost(), s -> !s.isBlank() && !s.contains("/")),
+                r.integer("pack.url-port", d.pack().urlPort(), 1, 65535),
                 r.integer("pack.port", d.pack().port(), 1, 65535),
                 r.string("pack.bind", d.pack().bind(), s -> !s.isBlank()),
                 r.integer("pack.timeout-seconds", d.pack().timeoutSeconds(), 5, 3600));
@@ -61,7 +64,8 @@ public final class ConfigLoader {
                         r.integer("safety.monster-radius", d.safety().monsterRadius(), 0, 64),
                         r.integer("safety.tnt-radius", d.safety().tntRadius(), 0, 64),
                         r.integer("safety.sweep-ticks", d.safety().sweepTicks(), 1, 20)),
-                new CasinoConfig.Gui(r.integer("gui.click-guard-ticks", d.gui().clickGuardTicks(), 0, 40)),
+                new CasinoConfig.Gui(r.integer("gui.click-guard-ticks", d.gui().clickGuardTicks(), 0, 40),
+                        r.integer("gui.idle-close-seconds", d.gui().idleCloseSeconds(), 0, 3600)),
                 new CasinoConfig.Slot(r.integer("slot.win-chance", d.slot().winChance(), -1, 100),
                         r.integer("slot.idle-light-ticks", d.slot().idleLightTicks(), 0, 200),
                         r.integer("slot.idle-light-range", d.slot().idleLightRange(), 0, 128)));

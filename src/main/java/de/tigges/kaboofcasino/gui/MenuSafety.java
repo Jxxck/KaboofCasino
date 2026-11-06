@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
-import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -25,7 +24,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 /**
  * Permadeath safety of menus, copied from PostMarkt's {@code MenuSafety} (PLAN decision 3): no menu opens while
  * gliding, falling more than 3 blocks or in combat (damage taken or dealt within {@code safety.combat-seconds}, or a
- * monster still targeting the player); an open menu closes on any damage and when a monster targets the player.
+ * mob still targeting the player); an open menu closes on any damage and when any mob targets the player.
  * {@link DangerSweep} adds the 5-tick environment check. A danger close never decides a round. Thread: MAIN.
  */
 public final class MenuSafety implements Listener {
@@ -90,7 +89,7 @@ public final class MenuSafety implements Listener {
     boolean closeIfTargeted(Player player) {
         UUID id = player.getUniqueId();
         for (Entity entity : player.getNearbyEntities(TARGET_SWEEP_RADIUS, TARGET_SWEEP_RADIUS, TARGET_SWEEP_RADIUS)) {
-            if (entity instanceof Enemy && entity instanceof Mob mob && targets(mob, id)) {
+            if (entity instanceof Mob mob && targets(mob, id)) {
                 remember(mob, player);
                 recordCombat(id);
                 closer.close(player, "targeted without an event");
@@ -123,12 +122,11 @@ public final class MenuSafety implements Listener {
         }
     }
 
+    /** Any mob that targets the player is danger (also iron golems, angry wolves, bees, not only monsters). */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTarget(EntityTargetLivingEntityEvent event) {
-        if (event.getEntity() instanceof Enemy && event.getTarget() instanceof Player player) {
-            if (event.getEntity() instanceof Mob mob) {
-                remember(mob, player);
-            }
+        if (event.getEntity() instanceof Mob mob && event.getTarget() instanceof Player player) {
+            remember(mob, player);
             recordCombat(player.getUniqueId());
             closer.close(player, "targeted (" + event.getReason() + ")");
         }

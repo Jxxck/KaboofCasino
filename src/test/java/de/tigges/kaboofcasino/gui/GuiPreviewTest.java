@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -27,9 +28,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Draws the slot machine title the way the 26.3 client does (bitmap glyph top = title y 6 + 7 - ascent, pen advance,
- * spaces, glyph colour = texture x text colour) from the embedded pack, onto a 480x270 screen (1920x1080 at GUI scale
- * 4, chest at 152/24), and writes {@code build/reports/gui/slot-preview.png} for a visual check. Asserts that the art
- * stays on screen and that the bet slot frame lies around grid slot (4, 3).
+ * spaces, glyph colour = texture x text colour) from the embedded pack onto the common scaled screens 480x270
+ * (1080p/4), 456x256 (1366x768) and 427x240 (720p, 1440p and 4K with "Auto"), chest centred, and writes
+ * {@code build/reports/gui/slot-preview-WxH.png} for a visual check. Asserts the art fits horizontally (at most 125 px
+ * right of the chest) and that no content is clipped; only the outer frame may be cut at 240 px height.
  */
 class GuiPreviewTest {
 
@@ -101,8 +103,22 @@ class GuiPreviewTest {
         return out;
     }
 
+    /** A rectangle in window coordinates that must be fully on screen. */
+    record Important(String name, int x0, int y0, int x1, int y1) {
+    }
+
+    /** The slot screen's content (not its outer frame), window coordinates, from the composition in the pack tool. */
+    static final List<Important> IMPORTANT = List.of(
+            new Important("headline", 60, -8, 118, 0),
+            new Important("payouts header", 220, -6, 262, 2),
+            new Important("reel window", 25, 10, 157, 51),
+            new Important("multiplier column", 250, 26, 287, 181),
+            new Important("JACKPOT", 204, 206, 278, 230),
+            new Important("inventory", 0, 128, 176, 222),
+            new Important("left frame bottom", -23, 222, 201, 229));
+
     @Test
-    void slotTitlePreview() throws IOException {
+    void slotTitleFitsTheCommonScreens() throws IOException {
         loadPack();
         GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
                 .getResourceAsStream("pack/gui-layout.json"));
@@ -113,28 +129,30 @@ class GuiPreviewTest {
             }
         }
         for (int k = 0; k < 3; k++) {
-            t.art("slot_reel_" + k + "_" + 0, 25 + 44 * k);
+            t.artAt("slot_reel_" + k + "_" + 0, "slot_reel_" + k);
         }
         TextColor cream = TextColor.color(0xF3E7BF);
-        t.text("Spielautomat", 89, -12, cream, TitleBuilder.Align.CENTER);
-        t.text("Gewinne", 268, -10, cream, TitleBuilder.Align.CENTER);
-        t.text("EINSATZ", 89, 58, cream, TitleBuilder.Align.CENTER);
+        t.text("slot_headline", "Spielautomat", cream);
+        t.text("slot_payouts", "Gewinne", cream);
+        t.text("slot_bet", "EINSATZ", cream);
         int[] mult = {100, 30, 15, 10, 6, 4, 3, 2};
         for (int row = 0; row < 8; row++) {
-            t.text("×" + mult[row], 320, 22 + 21 * row, row == 0 ? TextColor.color(0xFFD770) : cream,
-                    TitleBuilder.Align.RIGHT);
+            t.text("slot_multiplier_" + row, "×" + mult[row], row == 0 ? TextColor.color(0xFFD770) : cream);
         }
         Component title = t.build();
+        for (int[] size : new int[][] {{480, 270}, {456, 256}, {427, 240}}) {
+            render(title, size[0], size[1]);
+        }
+    }
 
-        int left = 152;
-        int top = 24;
-        BufferedImage screen = new BufferedImage(480, 270, BufferedImage.TYPE_INT_ARGB);
-        fill(screen, 0, 0, 480, 270, 0xff202020);
+    private void render(Component title, int width, int height) throws IOException {
+        int left = (width - 176) / 2;
+        int top = (height - 222) / 2;
+        BufferedImage screen = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        fill(screen, 0, 0, width, height, 0xff202020);
         fill(screen, left, top, 176, 222, 0xffc6c6c6); // vanilla chest background stand-in
         int minX = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
-        int minY = Integer.MAX_VALUE;
-        int maxY = Integer.MIN_VALUE;
         int pen = 8;
         for (Component c : title.children()) {
             TextComponent text = (TextComponent) c;
@@ -149,13 +167,10 @@ class GuiPreviewTest {
                     draw(screen, g, gx, gy, color);
                     minX = Math.min(minX, gx);
                     maxX = Math.max(maxX, gx + g.w());
-                    minY = Math.min(minY, gy);
-                    maxY = Math.max(maxY, gy + g.h());
                 }
                 pen += g.advance();
             }
         }
-        // grid slots of the 9x6 chest (item areas), the bet slot (4,3) and the button row in red
         for (int r = 0; r < 6; r++) {
             for (int col = 0; col < 9; col++) {
                 outline(screen, left + 8 + 18 * col, top + 18 + 18 * r, 16, 16,
@@ -170,19 +185,22 @@ class GuiPreviewTest {
                 blend(screen, left + 53 + x, top + 97 + y, button.getRGB(x, y));
             }
         }
-        Path out = Path.of("build/reports/gui/slot-preview.png");
+        Path out = Path.of("build/reports/gui/slot-preview-" + width + "x" + height + ".png");
         Files.createDirectories(out.getParent());
-        BufferedImage big = new BufferedImage(960, 540, BufferedImage.TYPE_INT_ARGB);
-        for (int y = 0; y < 540; y++) {
-            for (int x = 0; x < 960; x++) {
+        BufferedImage big = new BufferedImage(width * 2, height * 2, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < height * 2; y++) {
+            for (int x = 0; x < width * 2; x++) {
                 big.setRGB(x, y, screen.getRGB(x / 2, y / 2));
             }
         }
         ImageIO.write(big, "png", out.toFile());
-        assertTrue(minY >= 0, "art above the screen at GUI scale 4 / 1080p: " + minY);
-        assertTrue(maxY <= 270, "art below the screen: " + maxY);
-        assertTrue(minX >= 0, "art left of the screen: " + minX);
-        assertTrue(maxX - 480 <= 8, "only the payout panel's outer border may be clipped: " + maxX);
+        assertTrue(minX >= 0, width + "x" + height + ": art left of the screen: " + minX);
+        assertTrue(maxX <= width, width + "x" + height + ": art right of the screen: " + maxX);
+        assertTrue(maxX - (left + 176) <= 125, "right overhang beyond the chest: " + (maxX - left - 176));
+        for (Important i : IMPORTANT) {
+            assertTrue(left + i.x0() >= 0 && left + i.x1() <= width && top + i.y0() >= 0 && top + i.y1() <= height,
+                    width + "x" + height + ": " + i.name() + " is clipped");
+        }
     }
 
     private static void fill(BufferedImage img, int x, int y, int w, int h, int argb) {

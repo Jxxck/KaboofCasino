@@ -84,21 +84,25 @@ class PackBuildTest {
                 "assets/kaboofcasino/models/slot/lever.json",
                 "assets/kaboofcasino/models/slot/lights.json",
                 "assets/kaboofcasino/items/slot/lights.json",
-                "assets/kaboofcasino/models/slot/drum_2_2.json",
-                "assets/kaboofcasino/items/slot/drum_0_0.json",
+                "assets/kaboofcasino/models/slot/drum_2_2_7.json",
+                "assets/kaboofcasino/items/slot/drum_0_0_0.json",
                 "assets/roulettecasino/sounds/slot_lever.ogg",
                 "assets/roulettecasino/sounds/lose.ogg",
                 "assets/roulettecasino/sounds/blackjack_push.ogg",
                 "assets/roulettecasino/lang/de_de.json",
                 "assets/kaboofcasino/font/gui.json",
-                "assets/kaboofcasino/font/t_m24.json",
-                "assets/kaboofcasino/font/t_157.json",
+                "assets/kaboofcasino/font/t_m8.json",
+                "assets/kaboofcasino/font/t_173.json",
+                "assets/kaboofcasino/textures/font/text_h16.png",
+                "assets/kaboofcasino/textures/font/text_h32.png",
                 "assets/kaboofcasino/textures/font/slot/bg_1_1.png",
                 "assets/kaboofcasino/items/gui/spin_on.json")) {
             assertTrue(entries.containsKey(path), path);
         }
         assertTrue(entries.keySet().stream().noneMatch(p -> p.contains("/blockstates/")));
         assertTrue(entries.keySet().stream().noneMatch(p -> p.contains("sounds/music")), "no music in step 1");
+        assertTrue(!entries.containsKey("assets/kaboofcasino/font/t_100.json"), "only the rows the GUIs use");
+        assertTrue(!entries.containsKey("assets/kaboofcasino/textures/font/text_h64.png"), "no unused sheet");
     }
 
     @Test
@@ -136,7 +140,7 @@ class PackBuildTest {
         JsonObject layout = Json.parse(first.layout());
         JsonObject bg = layout.getAsJsonObject("glyphs").getAsJsonObject("slot_bg_0_0");
         assertEquals(-23, bg.get("x").getAsInt());
-        assertEquals(-24, bg.get("y").getAsInt());
+        assertEquals(-20, bg.get("y").getAsInt());
         assertEquals(SlotMachineGui.TILE_W + 1, bg.get("advance").getAsInt());
         assertEquals(4, layout.getAsJsonObject("text").getAsJsonObject("advances").get(" ").getAsInt());
     }

@@ -10,6 +10,7 @@ import de.tigges.kaboofcasino.storage.RoundLog;
 import de.tigges.kaboofcasino.util.ItemNames;
 import de.tigges.kaboofcasino.util.Pos;
 import de.tigges.kaboofcasino.wager.Ledger;
+import de.tigges.kaboofcasino.wager.LedgerCodec;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -88,7 +89,13 @@ public final class CasinoCommand implements BasicCommand {
         Messages m = ctx.messages().get();
         m.lines(Msg.COMMAND_INFO).forEach(sender::sendMessage);
         if (sender instanceof Player p) {
-            Ledger l = new PlayerAccount(p).ledger();
+            Ledger l;
+            try {
+                l = new PlayerAccount(p).ledger();
+            } catch (LedgerCodec.CorruptLedgerException e) {
+                m.send(p, Msg.ERROR_INTERNAL, Messages.text("code", "LEDGER"));
+                return;
+            }
             Component owed = l.owed().isEmpty() ? Component.text("–") : ItemNames.list(l.owed());
             m.send(p, Msg.COMMAND_OPEN_ROUNDS, Messages.text("rounds", Integer.toString(l.rounds().size())),
                     Messages.component("owed", owed));

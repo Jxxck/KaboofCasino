@@ -107,9 +107,10 @@ public final class MachineService {
     // ---- placing ---------------------------------------------------------------------------------------------------
 
     /**
-     * Places a machine from the item in {@code hand} at the clicked block face (games.md 6 "Placement checks"). Sets
-     * the carriers, fires a {@code BlockPlaceEvent} for the anchor (protection and LOD plugins), writes the record,
-     * spawns the rig. The caller takes the item on {@link PlaceResult#PLACED}.
+     * Places a machine from the item in {@code hand} at the clicked block face (games.md 6 "Placement checks"). Refuses
+     * liquid or waterlogged positions, sets the carriers, fires a {@code BlockPlaceEvent} for every carrier
+     * (protection and LOD plugins; any veto restores all), writes the record, spawns the rig. The caller takes the
+     * item on {@link PlaceResult#PLACED}.
      */
     public PlaceResult place(Player player, MachineType type, Block clicked, BlockFace face, EquipmentSlot hand,
                              ItemStack item) {
@@ -124,7 +125,7 @@ public final class MachineService {
                 return PlaceResult.NO_SPACE;
             }
             Block b = p.block(world);
-            if (!b.isReplaceable() || isCarrier(p)
+            if (!b.isReplaceable() || isCarrier(p) || liquid(b)
                     || !world.getWorldBorder().isInside(new Location(world, p.x() + 0.5, p.y(), p.z() + 0.5))) {
                 return PlaceResult.NO_SPACE;
             }
@@ -149,20 +150,19 @@ public final class MachineService {
         for (Pos p : carriers) {
             Block b = p.block(world);
             before.add(b.getState());
-            boolean water = b.getType() == Material.WATER;
             b.setType(Material.BARRIER, false);
-            if (water && b.getBlockData() instanceof Waterlogged w) {
-                w.setWaterlogged(true);
-                b.setBlockData(w, false);
-            }
         }
-        BlockPlaceEvent event = new BlockPlaceEvent(anchorBlock, before.getFirst(), clicked, item, player, true, hand);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled() || !event.canBuild()) {
-            for (BlockState state : before) {
-                state.update(true, false);
+        // every carrier is a placed block for protection and LOD plugins; any veto restores all of them
+        for (int i = 0; i < carriers.size(); i++) {
+            Block placed = carriers.get(i).block(world);
+            BlockPlaceEvent event = new BlockPlaceEvent(placed, before.get(i), clicked, item, player, true, hand);
+            Bukkit.getPluginManager().callEvent(event);
+            if (event.isCancelled() || !event.canBuild()) {
+                for (BlockState state : before) {
+                    state.update(true, false);
+                }
+                return PlaceResult.DENIED;
             }
-            return PlaceResult.DENIED;
         }
         MachineRecord record = new MachineRecord(UUID.randomUUID(), type, anchor, facing, player.getUniqueId(),
                 clock.getAsLong(), index.nextNumber(type.id()), "");
@@ -174,6 +174,11 @@ public final class MachineService {
         Log.get().info("{} placed {} #{} at {} facing {}", player.getName(), type.id(), record.number(), anchor,
                 facing);
         return PlaceResult.PLACED;
+    }
+
+    /** Water, lava or a waterlogged block: a barrier there would hold the fluid (refused instead). */
+    static boolean liquid(Block b) {
+        return b.isLiquid() || b.getBlockData() instanceof Waterlogged w && w.isWaterlogged();
     }
 
     /**

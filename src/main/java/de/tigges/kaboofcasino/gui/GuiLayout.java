@@ -20,6 +20,10 @@ import net.kyori.adventure.key.Key;
  */
 public final class GuiLayout {
 
+    /** A named position of a screen: window x (left, centre or right edge per align) and y (cap top). */
+    public record Anchor(String name, int x, int y, TitleBuilder.Align align) {
+    }
+
     /** One art glyph; {@code x}/{@code y} = intended window position of its top-left corner. */
     public record Glyph(String name, int codePoint, int advance, int width, int height, int x, int y) {
     }
@@ -30,8 +34,8 @@ public final class GuiLayout {
     private final int bits;
     private final Map<String, Glyph> glyphs;
     private final String textPrefix;
-    private final int minY;
-    private final int maxY;
+    private final java.util.Set<Integer> rows;
+    private final Map<String, Anchor> anchors;
     private final Map<Integer, Integer> advances;
 
     private GuiLayout(JsonObject root) {
@@ -48,10 +52,18 @@ public final class GuiLayout {
                     o.get("y").getAsInt()));
         }
         this.glyphs = Map.copyOf(g);
+        Map<String, Anchor> a = new HashMap<>();
+        for (Map.Entry<String, JsonElement> e : root.getAsJsonObject("anchors").entrySet()) {
+            JsonObject o = e.getValue().getAsJsonObject();
+            a.put(e.getKey(), new Anchor(e.getKey(), o.get("x").getAsInt(), o.get("y").getAsInt(),
+                    TitleBuilder.Align.valueOf(o.get("align").getAsString().toUpperCase(java.util.Locale.ROOT))));
+        }
+        this.anchors = Map.copyOf(a);
         JsonObject text = root.getAsJsonObject("text");
         this.textPrefix = text.get("fontPrefix").getAsString();
-        this.minY = text.get("minY").getAsInt();
-        this.maxY = text.get("maxY").getAsInt();
+        java.util.Set<Integer> r = new java.util.HashSet<>();
+        text.getAsJsonArray("rows").forEach(v -> r.add(v.getAsInt()));
+        this.rows = java.util.Set.copyOf(r);
         Map<Integer, Integer> adv = new HashMap<>();
         for (Map.Entry<String, JsonElement> e : text.getAsJsonObject("advances").entrySet()) {
             adv.put(e.getKey().codePointAt(0), e.getValue().getAsInt());
@@ -97,10 +109,18 @@ public final class GuiLayout {
         return out.toString();
     }
 
-    /** Font for a text row whose cap tops sit at window y. */
+    public Anchor anchor(String name) {
+        Anchor a = anchors.get(name);
+        if (a == null) {
+            throw new IllegalArgumentException("the pack has no GUI anchor " + name);
+        }
+        return a;
+    }
+
+    /** Font for a text row whose cap tops sit at window y (only rows a GUI anchor declares exist in the pack). */
     public Key textFont(int y) {
-        if (y < minY || y > maxY) {
-            throw new IllegalArgumentException("no text font for window y " + y + " (" + minY + ".." + maxY + ")");
+        if (!rows.contains(y)) {
+            throw new IllegalArgumentException("the pack has no text font for window y " + y + " " + rows);
         }
         return Key.key(textPrefix + (y < 0 ? "m" + -y : Integer.toString(y)));
     }

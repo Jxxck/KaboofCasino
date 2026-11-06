@@ -74,7 +74,7 @@ public final class PackTool {
         tree.put("assets/kaboofcasino/items/gui/blank.json",
                 Json.bytes(Json.object("model", Json.object("type", new com.google.gson.JsonPrimitive(
                         "minecraft:empty")))));
-        text.writeTo(tree);
+        text.writeTo(tree, font.textRows());
         font.write();
         List<TexturePadding.Padded> padded = TexturePadding.apply(tree);
 

@@ -28,6 +28,8 @@ public final class MenuService implements Listener {
     private final DangerSweep danger;
     private final Supplier<Messages> messages;
     private final Map<UUID, Long> interaction = new HashMap<>();
+    /** The menu {@link #open} is opening right now; any other casino menu open is cancelled (MenuListener). */
+    private Menu opening;
 
     public MenuService(IntSupplier currentTick, DangerSweep danger, Supplier<Messages> messages) {
         this.currentTick = currentTick;
@@ -73,7 +75,12 @@ public final class MenuService implements Listener {
         if (menu.isOpenFor(player)) {
             return true;
         }
-        player.openInventory(menu.getInventory());
+        opening = menu;
+        try {
+            player.openInventory(menu.getInventory());
+        } finally {
+            opening = null;
+        }
         if (!menu.isOpenFor(player)) {
             return false;
         }
@@ -89,6 +96,11 @@ public final class MenuService implements Listener {
     private void refuse(Player player, Msg msg) {
         messages.get().actionBar(player, msg);
         player.playSound(player, Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 0.8f);
+    }
+
+    /** True while {@link #open} opens exactly this menu. */
+    boolean isOpening(Menu menu) {
+        return opening == menu;
     }
 
     /** The viewer's own open casino menu, or null. */

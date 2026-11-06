@@ -16,6 +16,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.MerchantInventory;
 import org.bukkit.inventory.Recipe;
 import io.papermc.paper.event.player.CartographyItemEvent;
+import io.papermc.paper.event.player.PlayerInventorySlotChangeEvent;
 import io.papermc.paper.event.player.PlayerPurchaseEvent;
 
 /**
@@ -27,7 +28,8 @@ import io.papermc.paper.event.player.PlayerPurchaseEvent;
  *       purchase;</li>
  *   <li>the cartography table (map extension with paper): taking the result is cancelled.</li>
  * </ul>
- * Also unlocks the casino recipes in the recipe book at join. Thread: MAIN.
+ * Also unlocks the recipes in the recipe book along the mod's chain on first possession (at join and on every slot
+ * change). Thread: MAIN.
  */
 public final class ItemVetoListener implements Listener {
 
@@ -81,8 +83,27 @@ public final class ItemVetoListener implements Listener {
         }
     }
 
+    /** The mod's recipe advancements: diamond -> reel, reel -> mechanism, mechanism -> slot machine. */
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        event.getPlayer().discoverRecipes(Recipes.ALL);
+        Player player = event.getPlayer();
+        for (ItemStack stack : player.getInventory().getContents()) {
+            unlock(player, stack);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onSlotChange(PlayerInventorySlotChangeEvent event) {
+        unlock(event.getPlayer(), event.getNewItemStack());
+    }
+
+    public static void unlock(Player player, ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+        org.bukkit.NamespacedKey recipe = Recipes.unlockedBy(stack);
+        if (recipe != null && !player.hasDiscoveredRecipe(recipe)) {
+            player.discoverRecipe(recipe);
+        }
     }
 }

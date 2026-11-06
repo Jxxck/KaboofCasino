@@ -18,6 +18,7 @@ import de.tigges.kaboofcasino.machine.MachineListener;
 import de.tigges.kaboofcasino.machine.MachineService;
 import de.tigges.kaboofcasino.machine.ProtectionListener;
 import de.tigges.kaboofcasino.machine.Recipes;
+import de.tigges.kaboofcasino.pack.GamePortPack;
 import de.tigges.kaboofcasino.pack.PackFile;
 import de.tigges.kaboofcasino.pack.PackHttpServer;
 import de.tigges.kaboofcasino.pack.PackListener;
@@ -47,9 +48,11 @@ import org.bukkit.plugin.java.JavaPlugin;
  * docs/IMPLEMENTATION.md.
  *
  * <p>Enable order: logging, config + texts, pack (embedded, re-hashed), GUI layout, SQLite (logs, machine index),
- * bet engine, menus and safety, machines, listeners, recipes, command, HTTP server, already loaded chunks, timers,
- * join recovery for players already online (plugin reload). Disable order: close menus, settle every round of every
- * online player (STOP; Paper saves the players afterwards, F8), remove rigs, recipes, HTTP server, DB.
+ * bet engine, menus and safety, machines, listeners, recipes, command, pack delivery (game-port listener or HTTP
+ * server), already loaded chunks, timers, then for players already online (plugin reload): recipe unlocks, pack
+ * status and join recovery of their rounds. Disable order: close menus, settle every round of every online player
+ * (STOP; Paper saves the players afterwards, F8), remove rigs, recipes, pack delivery (listener removed, installed
+ * sniffers pass everything through), DB.
  */
 public final class KaboofCasinoPlugin extends JavaPlugin {
 
@@ -57,6 +60,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private volatile Messages messages;
     private Database db;
     private PackHttpServer http;
+    private GamePortPack gamePort;
     private MachineService machines;
     private LedgerListener ledger;
     private MenuService menus;
@@ -141,7 +145,10 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register("casino", "KaboofCasino (MineVegas Casino)", List.of(), command));
 
-        if (config.pack().enabled()) {
+        if (config.pack().enabled() && config.pack().onGamePort()) {
+            gamePort = new GamePortPack(pack, getSLF4JLogger());
+            gamePort.install();
+        } else if (config.pack().enabled()) {
             http = new PackHttpServer(pack);
             try {
                 http.start(config.pack().bind(), config.pack().port());
@@ -152,8 +159,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                 http = null;
             }
         }
-        Log.get().info("KaboofCasino pack {} ({} bytes), URL http://{}:{}{} , enforce={}", pack.sha1(), pack.size(),
-                config.pack().urlHost(), config.pack().port(), pack.path(), config.pack().enforce());
+        Log.get().info("KaboofCasino pack {} ({} bytes), URL http://{}:{}{} ({}), enforce={}", pack.sha1(),
+                pack.size(), config.pack().urlHost(), config.pack().publicPort(), pack.path(), config.pack().serve(),
+                config.pack().enforce());
 
         machines.scanLoaded();
         Bukkit.getScheduler().runTaskTimer(this, () -> {
@@ -169,9 +177,14 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         }, 1L, 1L);
         // players already online (plugin reload): their pack status and open rounds
         for (Player player : Bukkit.getOnlinePlayers()) {
-            player.discoverRecipes(Recipes.ALL);
+            for (org.bukkit.inventory.ItemStack stack : player.getInventory().getContents()) {
+                ItemVetoListener.unlock(player, stack);
+            }
             if (player.getResourcePackStatus() == PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED) {
                 sessions.markLoaded(player.getUniqueId());
+            }
+            if (!player.isDead()) {
+                ledger.recover(player);
             }
         }
         Log.get().info("KaboofCasino enabled: {} machine(s) in loaded chunks", machines.all().size());
@@ -219,6 +232,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             Recipes.unregister();
         } catch (RuntimeException e) {
             Log.incident("disable", e);
+        }
+        if (gamePort != null) {
+            gamePort.remove();
         }
         if (http != null) {
             http.stop();

@@ -38,6 +38,7 @@ final class SlotRig {
     private final List<ItemDisplay> parts = new ArrayList<>();
     private final ItemDisplay[] reels = new ItemDisplay[3];
     private final int[] reelLevel = {-1, -1, -1};
+    private final int[] reelFace = {-1, -1, -1};
     private final double[] reelTurn = new double[3];
     private ItemDisplay lever;
     private ItemDisplay lights;
@@ -87,8 +88,9 @@ final class SlotRig {
         for (int k = 0; k < 3; k++) {
             reelTurn[k] = stops[k];
             reelLevel[k] = 0;
-            reels[k] = Displays.item(world, base, record.id(), Displays.model(drumModel(k, 0)), reelTransform(k,
-                    stops[k]), 1.0f, d -> d.setBrightness(FULL));
+            reelFace[k] = Math.floorMod(stops[k], 8);
+            reels[k] = Displays.item(world, base, record.id(), Displays.model(drumModel(k, 0, reelFace[k])),
+                    reelTransform(k, 0), 1.0f, d -> d.setBrightness(FULL));
             parts.add(reels[k]);
         }
         lever = Displays.item(world, base, record.id(), Displays.model("kaboofcasino:slot/lever"),
@@ -126,13 +128,14 @@ final class SlotRig {
         }
     }
 
-    private static String drumModel(int reel, int level) {
-        return "kaboofcasino:slot/drum_" + reel + "_" + level;
+    private static String drumModel(int reel, int level, int face) {
+        return "kaboofcasino:slot/drum_" + reel + "_" + level + "_" + face;
     }
 
-    private Transformation reelTransform(int reel, double turn) {
+    /** The drum turned by {@code phase} faces (at most half a face: the model of the nearest face is shown). */
+    private Transformation reelTransform(int reel, double phase) {
         Vector3f pivot = RigMath.point(SlotGeometry.drumCentreX(reel), SlotGeometry.AXIS_Y, SlotGeometry.AXIS_Z);
-        return RigMath.part(facing(), pivot, new Quaternionf().rotationX((float) (turn * Math.PI / 4)));
+        return RigMath.part(facing(), pivot, new Quaternionf().rotationX((float) (phase * Math.PI / 4)));
     }
 
     private Transformation leverTransform(double degrees) {
@@ -141,7 +144,11 @@ final class SlotRig {
                 new Quaternionf().rotationX((float) Math.toRadians(degrees)));
     }
 
-    /** Reel positions; swaps to a blur strip by speed ({@code < 0.35 / < 0.62 / else}). */
+    /**
+     * Reel positions: the model of the nearest face ({@code round(turn)}) turned by {@code turn - round(turn)} faces;
+     * blur strip by speed ({@code < 0.35 / < 0.62 / else}). A model swap jumps (interpolation 0), otherwise the client
+     * interpolates over {@code duration} ticks.
+     */
     void reels(SlotSpin.Plan plan, double elapsed, int duration) {
         if (!spawned()) {
             return;
@@ -150,16 +157,21 @@ final class SlotRig {
             double turn = plan.turn(k, elapsed);
             double speed = plan.speed(k, elapsed);
             int level = speed < 0.35 ? 0 : speed < 0.62 ? 1 : 2;
+            long nearest = Math.round(turn);
+            int face = (int) Math.floorMod(nearest, 8L);
+            double phase = turn - nearest;
             ItemDisplay d = reels[k];
-            if (level != reelLevel[k]) {
+            boolean swap = level != reelLevel[k] || face != reelFace[k];
+            if (swap) {
                 reelLevel[k] = level;
-                d.setItemStack(Displays.model(drumModel(k, level)));
+                reelFace[k] = face;
+                d.setItemStack(Displays.model(drumModel(k, level, face)));
             }
-            if (Math.abs(turn - reelTurn[k]) > 1e-4) {
+            if (swap || Math.abs(turn - reelTurn[k]) > 1e-4) {
                 reelTurn[k] = turn;
                 d.setInterpolationDelay(0);
-                d.setInterpolationDuration(duration);
-                d.setTransformation(reelTransform(k, turn));
+                d.setInterpolationDuration(swap ? 0 : duration);
+                d.setTransformation(reelTransform(k, phase));
             }
         }
     }

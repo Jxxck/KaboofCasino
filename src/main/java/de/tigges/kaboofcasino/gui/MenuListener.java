@@ -93,6 +93,7 @@ public final class MenuListener implements Listener {
         }
     }
 
+    /** Only opens started by {@link MenuService#open} (interaction tick, usable, safe) are allowed. */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onOpen(InventoryOpenEvent event) {
         if (!(event.getInventory().getHolder(false) instanceof Menu menu)) {
@@ -100,7 +101,7 @@ public final class MenuListener implements Listener {
         }
         try {
             if (!(event.getPlayer() instanceof Player player) || !menu.viewer().equals(player.getUniqueId())
-                    || !Usability.usable(player)) {
+                    || !Usability.usable(player) || !menus.isOpening(menu)) {
                 event.setCancelled(true);
             }
         } catch (RuntimeException e) {

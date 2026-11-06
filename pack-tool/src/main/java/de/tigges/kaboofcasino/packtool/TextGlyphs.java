@@ -14,22 +14,21 @@ import java.util.Map;
  * GUI text fonts built from the vanilla bitmap fonts (vendored in {@code pack-src/vanilla}, see its README).
  *
  * <p>A chest title is drawn at y = 6 of the window; a bitmap glyph's top is {@code 6 + 7 - ascent}, and the client
- * rejects {@code ascent > height}. To put text anywhere from y = -47 to 232 (the mod's headlines sit above the
- * window) every glyph the casino needs is copied into one sheet with tall cells: 9 x 64 px, the baseline at row 11
- * (ascii/nonlatin glyphs start at row 4, accented ones at row 1), the rest transparent. One font per text row then
- * reuses that sheet with {@code height 64} and {@code ascent = 17 - y}. Advances are computed exactly like the
- * client ({@code actual width + 1}, scale 1), so the plugin can centre and right-align text.
+ * rejects {@code ascent > height}. To put text above y = 5 (the mod's headlines sit above the window) every glyph
+ * the casino needs is copied into a sheet with cells of 9 x H px, the baseline at row 11 (ascii/nonlatin glyphs start
+ * at row 4, accented ones at row 1), the rest transparent. Only the rows the GUIs use get a font (from the GUI
+ * anchors), each with {@code ascent = 17 - y} on the smallest sheet that allows it: H = 16 for y >= 1, 32 for
+ * y >= -15, 64 for y >= -47. Advances are computed exactly like the client ({@code actual width + 1}, scale 1), so
+ * the plugin can centre and right-align text.
  */
 final class TextGlyphs {
 
     static final int CELL_W = 9;
-    static final int CELL_H = 64;
+    /** Rows a glyph uses inside its cell (accented capitals reach row 1, descenders row 15). */
+    static final int CELL_H = 16;
     static final int BASELINE = 11;
     static final int COLS = 16;
-    static final int MIN_Y = -47;
-    static final int MAX_Y = 232;
-    static final String SHEET = "kaboofcasino:font/text.png";
-    static final String SHEET_PATH = "assets/kaboofcasino/textures/font/text.png";
+    static final int[] SHEET_HEIGHTS = {16, 32, 64};
     static final String FONT_PREFIX = "kaboofcasino:t_";
     static final int SPACE_ADVANCE = 4;
     /** Characters beyond ASCII that German text and the casino's labels use. */
@@ -114,31 +113,51 @@ final class TextGlyphs {
         return rows;
     }
 
+    /** The smallest sheet cell height that allows {@code ascent = 17 - y}. */
+    static int sheetHeight(int y) {
+        int need = Math.max(CELL_H, 17 - y);
+        for (int h : SHEET_HEIGHTS) {
+            if (h >= need) {
+                return h;
+            }
+        }
+        throw new IllegalArgumentException("text row y " + y + " is too far above the window");
+    }
+
     /** Font id for a text row whose ascii glyph tops are at chest-window y {@code y}. */
     static String fontId(int y) {
         return FONT_PREFIX + (y < 0 ? "m" + -y : Integer.toString(y));
     }
 
-    /** Writes the sheet and one font per row y in [MIN_Y, MAX_Y]. */
-    void writeTo(PackTree tree) {
-        tree.put(SHEET_PATH, Images.write(sheet));
-        JsonArray rows = charRows();
-        for (int y = MIN_Y; y <= MAX_Y; y++) {
+    /** Writes one font per used row and the sheets those fonts need. */
+    void writeTo(PackTree tree, java.util.SortedSet<Integer> rows) {
+        JsonArray chars = charRows();
+        java.util.Set<Integer> sheets = new java.util.TreeSet<>();
+        for (int y : rows) {
+            int h = sheetHeight(y);
+            sheets.add(h);
             JsonObject space = new JsonObject();
             space.addProperty("type", "space");
             space.add("advances", Json.object(" ", new com.google.gson.JsonPrimitive(SPACE_ADVANCE)));
             JsonObject bitmap = new JsonObject();
             bitmap.addProperty("type", "bitmap");
-            bitmap.addProperty("file", SHEET);
-            bitmap.addProperty("height", CELL_H);
+            bitmap.addProperty("file", "kaboofcasino:font/text_h" + h + ".png");
+            bitmap.addProperty("height", h);
             bitmap.addProperty("ascent", 17 - y);
-            bitmap.add("chars", rows);
+            bitmap.add("chars", chars);
             JsonArray providers = new JsonArray();
             providers.add(space);
             providers.add(bitmap);
             String id = fontId(y);
             String path = "assets/kaboofcasino/font/" + id.substring(id.indexOf(':') + 1) + ".json";
             tree.put(path, Json.bytes(Json.object("providers", providers)));
+        }
+        for (int h : sheets) {
+            BufferedImage out = Images.blank(sheet.getWidth(), sheet.getHeight() / CELL_H * h);
+            for (int r = 0; r < sheet.getHeight() / CELL_H; r++) {
+                Images.copy(sheet, 0, r * CELL_H, sheet.getWidth(), CELL_H, out, 0, r * h);
+            }
+            tree.put("assets/kaboofcasino/textures/font/text_h" + h + ".png", Images.write(out));
         }
     }
 

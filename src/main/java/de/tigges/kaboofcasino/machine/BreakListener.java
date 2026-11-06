@@ -128,8 +128,10 @@ public final class BreakListener implements Listener {
         for (Map.Entry<UUID, Task> e : Map.copyOf(tasks).entrySet()) {
             Player player = Bukkit.getPlayer(e.getKey());
             Task task = e.getValue();
+            World machineWorld = Bukkit.getWorld(org.bukkit.NamespacedKey.fromString(task.machine.anchor().world()));
             if (player == null || !machines.byId(task.machine.id()).isPresent() || player.isDead()
-                    || player.getLocation().distanceSquared(center(task.block, player.getWorld())) > 49) {
+                    || machineWorld == null || !player.getWorld().equals(machineWorld)
+                    || player.getLocation().distanceSquared(center(task.block, machineWorld)) > 49) {
                 stop(e.getKey(), task);
                 continue;
             }

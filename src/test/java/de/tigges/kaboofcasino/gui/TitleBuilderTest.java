@@ -99,32 +99,36 @@ class TitleBuilderTest {
     void artAndTextLandOnTheirPositions() {
         TitleBuilder t = new TitleBuilder(layout);
         t.art("slot_bg_0_0").art("slot_bg_1_0").art("slot_bg_0_1").art("slot_bg_1_1");
-        t.art("slot_reel_0_3", 25).art("slot_reel_1_0", 69).art("slot_reel_2_7", 113);
-        t.text("Spielautomat", 89, -12, TextColor.color(0xF3E7BF), TitleBuilder.Align.CENTER);
-        t.text("×100", 320, 22, NamedTextColor.GOLD, TitleBuilder.Align.RIGHT);
+        t.artAt("slot_reel_0_3", "slot_reel_0").artAt("slot_reel_1_0", "slot_reel_1").artAt("slot_reel_2_7",
+                "slot_reel_2");
+        t.text("slot_headline", "Spielautomat", TextColor.color(0xF3E7BF));
+        t.text("slot_multiplier_0", "×100", NamedTextColor.GOLD);
         List<Run> runs = draw(t.build());
         assertEquals(new Run(layout.guiFont(), -23, Character.toString(layout.glyph("slot_bg_0_0").codePoint())),
                 runs.get(0));
-        assertEquals(-23 + 179, runs.get(1).x());
+        assertEquals(-23 + 162, runs.get(1).x());
         assertEquals(-23, runs.get(2).x());
         assertEquals(25, runs.get(4).x());
         assertEquals(113, runs.get(6).x());
         Run headline = runs.get(7);
-        assertEquals(Key.key("kaboofcasino:t_m12"), headline.font());
+        assertEquals(Key.key("kaboofcasino:t_m8"), headline.font());
         assertEquals(89 - layout.width("Spielautomat") / 2, headline.x());
         Run mult = runs.get(8);
-        assertEquals(320 - layout.width("×100"), mult.x());
+        assertEquals(Key.key("kaboofcasino:t_26"), mult.font());
+        assertEquals(286 - layout.width("×100"), mult.x());
         assertTrue(layout.width("×100") > 0);
     }
 
     @Test
     void glyphFontsAndPositionsFromThePack() {
         GuiLayout.Glyph bg = layout.glyph("slot_bg_1_1");
-        assertEquals(-23 + 179, bg.x());
-        assertEquals(-24 + 133, bg.y());
-        assertEquals(180, bg.advance());
+        assertEquals(-23 + 162, bg.x());
+        assertEquals(-20 + 133, bg.y());
+        assertEquals(163, bg.advance());
         assertEquals(41, layout.glyph("slot_reel_2_5").advance());
-        assertEquals(Key.key("kaboofcasino:t_58"), layout.textFont(58));
+        assertEquals(Key.key("kaboofcasino:t_59"), layout.textFont(59));
+        assertEquals(69, layout.anchor("slot_reel_1").x());
+        assertEquals(10, layout.anchor("slot_reel_1").y());
         assertEquals(6, layout.width("A"));
     }
 }

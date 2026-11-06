@@ -166,16 +166,77 @@ class WagerEngineTest {
         a.ledger(a.ledger().withRound(new RoundRecord(UUID.randomUUID(), UUID.randomUUID(), "slot_machine",
                 RoundState.DECIDED, new ItemAmount(IRON_BLOCK, 2), List.of(new ItemAmount(IRON_BLOCK, 4)), now, now,
                 "x")));
-        List<ItemAmount> drops = engine.drainForDeath(a);
+        List<ItemAmount> into = new ArrayList<>();
+        List<ItemAmount> drops = engine.drainForDeath(a, items -> {
+            into.addAll(items);
+            return List.of();
+        });
         assertEquals(List.of(new ItemAmount(DIAMOND, 136), new ItemAmount(IRON_BLOCK, 4)), drops);
+        assertEquals(drops, into);
         assertTrue(a.ledger().isEmpty());
+    }
+
+    @Test
+    void whatTheGraveCannotHoldStaysOwed() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 64);
+        commit(a, DIAMOND, 64, 6400);
+        // grave room for 10 stacks: 640 into the drops, 5760 stay owed for after a revive
+        List<ItemAmount> dropped = engine.drainForDeath(a, items -> {
+            List<ItemAmount> rest = new ArrayList<>();
+            for (ItemAmount i : items) {
+                if (i.count() > 640) {
+                    rest.add(new ItemAmount(i.item(), i.count() - 640));
+                }
+            }
+            return rest;
+        });
+        assertEquals(List.of(new ItemAmount(DIAMOND, 640)), dropped);
+        assertTrue(a.ledger().rounds().isEmpty());
+        assertEquals(List.of(new ItemAmount(DIAMOND, 5760)), a.ledger().owed());
+        assertTrue(events.contains("settle DEATH [6400xminecraft:diamond]"));
+    }
+
+    @Test
+    void aFailingDropTargetChangesNothing() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 10);
+        RoundRecord r = commit(a, DIAMOND, 10, 20);
+        Ledger before = a.ledger();
+        try {
+            engine.drainForDeath(a, items -> {
+                throw new IllegalStateException("unknown material");
+            });
+        } catch (IllegalStateException expected) {
+            // the ledger is written last
+        }
+        assertEquals(before, a.ledger());
+        assertEquals(List.of(r), a.ledger().rounds());
+    }
+
+    @Test
+    void owedDeliveryWritesPerItemSoAFailureCannotDupe() {
+        FakeAccount a = new FakeAccount();
+        a.failOn = IRON_BLOCK;
+        a.ledger(Ledger.EMPTY.plusOwed(List.of(new ItemAmount(DIAMOND, 70), new ItemAmount(IRON_BLOCK, 5),
+                new ItemAmount("minecraft:emerald", 3))));
+        try {
+            engine.deliverOwed(a);
+        } catch (IllegalStateException expected) {
+            // the second item fails before it changes the inventory
+        }
+        assertEquals(70, a.count(DIAMOND));
+        assertEquals(List.of(new ItemAmount(IRON_BLOCK, 5), new ItemAmount("minecraft:emerald", 3)),
+                a.ledger().owed(), "the delivered item left the ledger at once, the rest is still owed");
+        a.failOn = null;
+        engine.deliverOwed(a);
+        assertTrue(a.ledger().isEmpty());
+        assertEquals(5, a.count(IRON_BLOCK));
     }
 
     @Test
     void aCancelledDeathPutsTheItemsBack() {
         FakeAccount a = new FakeAccount().with(DIAMOND, 10);
         commit(a, DIAMOND, 10, 30);
-        List<ItemAmount> drops = engine.drainForDeath(a);
+        List<ItemAmount> drops = engine.drainForDeath(a, items -> List.of());
         engine.restoreAfterCancelledDeath(a, drops);
         assertEquals(30, a.count(DIAMOND));
         assertTrue(a.ledger().isEmpty());

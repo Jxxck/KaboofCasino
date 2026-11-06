@@ -16,6 +16,7 @@ machine:
   place-denied: "<red>Hier darfst du nichts bauen."
   removed: "<green>Automat entfernt."
   none: "<red>Du schaust auf keinen Casino-Automaten."
+  idle-closed: "<gray>Menü geschlossen: zu lange nicht gedreht. Der Automat ist wieder frei."
 
 bet:
   not-allowed: "<red><item> ist kein Einsatz."

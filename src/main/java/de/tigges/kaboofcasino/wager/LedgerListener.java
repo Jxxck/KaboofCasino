@@ -23,6 +23,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -47,13 +48,10 @@ public final class LedgerListener implements Listener {
     private final WagerEngine engine;
     private final Supplier<Messages> messages;
     private final Predicate<UUID> liveRound;
-    /** Drops added at LOW per player, removed again if the death is cancelled. */
-    private final Map<UUID, Drained> drained = new HashMap<>();
+    /** What went into the drops at LOW per player, taken back out if the death ends cancelled. */
+    private final Map<UUID, DeathDrops.Applied<ItemStack>> drained = new HashMap<>();
     /** Players whose ledger could not be read (CRITICAL logged once; casino blocked for them). */
     private final Set<UUID> corrupt = new HashSet<>();
-
-    private record Drained(List<ItemAmount> items, List<ItemStack> stacks) {
-    }
 
     public LedgerListener(WagerEngine engine, Supplier<Messages> messages, Predicate<UUID> liveRound) {
         this.engine = engine;
@@ -75,8 +73,20 @@ public final class LedgerListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuitDone(PlayerQuitEvent event) {
+        FakePlayers.forget(event.getPlayer().getUniqueId());
+    }
+
+    /** After a death respawn only (a revived player joins dead); the End exit is no recovery point. */
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(PlayerPostRespawnEvent event) {
-        recover(event.getPlayer());
+        if (recoverOnRespawn(event.getRespawnReason())) {
+            recover(event.getPlayer());
+        }
+    }
+
+    static boolean recoverOnRespawn(PlayerRespawnEvent.RespawnReason reason) {
+        return reason == PlayerRespawnEvent.RespawnReason.DEATH;
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -94,6 +104,10 @@ public final class LedgerListener implements Listener {
         });
     }
 
+    /**
+     * LOW, before DeathBan's grave (HIGH): winnings and owed items into the drops as far as the grave holds them
+     * ({@link DeathDrops}); the rest stays owed. keepInventory: settle into the inventory instead.
+     */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getPlayer();
@@ -102,42 +116,89 @@ public final class LedgerListener implements Listener {
                 engine.settleAll(a, SettleReason.DEATH);
                 return;
             }
-            List<ItemAmount> items = engine.drainForDeath(a);
-            if (items.isEmpty()) {
-                return;
+            DeathDrops.Applied<ItemStack> applied = new DeathDrops.Applied<>();
+            List<ItemStack> drops = event.getDrops();
+            List<ItemAmount> dropped = engine.drainForDeath(a, items -> putIntoDrops(drops, items, applied));
+            if (!applied.isEmpty()) {
+                drained.put(player.getUniqueId(), applied);
             }
-            List<ItemStack> stacks = new ArrayList<>();
-            for (ItemAmount item : items) {
-                var m = PlayerAccount.material(item.item());
-                long rest = item.count();
-                while (rest > 0) {
-                    int n = (int) Math.min(rest, m.getMaxStackSize());
-                    stacks.add(ItemStack.of(m, n));
-                    rest -= n;
-                }
+            List<ItemAmount> kept = a.ledger().owed();
+            if (!dropped.isEmpty() || !kept.isEmpty()) {
+                Log.get().warn("{} died with casino winnings: {} into the death drops, {} kept as owed (grave full)",
+                        player.getName(), dropped, kept);
             }
-            event.getDrops().addAll(stacks);
-            drained.put(player.getUniqueId(), new Drained(items, stacks));
-            Log.get().warn("{} died with casino winnings: {} into the death drops", player.getName(), items);
         });
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onDeathMonitor(PlayerDeathEvent event) {
-        Drained d = drained.remove(event.getPlayer().getUniqueId());
-        if (d == null || !event.isCancelled()) {
-            return;
+    /** The Bukkit drop target: plan on a snapshot, build every stack, then change the drops. */
+    static List<ItemAmount> putIntoDrops(List<ItemStack> drops, List<ItemAmount> items,
+                                         DeathDrops.Applied<ItemStack> applied) {
+        List<ItemStack> current = new ArrayList<>();
+        for (ItemStack s : drops) {
+            if (s != null && !s.isEmpty()) {
+                current.add(s);
+            }
         }
-        for (ItemStack stack : d.stacks()) {
-            event.getDrops().removeIf(s -> s == stack);
+        List<DeathDrops.Existing> existing = current.stream().map(s -> new DeathDrops.Existing(
+                s.getType().getKey().asString(), s.getAmount(), s.getMaxStackSize(), PlayerAccount.isPlain(s)))
+                .toList();
+        DeathDrops.Plan plan = DeathDrops.plan(existing, items, k -> PlayerAccount.material(k).getMaxStackSize(),
+                DeathDrops.GRAVE_SLOTS);
+        List<ItemStack> fresh = new ArrayList<>();
+        for (ItemAmount n : plan.newStacks()) {
+            fresh.add(ItemStack.of(PlayerAccount.material(n.item()), (int) n.count()));
         }
-        guarded(event.getPlayer(), "cancelled death", a -> engine.restoreAfterCancelledDeath(a, d.items()));
-        Log.get().warn("the death of {} was cancelled: casino winnings {} went back", event.getPlayer().getName(),
-                d.items());
+        for (Map.Entry<Integer, Integer> e : plan.topUps().entrySet()) {
+            ItemStack s = current.get(e.getKey());
+            s.setAmount(s.getAmount() + e.getValue());
+            applied.toppedUp(s, e.getValue());
+        }
+        for (ItemStack f : fresh) {
+            drops.add(f);
+            applied.added(f);
+        }
+        return plan.kept();
     }
 
-    /** Join recovery + owed delivery. */
-    void recover(Player player) {
+    static final DeathDrops.StackOps<ItemStack> STACKS = new DeathDrops.StackOps<>() {
+        @Override
+        public String item(ItemStack stack) {
+            return stack.getType().getKey().asString();
+        }
+
+        @Override
+        public int amount(ItemStack stack) {
+            return stack.getAmount();
+        }
+
+        @Override
+        public void amount(ItemStack stack, int amount) {
+            stack.setAmount(amount);
+        }
+    };
+
+    /** If the death ended cancelled: take back exactly what is still in the drops; CRITICAL for the rest. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDeathMonitor(PlayerDeathEvent event) {
+        DeathDrops.Applied<ItemStack> applied = drained.remove(event.getPlayer().getUniqueId());
+        if (applied == null || !event.isCancelled()) {
+            return;
+        }
+        DeathDrops.Restore r = applied.restore(event.getDrops(), STACKS);
+        if (!r.missing().isEmpty()) {
+            Log.critical("CANCELLED_DEATH_MISSING", "the death of {} ({}) was cancelled, but casino winnings {} are no "
+                    + "longer in the drops (another plugin took them); nothing is given back for them",
+                    event.getPlayer().getName(), event.getPlayer().getUniqueId(), r.missing());
+        }
+        if (!r.restored().isEmpty()) {
+            guarded(event.getPlayer(), "cancelled death", a -> engine.restoreAfterCancelledDeath(a, r.restored()));
+            Log.get().warn("the death of {} was cancelled: casino winnings {} went back", event.getPlayer().getName(),
+                    r.restored());
+        }
+    }
+
+    /** Join recovery + owed delivery (also for players already online when the plugin enables). */
+    public void recover(Player player) {
         if (FakePlayers.isFake(player)) {
             return;
         }

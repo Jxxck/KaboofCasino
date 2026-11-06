@@ -52,7 +52,7 @@ public final class PackListener implements Listener {
 
     URI uri() {
         CasinoConfig.Pack p = config.get().pack();
-        return URI.create("http://" + p.urlHost() + ":" + p.port() + pack.path());
+        return URI.create("http://" + p.urlHost() + ":" + p.publicPort() + pack.path());
     }
 
     @EventHandler
@@ -77,16 +77,10 @@ public final class PackListener implements Listener {
                 })
                 .build();
         connection.getAudience().sendResourcePacks(request);
-        ResourcePackStatus status;
-        try {
-            status = done.get(p.timeoutSeconds(), TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            status = null;
-        } catch (ExecutionException e) {
-            status = ResourcePackStatus.FAILED_DOWNLOAD;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            status = null;
+        ResourcePackStatus status = await(done, connection, p.timeoutSeconds() * 1000L);
+        if (!connection.isConnected()) {
+            Log.get().info("Resource pack for {}: the connection closed while waiting", name);
+            return;
         }
         if (id != null) {
             if (status == null) {
@@ -99,6 +93,29 @@ public final class PackListener implements Listener {
                 + p.timeoutSeconds() + " s" : status);
         if (status != ResourcePackStatus.SUCCESSFULLY_LOADED && p.enforce() && connection.isConnected()) {
             connection.disconnect(messages.get().render(Msg.PACK_KICK));
+        }
+    }
+
+    /**
+     * Waits for a terminal status in short slices and gives up early when the connection is gone (no configuration
+     * thread is kept waiting for a client that left). Null on timeout or departure.
+     */
+    static ResourcePackStatus await(CompletableFuture<ResourcePackStatus> done, PlayerConfigurationConnection connection,
+                                    long timeoutMillis) {
+        long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
+        while (true) {
+            try {
+                return done.get(250, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+                if (!connection.isConnected() || System.nanoTime() >= deadline) {
+                    return null;
+                }
+            } catch (ExecutionException e) {
+                return ResourcePackStatus.FAILED_DOWNLOAD;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
         }
     }
 
