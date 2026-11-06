@@ -60,12 +60,18 @@ public final class RoundLog implements RoundSink {
         } else {
             Log.get().warn(line);
         }
+        // a blackjack hand's stake (double down) and payout change while it runs: the row gets the final values
+        ItemAmount pay = r.payout().isEmpty() ? null : r.payout().getFirst();
         db.submit("round settled " + r.id(), c -> {
             try (PreparedStatement ps = c.prepareStatement("UPDATE rounds SET status = 'SETTLED', settled_at = ?, "
-                    + "reason = ? WHERE id = ?")) {
+                    + "reason = ?, stake_count = ?, payout_item = ?, payout_count = ?, detail = ? WHERE id = ?")) {
                 ps.setLong(1, settledAt);
                 ps.setString(2, reason.name());
-                ps.setString(3, r.id().toString());
+                ps.setLong(3, r.stake().count());
+                ps.setString(4, pay == null ? null : pay.item());
+                ps.setLong(5, pay == null ? 0 : pay.count());
+                ps.setString(6, r.detail());
+                ps.setString(7, r.id().toString());
                 ps.executeUpdate();
             }
         });

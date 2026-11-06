@@ -32,6 +32,14 @@ class RecipesDataTest {
         Recipes.Def mechanism = d.get("roulette_mechanism");
         assertEquals(List.of(" G ", "GDG", " R "), mechanism.pattern());
         assertEquals("roulettecasino:roulette_mechanism", mechanism.result());
+        Recipes.Def blackjack = d.get("blackjack_table");
+        assertEquals(List.of("WWW", "GBG", "PRP"), blackjack.pattern());
+        assertEquals("minecraft:green_wool", blackjack.key().get('W'));
+        assertEquals("minecraft:gold_block", blackjack.key().get('G'));
+        assertEquals("roulettecasino:croupier_badge", blackjack.key().get('B'));
+        assertEquals("#minecraft:planks", blackjack.key().get('P'));
+        assertEquals("minecraft:redstone", blackjack.key().get('R'));
+        assertEquals("roulettecasino:blackjack_table", blackjack.result());
     }
 
     @Test
@@ -44,6 +52,8 @@ class RecipesDataTest {
         assertEquals("roulettecasino:roulette_mechanism", d.get("fortune_wheel").unlock());
         assertEquals("minecraft:dropper", d.get("plinko").unlock());
         assertEquals("roulettecasino:roulette_mechanism", d.get("roulette_table").unlock());
+        // the croupier's badge (the mod hires a croupier for it; here /casino give until the croupier exists)
+        assertEquals("roulettecasino:croupier_badge", d.get("blackjack_table").unlock());
         assertEquals(List.of("RVN", "GMG", "PSP"), d.get("roulette_table").pattern());
     }
 
@@ -74,6 +84,6 @@ class RecipesDataTest {
     /** The shipped set. */
     private static final class Set6 {
         static final java.util.Set<String> IDS = java.util.Set.of("slot_machine_reel", "slot_machine_mechanism",
-                "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table");
+                "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table", "blackjack_table");
     }
 }

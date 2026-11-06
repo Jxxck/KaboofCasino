@@ -21,7 +21,13 @@ public enum MachineType {
      * 2 x 2 x 1 table without facing (games.md 5): the clicked cell is part 0, parts 1..3 at +X, +Z, +X+Z whichever
      * way the player looks; the mod needs no support below.
      */
-    ROULETTE_TABLE("roulette_table", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 0, 1}, {1, 0, 1}}, 0, true, false);
+    ROULETTE_TABLE("roulette_table", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 0, 1}, {1, 0, 1}}, 0, true, false),
+    /**
+     * 4 wide x 2 deep x 1 table (games.md 3, {@code BlackjackTableBlock.partPos}): part p at
+     * (p % 4 - 1, 0, p / 4 - 1), anchor = the placed cell = part 5; row -1 is the dealer's flat edge (behind), row 0
+     * the players' round edge (front). The mod needs no support below.
+     */
+    BLACKJACK_TABLE("blackjack_table", blackjack(), 0, false, false);
 
     private final String id;
     private final int[][] footprint;
@@ -45,6 +51,15 @@ public enum MachineType {
     /** True if the bottom row needs centre support below (the mod's {@code canSurvive}). */
     public boolean needsSupport() {
         return support;
+    }
+
+    /** Parts 0..7 of the blackjack table, in the mod's part order. */
+    private static int[][] blackjack() {
+        int[][] out = new int[8][];
+        for (int part = 0; part < 8; part++) {
+            out[part] = new int[] {part % 4 - 1, 0, part / 4 - 1};
+        }
+        return out;
     }
 
     /** Parts 0..8 of the mod's 3x3 machines: column {@code part % 3} (viewer's left to right), row {@code part / 3}. */
@@ -94,9 +109,11 @@ public enum MachineType {
     }
 
     /**
-     * Whether the footprint fits into one chunk: null if it does, otherwise the world shift {dx, dz} of one block
-     * that makes it fit ({0, 0} if none does). Machines with a facing move along their width only (left/right for
-     * the player in front of them); a table without facing may also move along z or diagonally.
+     * Whether the footprint fits into one chunk: null if it does, otherwise the smallest world shift {dx, dz} that
+     * makes it fit ({0, 0} if none does). A table without facing tries one block in every direction. A machine with a
+     * facing moves along its width first (left/right for the player in front of it), then also along its depth, at
+     * most its own size: a 3-wide machine always fits one block to the side, the 4 x 2 blackjack table may need two
+     * blocks to the side or one forward/back.
      */
     public int[] chunkFit(Pos anchor, Facing facing) {
         if (oneChunk(carriers(anchor, facing))) {
@@ -109,8 +126,22 @@ public enum MachineType {
             }
         } else {
             int[] r = right(facing);
-            shifts.add(new int[] {-r[0], -r[1]});
-            shifts.add(r);
+            int[] f = facing.step();
+            int width = extent(0);
+            int depth = extent(2);
+            for (int d = 1; d < width + depth; d++) {
+                for (int v = 0; v <= Math.min(d, depth - 1); v++) {
+                    int u = d - v;
+                    if (u > width - 1) {
+                        continue;
+                    }
+                    for (int su : u == 0 ? new int[] {1} : new int[] {-1, 1}) {
+                        for (int sv : v == 0 ? new int[] {1} : new int[] {-1, 1}) {
+                            shifts.add(new int[] {su * u * r[0] + sv * v * f[0], su * u * r[1] + sv * v * f[1]});
+                        }
+                    }
+                }
+            }
         }
         for (int[] d : shifts) {
             if (oneChunk(carriers(anchor.offset(d[0], 0, d[1]), facing))) {
@@ -118,6 +149,17 @@ public enum MachineType {
             }
         }
         return new int[] {0, 0};
+    }
+
+    /** Number of distinct footprint offsets along axis 0 (width) or 2 (depth). */
+    private int extent(int axis) {
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (int[] o : footprint) {
+            min = Math.min(min, o[axis]);
+            max = Math.max(max, o[axis]);
+        }
+        return max - min + 1;
     }
 
     private static boolean oneChunk(List<Pos> carriers) {

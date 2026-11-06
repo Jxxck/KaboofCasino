@@ -23,6 +23,13 @@ roulette:
   busy: "<yellow>Das Roulette dreht sich."
   several: "<yellow>Nur eine Farbe behalten"
 
+blackjack:
+  # message.roulettecasino.blackjack.busy / no_bet / cannot_double / timeout
+  busy: "<yellow><name> spielt an diesem Tisch."
+  no-bet: "<yellow>Setze einen Einsatz, bevor du spielst."
+  cannot-double: "<yellow>Du hast nicht genug Gegenstände zum Verdoppeln."
+  timeout: "<yellow>Die Zeit ist um: Du bleibst stehen."
+
 machine:
   in-use: "<yellow><name> spielt gerade an diesem Automaten."
   not-yours: "<red>Diesen Automaten kann nur <name> oder ein Admin abbauen."
@@ -30,6 +37,7 @@ machine:
   no-space: "<red>Hier ist kein Platz für den Automaten."
   no-support: "<red>Der Automat braucht festen Boden."
   chunk-border: "<red>Die Maschine passt hier nicht ganz in einen Chunk – stell sie einen Block weiter nach <direction>."
+  chunk-border-far: "<red>Die Maschine passt hier nicht ganz in einen Chunk – stell sie <blocks> Blöcke weiter nach <direction>."
   player-near: "<red>Hier steht jemand zu nah – die Maschine braucht zwei Blöcke Abstand zu anderen Spielern."
   logout-spot: "<red>Hier ist jemand ausgeloggt – stell die Maschine woanders hin."
   place-denied: "<red>Hier darfst du nichts bauen."
@@ -119,6 +127,29 @@ gui:
     green: "GRÜN"
     spin: "<gold><b>DREHEN"
     veil: "<gray>Nur eine Farbe behalten"
+  blackjack:
+    # gui.roulettecasino.blackjack.title / stake / pay_* / odds_* / deal / dealer / you / hit / stand / double;
+    # the button lore is the first line of *_tip (the key hints there do not work in a chest)
+    title: "BLACKJACK"
+    stake: "EINSATZ"
+    pay-blackjack: "BLACKJACK"
+    pay-blackjack-note: "21 direkt"
+    odds-blackjack: "×2,5"
+    pay-win: "SIEG"
+    pay-win-note: "Mehr oder 21"
+    odds-win: "×2"
+    pay-push: "REMIS"
+    pay-push-note: "Rückgabe"
+    odds-push: "×1"
+    deal: "<gold><b>AUSTEILEN"
+    dealer: "CROUPIER"
+    you: "DU"
+    hit: "<gold><b>KARTE"
+    hit-lore: "<gray>Eine Karte ziehen"
+    stand: "<gold><b>HALTEN"
+    stand-lore: "<gray>Bei dieser Summe bleiben"
+    double: "<gold><b>DOPPELN"
+    double-lore: "<gray>Einsatz verdoppeln, 1 Karte"
   bets:
     # gui.roulettecasino.bets.title
     title: "<gold>Mögliche Einsätze"
@@ -133,6 +164,9 @@ item:
   plinko: "Casino-Plinko"
   roulette-mechanism: "Kugellagermechanismus"
   roulette-table: "Casino-Roulette"
+  # block.roulettecasino.blackjack_table, item.roulettecasino.croupier_badge
+  blackjack-table: "Blackjack-Tisch"
+  croupier-badge: "Croupier-Abzeichen"
 
 panel:
   # gui.roulettecasino.slot.panel_title, result_lose, result_push, result_win, result_jackpot

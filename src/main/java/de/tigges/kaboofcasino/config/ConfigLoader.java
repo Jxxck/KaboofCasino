@@ -70,6 +70,8 @@ public final class ConfigLoader {
                         r.integer("gui.idle-close-seconds", d.gui().idleCloseSeconds(), 0, 3600)),
                 game(r, "slot", d.slot()), game(r, "wheel", d.wheel()), game(r, "plinko", d.plinko()),
                 game(r, "roulette", d.roulette()),
+                new CasinoConfig.Blackjack(r.integer("blackjack.bias", d.blackjack().bias(), -100, 100),
+                        r.bool("blackjack.needs-support", d.blackjack().needsSupport())),
                 new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
                         100)));
     }

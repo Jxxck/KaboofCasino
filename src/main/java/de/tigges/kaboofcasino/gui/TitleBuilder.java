@@ -3,7 +3,9 @@ package de.tigges.kaboofcasino.gui;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.ShadowColor;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 
 /**
  * Composes a chest title out of art glyphs, spaces and positioned text (render.md 5.1). The client draws the title
@@ -59,6 +61,32 @@ public final class TitleBuilder {
     public TitleBuilder text(String anchor, String text, TextColor color) {
         GuiLayout.Anchor a = layout.anchor(anchor);
         return text(text, a.x(), a.y(), color, a.align());
+    }
+
+    /**
+     * Draws {@code text} at a named anchor, optionally bold (the client advances one pixel more per character) and
+     * with the client's text shadow (a style shadow colour is drawn even in a chest title, which itself has none:
+     * {@code Font.getShadowColor}; colour x 0.25 like {@code drawShadow}).
+     */
+    public TitleBuilder text(String anchor, String text, TextColor color, boolean bold, boolean shadow) {
+        GuiLayout.Anchor a = layout.anchor(anchor);
+        int w = layout.width(text) + (bold ? text.codePointCount(0, text.length()) : 0);
+        int start = switch (a.align()) {
+            case LEFT -> a.x();
+            case CENTER -> a.x() - w / 2;
+            case RIGHT -> a.x() - w;
+        };
+        moveTo(start);
+        Component c = Component.text(text).font(layout.textFont(a.y())).color(color);
+        if (bold) {
+            c = c.decorate(TextDecoration.BOLD);
+        }
+        if (shadow) {
+            c = c.shadowColor(ShadowColor.shadowColor(0xFF000000 | (color.value() & 0xFCFCFC) >> 2));
+        }
+        out.append(c);
+        pen += w;
+        return this;
     }
 
     /** Draws an art glyph at the x of a named anchor. */

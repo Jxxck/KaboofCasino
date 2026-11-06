@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Every pack key the plugin's code names literally resolves in the built pack: item models
  * ({@code "kaboofcasino:..."}, {@code "roulettecasino:..."} string literals that are complete keys) and sound
- * events ({@code sound(world, "<event>", ...)}). Keys built at run time are checked by the rigs' own tests.
+ * events ({@code sound(world, "<event>", ...)}, {@code schedule(at, "<event>", ...)}). Keys built at run time are checked by the rigs' own tests.
  */
 class PackKeysTest {
 
@@ -62,7 +62,8 @@ class PackKeysTest {
     void soundEventsExist() throws IOException {
         JsonObject sounds = JsonParser.parseString(new String(PackFiles.all().get(
                 "assets/roulettecasino/sounds.json"), StandardCharsets.UTF_8)).getAsJsonObject();
-        Pattern call = Pattern.compile("sound\\(world, \"([a-z_]+)\"");
+        // sound(world, "<event>", ...) and the blackjack's schedule(at + n, "<event>", ...)
+        Pattern call = Pattern.compile("(?:sound\\(world|schedule\\([a-z0-9 +]+), \"([a-z_]+)\"");
         List<String> missing = new ArrayList<>();
         int checked = 0;
         for (String src : sources()) {

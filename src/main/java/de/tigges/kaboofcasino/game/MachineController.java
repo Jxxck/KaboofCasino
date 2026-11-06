@@ -80,20 +80,7 @@ public abstract class MachineController implements MachineGame {
             m.actionBar(player, busyMessage());
             return;
         }
-        if (!Usability.usable(player)) {
-            m.actionBar(player, Usability.creativeOrSpectator(player) ? Msg.ERROR_CREATIVE : Msg.ERROR_NOT_USABLE);
-            return;
-        }
-        if (!player.hasPermission("kaboofcasino.use")) {
-            m.actionBar(player, Msg.ERROR_NO_PERMISSION);
-            return;
-        }
-        if (!ctx.packs().hasPack(player.getUniqueId())) {
-            m.send(player, Msg.ERROR_NO_PACK);
-            return;
-        }
-        if (ctx.ledger().blocked(player.getUniqueId())) {
-            m.send(player, Msg.ERROR_INTERNAL, Messages.text("code", "LEDGER"));
+        if (!mayOpen(player)) {
             return;
         }
         if (claimant != null && !claimant.equals(player.getUniqueId()) && claimantActive()) {
@@ -107,7 +94,29 @@ public abstract class MachineController implements MachineGame {
         }
     }
 
-    private boolean claimantActive() {
+    /** The player-side checks before any menu opens (usable, permission, pack, readable ledger); tells him why not. */
+    protected boolean mayOpen(Player player) {
+        Messages m = ctx.messages().get();
+        if (!Usability.usable(player)) {
+            m.actionBar(player, Usability.creativeOrSpectator(player) ? Msg.ERROR_CREATIVE : Msg.ERROR_NOT_USABLE);
+            return false;
+        }
+        if (!player.hasPermission("kaboofcasino.use")) {
+            m.actionBar(player, Msg.ERROR_NO_PERMISSION);
+            return false;
+        }
+        if (!ctx.packs().hasPack(player.getUniqueId())) {
+            m.send(player, Msg.ERROR_NO_PACK);
+            return false;
+        }
+        if (ctx.ledger().blocked(player.getUniqueId())) {
+            m.send(player, Msg.ERROR_INTERNAL, Messages.text("code", "LEDGER"));
+            return false;
+        }
+        return true;
+    }
+
+    protected boolean claimantActive() {
         Player p = Bukkit.getPlayer(claimant);
         return p != null && MenuService.openMenu(p) instanceof GameMenu menu && menu.controller() == this
                 && menu.stillValid(p);

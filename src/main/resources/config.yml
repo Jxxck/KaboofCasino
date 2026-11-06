@@ -106,6 +106,16 @@ roulette:
   idle-light-ticks: 0
   idle-light-range: 16
 
+blackjack:
+  # Blackjack (6 Decks, neu gemischt unter 60 Karten, Croupier steht auf allen 17, Verdoppeln, Blackjack 3:2).
+  # Ausrichtung der Karten wie die Admin-Einstellung des Mods: 0 = faires Kartenschlitten (RTP ~99,5 % bei bester
+  # Strategie). +1..+100 begünstigt die Spieler, -1..-100 den Croupier (bei jeder Karte mit dieser Stärke die
+  # passendere der zwei obersten Karten). Eine Gewinnchance gibt es beim Blackjack im Mod nicht.
+  bias: 0
+  # true: mindestens eines der acht Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
+
 lights:
   # Leerlauf-Lichter aller Automaten zusammen: höchstens so viele Updates pro Tick (reihum). Jedes Update schickt
   # alle Lampenfarben eines Automaten an alle Spieler in der Nähe; so bleibt der Verkehr begrenzt, egal wie viele

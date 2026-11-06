@@ -53,9 +53,9 @@ public final class MachineService {
     }
 
     /** A refused placement and, for {@link PlaceResult#CHUNK_BORDER}, where to move the machine (player-relative). */
-    public record Placement(PlaceResult result, String direction) {
+    public record Placement(PlaceResult result, String direction, int blocks) {
         static Placement of(PlaceResult result) {
-            return new Placement(result, null);
+            return new Placement(result, null, 0);
         }
     }
 
@@ -141,7 +141,8 @@ public final class MachineService {
         // every part in one chunk: the record lives in the anchor chunk, verify/remove never load a neighbour
         int[] fit = type.chunkFit(anchor, facing);
         if (fit != null) {
-            return new Placement(PlaceResult.CHUNK_BORDER, direction(player.getFacing(), fit));
+            return new Placement(PlaceResult.CHUNK_BORDER, direction(player.getFacing(), fit),
+                    Math.max(Math.abs(fit[0]), Math.abs(fit[1])));
         }
         for (Pos p : carriers) {
             if (p.y() < world.getMinHeight() || p.y() >= world.getMaxHeight()) {
@@ -176,7 +177,9 @@ public final class MachineService {
                 }
             }
         }
-        if (!supportOk(type, supported, bottom, config.get().roulette().needsSupport())) {
+        boolean tableNeedsSupport = type == MachineType.BLACKJACK_TABLE ? config.get().blackjack().needsSupport()
+                : config.get().roulette().needsSupport();
+        if (!supportOk(type, supported, bottom, tableNeedsSupport)) {
             return Placement.of(PlaceResult.NO_SUPPORT);
         }
         if (type == MachineType.SLOT_MACHINE && slotCrowded(anchor, facing)) {
@@ -241,13 +244,13 @@ public final class MachineService {
 
     /**
      * Support below the bottom row: every cell for machines with {@link MachineType#needsSupport()}; for the roulette
-     * table at least one cell when {@code roulette.needs-support}, none otherwise (the mod).
+     * and blackjack tables at least one cell when their {@code needs-support} is on, none otherwise (the mod).
      */
-    static boolean supportOk(MachineType type, int supported, int bottomCells, boolean rouletteNeedsSupport) {
+    static boolean supportOk(MachineType type, int supported, int bottomCells, boolean tableNeedsSupport) {
         if (type.needsSupport()) {
             return supported == bottomCells;
         }
-        return !rouletteNeedsSupport || supported >= 1;
+        return !tableNeedsSupport || supported >= 1;
     }
 
     /**
@@ -584,7 +587,10 @@ public final class MachineService {
             case LOGOUT_SPOT -> Msg.MACHINE_LOGOUT_SPOT;
             case PLACED -> null;
         };
-        if (msg == Msg.MACHINE_CHUNK_BORDER) {
+        if (msg == Msg.MACHINE_CHUNK_BORDER && placement.blocks() > 1) {
+            messages.get().actionBar(player, Msg.MACHINE_CHUNK_BORDER_FAR, Messages.text("direction",
+                    placement.direction()), Messages.text("blocks", Integer.toString(placement.blocks())));
+        } else if (msg == Msg.MACHINE_CHUNK_BORDER) {
             messages.get().actionBar(player, msg, Messages.text("direction", placement.direction()));
         } else if (msg != null) {
             messages.get().actionBar(player, msg);

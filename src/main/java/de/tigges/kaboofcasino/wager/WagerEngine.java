@@ -3,6 +3,7 @@ package de.tigges.kaboofcasino.wager;
 import de.tigges.kaboofcasino.util.Threads;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.LongSupplier;
@@ -52,12 +53,31 @@ public final class WagerEngine {
         }
     }
 
-    /** What a game asks to commit. The outcome is already drawn; the payout is fixed. */
+    /**
+     * What a game asks to commit. DECIDED: the outcome is already drawn and the payout fixed. PLAYING: the payout is
+     * what the hand pays if it is settled now ({@link RoundState#PLAYING}); the game revises it with {@link #revise}.
+     */
     public record Request(UUID machine, String game, ItemAmount stake, List<ItemAmount> payout, long endsMillis,
-                          String detail) {
+                          String detail, RoundState state) {
         public Request {
             payout = List.copyOf(payout);
+            Objects.requireNonNull(state, "state");
         }
+
+        public Request(UUID machine, String game, ItemAmount stake, List<ItemAmount> payout, long endsMillis,
+                       String detail) {
+            this(machine, game, stake, payout, endsMillis, detail, RoundState.DECIDED);
+        }
+    }
+
+    /** Result of {@link #revise}. */
+    public enum Revision {
+        /** The records were replaced (and the extra stake taken) in one ledger write. */
+        DONE,
+        /** At least one record is no longer open (settled by quit, death, stop or the watchdog): nothing changed. */
+        GONE,
+        /** The extra stake is not in the storage slots: nothing changed. */
+        NOT_ENOUGH
     }
 
     /** Settings the engine reads per call (config reloads apply to the next round). */
@@ -152,7 +172,7 @@ public final class WagerEngine {
         Ledger next = account.ledger();
         for (Request request : requests) {
             RoundRecord round = new RoundRecord(UUID.randomUUID(), request.machine(), request.game(),
-                    RoundState.DECIDED, request.stake(), request.payout(), now, request.endsMillis(),
+                    request.state(), request.stake(), request.payout(), now, request.endsMillis(),
                     request.detail());
             rounds.add(round);
             next = next.withRound(round);
@@ -165,6 +185,36 @@ public final class WagerEngine {
             sink.started(account.id(), account.name(), round);
         }
         return new Committed(rounds);
+    }
+
+    /**
+     * Replaces open records (same ids) and takes {@code extra} plain items in one tick and one ledger write, or
+     * changes nothing: a PLAYING hand's new stand payout after a decision, and the blackjack double down (the same
+     * stakes again, server.md 1.2 "any mid-round stake is the same atomic step"). The double is the game's rule, so
+     * neither {@code bets.max-stake} nor the owed list applies to it (the mod checks neither,
+     * {@code BlackjackTableBlockEntity.takeExtraStake}).
+     */
+    public Revision revise(Account account, List<RoundRecord> revised, List<ItemAmount> extra) {
+        Threads.requireMain();
+        Ledger next = account.ledger();
+        for (RoundRecord r : revised) {
+            if (next.round(r.id()).isEmpty()) {
+                return Revision.GONE;
+            }
+            next = next.withoutRound(r.id()).withRound(r);
+        }
+        List<ItemAmount> merged = ItemAmount.merge(extra);
+        for (ItemAmount need : merged) {
+            if (account.countPlain(need.item()) < need.count()) {
+                return Revision.NOT_ENOUGH;
+            }
+        }
+        if (!merged.isEmpty()) {
+            Account.TakePlan takes = account.planTake(merged);
+            account.applyTake(takes);
+        }
+        account.ledger(next);
+        return Revision.DONE;
     }
 
     /**

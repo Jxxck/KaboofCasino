@@ -16,7 +16,7 @@ import java.util.Objects;
  * @param slot     slot machine settings
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
-                           Slot slot, Slot wheel, Slot plinko, Slot roulette, Lights lights) {
+                           Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Lights lights) {
 
     /**
      * @param enabled        send the pack at all
@@ -101,6 +101,17 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     public record Slot(int winChance, int idleLightTicks, int idleLightRange, boolean needsSupport) {
     }
 
+    /**
+     * {@code blackjack:}.
+     *
+     * @param bias         the mod's admin setting "which side the cards favour" (-100..100, default 0 = a fair
+     *                     shoe; {@code CasinoSettings.bias}, {@code BlackjackShoe.drawFavouring}); the win chance does
+     *                     not apply to blackjack in the mod
+     * @param needsSupport at least one of the eight cells needs solid ground below (false = the mod)
+     */
+    public record Blackjack(int bias, boolean needsSupport) {
+    }
+
     public static final List<String> DEFAULT_BET_ITEMS = List.of(
             "minecraft:coal", "minecraft:coal_block",
             "minecraft:copper_ingot", "minecraft:copper_block",
@@ -124,5 +135,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Slot(-1, 4, 16, true),
             new Slot(-1, 4, 16, true),
             new Slot(-1, 0, 16, true),
+            new Blackjack(0, true),
             new Lights(4));
 }

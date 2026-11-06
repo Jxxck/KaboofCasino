@@ -194,7 +194,9 @@ class PackBuildTest {
         JsonObject de = Json.parse(entries.get("assets/roulettecasino/lang/de_de.json"));
         assertEquals("Spielautomat", de.get("block.roulettecasino.slot_machine").getAsString());
         assertTrue(de.has("subtitles.roulettecasino.slot_payout"));
-        assertTrue(de.keySet().stream().noneMatch(k -> k.contains("blackjack")));
+        // the built games only: blackjack's texts are in, poker's are not yet
+        assertEquals("Blackjack-Tisch", de.get("block.roulettecasino.blackjack_table").getAsString());
+        assertTrue(de.keySet().stream().noneMatch(k -> k.contains("poker")));
     }
 
     @Test

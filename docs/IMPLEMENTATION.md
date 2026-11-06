@@ -1,8 +1,8 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 5: blackjack)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
-GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
-and 2 built, how the next games plug in, and the pitfalls found on the way.
+GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1,
+2, 3 and 5 built, how the next games plug in, and the pitfalls found on the way.
 
 Licence: MineVegas Casino is MIT with an attribution condition. Every public description must link
 https://www.curseforge.com/minecraft/mc-mods/minevegas-casino (it is in `pack.mcmeta`, `credits/CREDITS.md` in the
@@ -51,6 +51,7 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `game.wheel` | `FortuneWheelGame`, `FortuneWheelSpin`, `FortuneWheelBlur` (verbatim ports), `WheelController`, `WheelRig`, `WheelMenu`, `WheelGeometry` |
 | `game.plinko` | `PlinkoGame`, `PlinkoDrop`, `PlinkoLights` (verbatim ports), `PlinkoController`, `PlinkoRig`, `PlinkoMenu` |
 | `game.roulette` | `RouletteSpin` (verbatim port), `RouletteGame` (colours, payouts, forced pools), `RouletteController`, `RouletteRig`, `RouletteMenu` (9 slots, one colour), `RoulettePanel` |
+| `game.blackjack` | verbatim ports (`BlackjackRound`, `BlackjackShoe` + `copy()`, `BlackjackCards`, `BlackjackBias`, `BlackjackLayout`, `BlackjackCardMotion`, `BlackjackCardGeometry`, `BlackjackTableState`, `BlackjackFootprint`, `Dealer*`), `ShoeRandom`, `BlackjackStand` (stand result on a shoe copy), `BlackjackPayout`, `BlackjackController` (hand, PLAYING records, timeout/quit/death stand), `BlackjackRig` + `BlackjackDealerRig` + `BlackjackCardRig`, `BlackjackPanel`, `BlackjackBetMenu`, `BlackjackRoundMenu`, `BlackjackSnapshot` |
 | `storage` | SQLite: `Database` (1 connection, 1 thread, migrations), `RoundLog` (RoundSink + stats), `MachineIndex` |
 | `command` | `/casino` (Brigadier `BasicCommand`) |
 | `pack-tool/` | builds the pack (see 6) |
@@ -147,6 +148,18 @@ The forward has to exist for that mode.
   (`MachineGame.ownsRound`) are settled (TIMEOUT): chunk unloaded mid-round, plugin reload. A machine owns a round
   only while its controller ticked within 2 s (`Heartbeat`) and now < the round's end + 60 s, so a stuck or frozen
   machine cannot hold a stake forever.
+- **PLAYING records** (blackjack, step 5): a hand with open decisions. Its payout is always what the hand pays if it
+  is settled *now* with the mod's timeout rule (stand), finished with the cards the table's shoe would deal next
+  (`BlackjackStand` on `BlackjackShoe.copy()`). The game computes the new value *before* each decision and rewrites
+  the records with `WagerEngine.revise` (same ids; one ledger write; the double down takes its second stake in the
+  same step, all or nothing: `DONE` / `GONE` / `NOT_ENOUGH`); only then the live hand deals the card. Quit, stop,
+  death, the watchdog and the join after a crash therefore need no game logic: they settle the stored payout, which
+  is exactly what the table then shows (the live hand stands as soon as its owner is gone). The double down is the
+  game's rule: neither `bets.max-stake` nor the owed list stops it (the mod checks neither).
+- Ledger version 2 = PLAYING exists; it is written only while such a record is open (`LedgerCodec.version`), so a
+  ledger without one stays version 1 and readable by 0.3.x; version-1 ledgers read unchanged.
+- The round log row gets the final stake, payout and detail at settlement (a blackjack hand changes them while it
+  runs; for the other games they are unchanged).
 - An unreadable ledger is never guessed: CRITICAL log, nothing changes, the casino is blocked for that player.
 - Model check: `WagerEngineTest.everyInterleavingOfSaveCrashAndSettleIsConsistent` runs all 6^5 orders of commit,
   save, settle, crash, quit, join and checks conservation and at-most-once payment.
@@ -178,6 +191,11 @@ The forward has to exist for that mode.
   the nearest spot with two free cells on safe ground (the machine's front first, up to 4 blocks around and 3 up or
   down; else the highest block above), with a WARN log (`SafetyListener`, `MachineService.rescue`, `Rescue`).
 - Cells with any fluid state (water, lava, waterlogged blocks, seagrass, kelp, bubble columns) are refused.
+- Chunk fit (`MachineType.chunkFit`): a machine with a facing moves along its width first, then along its depth, by
+  the smallest shift that fits (3-wide machines: always one block sideways; the 4 x 2 blackjack table: up to two
+  blocks sideways or one forward/back; "stell sie 2 Blöcke weiter nach links", `machine.chunk-border-far`).
+- Tables without the mod's support rule (roulette, blackjack) need at least one supported cell while their
+  `needs-support` is on (default); the upright machines need every bottom cell supported.
 - Breaking (owner/OP, survival): the item goes into the breaker's inventory, only if it is full at his feet (never
   at the anchor, which may hang over lava or the void); creative breaks drop nothing.
 - `verify` skips carriers in unloaded chunks and checks the rest; `remove` never loads a chunk (carriers in unloaded
@@ -296,11 +314,13 @@ provider definitions from the 26.3 client jar, see its README).
 3. A `MachineController` subclass (one per machine: `running/busyMessage/newMenu` plus
    `spawn/despawn/tick/removed/ownsRound/checkRig`); its menu extends `GameMenu` (or `StakeMenu` for three bet
    slots); register it in the `machines.games(...)` switch in `KaboofCasinoPlugin`.
-4. Rounds go through `WagerEngine.commitAll` via `MachineController.commit`. Instant games (roulette next): decide →
-   commit → animate → `settleRound(NORMAL)` per record at the mod's payout tick, exactly like the wheel. Blackjack/poker need `RoundState.PLAYING` with the
-   card order and decisions in the record and the mod's timeout rule (stand/fold) in the settlement of QUIT/STOP/
-   JOIN_RECOVERY/TIMEOUT; double down = a second take + record update in one tick. Derby: `ENROLLED` (refund on
-   quit/death) → `DECIDED` at the race start. Bump `LedgerCodec.VERSION` and keep reading v1.
+4. Rounds go through `WagerEngine.commitAll` via `MachineController.commit`. Instant games: decide → commit →
+   animate → `settleRound(NORMAL)` per record at the mod's payout tick, exactly like the wheel. Card games
+   (blackjack, poker next): `RoundState.PLAYING` records whose payout is the timeout rule's result (stand/fold)
+   computed on a copy of the shoe before every decision, rewritten with `WagerEngine.revise` (a mid-round stake goes
+   into the same call); see `BlackjackController`, `BlackjackStand`, `ShoeRandom`. Poker can reuse the shoe copy
+   and the PLAYING record as they are. Derby: `ENROLLED` (refund on quit/death) → `DECIDED` at the race start (a
+   new state means a new ledger version written only while such a record is open, see `LedgerCodec.version`).
 5. Pack: a `<Game>Pack` + `<Game>Gui` class in the pack tool; GUI art glyphs go through `GuiFont.art/grid` with their
    window position, text positions are anchors (`GuiFont.anchor`, drawn with `TitleBuilder.text(anchor, …)`). Check
    `slot-preview-<W>x<H>.png`-style previews at 480×270, 456×256 and 427×240 (copy
@@ -441,6 +461,82 @@ Look:
 - The colour of a pocket is the mod's parity rule (0 green, odd red, even black), and the converted rotor shows
   exactly that; the ball comes to rest over pocket `3 x frame` (`RouletteGeometryTest`).
 
+### Step 5 (blackjack)
+
+Rules, timing, texts and sounds are the mod's: the pure classes are verbatim ports (`BlackjackRound`, `BlackjackShoe`,
+`BlackjackCards`, `BlackjackBias`, `BlackjackLayout`, `BlackjackCardMotion`, `BlackjackCardGeometry`,
+`BlackjackTableState`, `BlackjackFootprint`, `DealerKinematics`, `DealerIdleAnimation`, `DealerPlayAnimation`,
+`DealerPlayPoses`): 6 decks, reshuffle at the deal below 60 cards, peek with A/10, S17, double on any two cards (one
+card), no split/insurance/surrender, 3:2, natural vs natural push, player 21 beats dealer 21, 600-tick turn timer
+that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound plan and confetti. Differences:
+
+- **RTP** (player following the mod's own chart, `BlackjackBias.bestPlay`; `tools/rtp/BlackjackRtp.java`):
+  exact first round of a fresh 6-deck shoe 0.995618 per item staked (0.995196 per base stake, EV -0.480 %);
+  infinite deck 0.994067 per base stake (games.md's -0.593 %); Monte Carlo of the mod's exact shoe with the 60-card
+  cut over 1.8e10 rounds **0.995453 ± 0.0000076 per item staked** (0.995014 ± 0.0000083 per base stake), win rate
+  0.4362. The mod's table says RETURN 0.995, WON 0.436 (bias 0). `BlackjackRtpSimulationTest` plays 10^7 rounds
+  through `BlackjackRound`/`BlackjackShoe`/`FairPayout` (0.99541 ± 0.00032 per item, outcome counts identical to the
+  independent tool's replay, 34 s). Odd stakes change nothing in expectation (a blackjack pays exactly 2.5 n on
+  average). The plugin keeps one shoe per loaded table like the mod (not saved), so the real value lies between the
+  long-run 0.99545 and the fresh-shoe 0.99562.
+- One player per table, as in the mod: someone else clicking a running table or a table whose owner has the bet menu
+  open gets "<name> spielt an diesem Tisch."; a stale claim is taken over.
+- Bets are a selection over the three bet slots (nothing real lies in the menu); at DEAL every filled slot becomes
+  one PLAYING record (see section 3). Each stake is paid in its own item; an odd blackjack stake pays 2.5 n as floor or
+  ceil with the fair roll of its slot, derived from the round's seed (the mod: `level.getRandom().nextInt(2)`).
+- Hands that end without their owner (quit, kick, stop, crash, death, chunk unload) are settled as **stand**
+  (PLAN decision 2) with the cards the shoe would deal: the records always hold that payout, and the live hand
+  stands at once when the owner is gone, so the table shows what was paid. The mod lets the round run on to its
+  600-tick timeout and, after a restart or chunk unload, refunds an undecided wager. A table removed while loaded
+  (admin) refunds an undecided hand, as in the mod.
+- The shoe is the mod's (`new Random(seed)` Fisher-Yates, cards from the end) seeded from the casino generator; its
+  random is `ShoeRandom`, java.util.Random's exact LCG with a copyable state, because the stand payout is predicted on
+  a copy of the shoe (`BlackjackShoe.copy()`, the one plugin addition to a verbatim class; `BlackjackStandTest`
+  checks prediction = table for 60 000 random hands with random decisions, with and without bias).
+- The double down takes the same stakes again from the storage slots (plain items, per item kind, as the mod) and
+  ignores `bets.max-stake` and the owed list like the mod; not enough items: "Du hast nicht genug Gegenstände zum
+  Verdoppeln.", nothing changes.
+- A decision in danger is refused and closes the menu (the hand runs on and times out to stand); the mod has no
+  danger rule.
+- The bias ("which side the cards favour", the Croupier's Hand setting) is `blackjack.bias` (default 0); exchange
+  rules and per-table settings are not built.
+- The camera turn toward the table (the mod's client turns it over 0.6 s) is impossible on a vanilla client.
+- Look (`BlackjackRig`, `BlackjackDealerRig`, `BlackjackCardRig`; pack `BlackjackPack`, `BlackjackDealerModel`,
+  `BlackjackCardModels`): the table is the mod's eight block models `blackjack_0..7` as item displays at the cell
+  centres (view range 2.0); the dealer is eight displays (torso, head, upper arms, forearms, legs) generated from
+  `BlackjackDealerModel.createLayer` with the 26.3 box-UV rules and the five texture layers composited in draw order
+  (cutout rule; the per-layer 0.18 px inflation is lost), posed on the server with the verbatim
+  `DealerIdleAnimation`/`DealerPlayAnimation`/`DealerKinematics` (idle phase from the anchor, all gestures and the
+  turn toward the player's spot); one display per card from `BlackjackCardMotion.pose` (53 two-sided models from
+  `blackjack_cards.png`, padded 350 → 352 px) plus up to seven shoe cards while shuffling. Cadence: moving cards every
+  tick (interpolation 1), dealer gestures every tick while a player is within 64 blocks, idle every 4 ticks
+  (interpolation 5) only within 32 blocks; unchanged transformations are not resent. Idle 17 entities, one more per
+  visible card. All displays stand at the anchor's bottom centre with a 5.2 x 2.25 culling box covering table,
+  dealer and every card pose in all facings (`BlackjackGeometryTest`). The dealer's light is the renderer's
+  `dealerLight` (the anchor and the two cells behind the table), refreshed every 40 ticks; item lighting instead of
+  entity lighting.
+- Spectator panel: a text display above the table (view range 10 blocks, hard cut instead of the 7.5-10 fade) with
+  head + name, the stakes as sprites, "DU n" / "CROUPIER n" (the 22-tick appear delay and flip hiding of
+  `extractPanel`) and the result in the mod's colours, using the mod's translation keys (the pack's language file);
+  no felt frame or 3D item icons.
+- GUIs (`BlackjackBetMenu`, `BlackjackRoundMenu`; pack `BlackjackGui*`): the bet view is the mod's 366 x 266 art
+  recomposed like the other games (three bet frames on grid slots 29/31/33, AUSTEILEN 72 x 14 over 48-50 instead of
+  72 x 18, bets book 45, the payout panel minus 15 plain columns, labels bold with shadow via a style
+  `shadow_color`). The mod never draws `place_bet` or `header_*`, so neither do we. The round view is a second chest
+  (new title, opened in the DEAL click) carrying the mod's 160 x 196 panel rebuilt 288 px wide: dealer cards in slots
+  0-8, player cards 18-26 (oversized card items; 27 px step up to five cards, 18 px up to nine), totals 17/35,
+  stakes 27-32 (a doubled stake shows the base count plus "x2": a slot cannot show 128), timer bar 39, status/result
+  40, KARTE / HALTEN / DOPPELN 52 x 17 over 45-47 / 48-50 / 51-53 (DOPPELN greyed when the hand cannot double or the
+  items are missing). The mod's timing: cards appear 22 ticks after the deal, the hole card's face 8 ticks after the
+  reveal, buttons locked 6 ticks after a press. It is a chest in the middle of the screen, not a side panel, and the
+  inventory stays visible (inert); keyboard shortcuts do not exist in a chest, so the tooltips have only the first
+  line of `*_tip`. The controller refreshes the open round menu every tick (only changed slots are sent) and closes
+  it when the hand is over; a right-click by the owner reopens it during the hand.
+- Recipe: the mod's (`WWW/GBG/PRP` with the Croupier's Badge), unlocked by holding a badge. Badges come from hiring a
+  croupier (step 8); until then tables come from `/casino give blackjack_table` (the badge is giveable too).
+- Placement (permadeath deviation, like the roulette): at least one of the eight cells needs a sturdy block below
+  (`blackjack.needs-support: true`; `false` = the mod).
+
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
@@ -451,7 +547,24 @@ parts inside the 3x3 footprint at every reachable angle/position), `PackKeysTest
 (`build/reports/gui/{slot,wheel,plinko,roulette}-preview-<W>x<H>.png`). Step 3 adds `RouletteOddsTest` (36/37 on
 every colour for every stake, the forced pools with 100/1800 parts, the plan always ending on the drawn pocket,
 10^7-round simulations per colour), `RouletteGeometryTest`, `RoulettePackKeysTest` and the roulette chunk-fit cases
-in `PlacementRulesTest`. Game-port delivery from outside the JVM:
+in `PlacementRulesTest`. Step 5 adds `BlackjackRtpSimulationTest` (10^7 rounds through the shipped classes, the
+exact outcome counts of `tools/rtp/BlackjackRtp.java`'s replay, rigged shoes for every resolve rule),
+`BlackjackStandTest` (stand prediction = table for 60 000 random hands), `ShoeRandomTest`, `BlackjackPayoutTest`,
+`WagerEngineReviseTest`, `BlackjackPlacementTest` (the mod's part order, chunk fit), `BlackjackGeometryTest` /
+`BlackjackModelsTest` (dealer and card transforms against an independent ModelPart/PoseStack evaluation, culling
+box), `BlackjackPackKeysTest`, `BlackjackPanelTest`, `BlackjackRoundMenuTest`, `BlackjackGuiTest` and
+`BlackjackGuiPreviewTest` (`build/reports/gui/blackjack-*-preview-<W>x<H>.png`). Blackjack on the test instance
+(table placed at 29 -58 6 from 29.5 -57 8.5; bet slots 29/31/33, AUSTEILEN 49, KARTE 46, HALTEN 49, DOPPELN 52;
+`blackjack.bias: 100` + `/casino reload` makes winning hands likely for the death/owed cases):
+
+```bash
+$T/ptest.sh rcon "casino give blackjack_table Alice" "give Alice diamond 20" "tp Alice 29.5 -57 8.5 180 0"
+$T/ptest.sh b Alice hotbar 0; $T/ptest.sh b Alice place 29 -58 6 up          # place
+$T/ptest.sh bx Alice 5 OPEN place 29 -57 6 south                           # bet menu
+$T/ptest.sh b Alice click 81 right; $T/ptest.sh b Alice click 49            # 1 diamond, AUSTEILEN
+$T/ptest.sh b Alice click 46                                               # KARTE (52 DOPPELN, 49 HALTEN)
+$T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice       # PLAYING record with its stand payout
+``` Game-port delivery from outside the JVM:
 `python3 -I testing/gameport-test.py <port> <sha1>` (GET/HEAD/404/405, status ping, legacy ping, garbage, a silent
 client; refuses the live ports). Smoke test on the default PostMarkt test instance
 (`PostMarkt/testing/ptest.sh`, README there) with the pack-aware bot of this repo:
@@ -459,7 +572,7 @@ client; refuses the live ports). Smoke test on the default PostMarkt test instan
 ```bash
 T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing
 $T/ptest.sh uninstall LodServerSupport DHSupport PostMarkt   # clean instance (done 2026-11-06)
-$T/ptest.sh install build/libs/KaboofCasino-0.3.0.jar
+$T/ptest.sh install build/libs/KaboofCasino-0.4.0.jar
 # plugins/KaboofCasino/config.yml on the instance: url-host 127.0.0.1, url-port 25572 (serve minecraft-port)
 #   or serve http-port with port 25581 + bind 127.0.0.1; slot.win-chance 100 for forced wins
 $T/ptest.sh start
@@ -481,6 +594,12 @@ testing/craft-test.sh                                                    # craft
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
+- Step 5 ships as `KaboofCasino-0.4.0.jar`: remove `KaboofCasino-0.3.0.jar`. The live `config.yml` gets `blackjack:`
+  (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `blackjack.*`, `gui.blackjack.*` and
+  `machine.chunk-border-far` keys; no database migration. Ledgers become version 2 only while a blackjack hand is
+  open (0.3.0 cannot read such a ledger: a rollback is safe once no hand is open, which a clean stop guarantees).
+  Tables come from `/casino give blackjack_table` until the croupier (step 8) hands out badges; the recipe is
+  registered and unlocks with a badge. The live `rounds.max-open: 4` allows one three-slot hand plus one more stake.
 - Step 3 ships as `KaboofCasino-0.3.0.jar`: remove `KaboofCasino-0.2.0.jar`. The live `config.yml` gets `roulette:`
   (natural odds, `needs-support: true`) and `machines.refuse-logout-spots: true` merged in; `casino.db` migrates to
   schema 2 (`logouts`) at the first start. Logout spots are recorded from then on: players who logged out before the

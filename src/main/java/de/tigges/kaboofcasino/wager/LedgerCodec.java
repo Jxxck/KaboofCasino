@@ -13,12 +13,14 @@ import org.bukkit.persistence.PersistentDataType;
 /**
  * Player PDC <-> {@link Ledger}. One key {@code kaboofcasino:ledger} holds a container
  * {@code {v, rounds: [..], owed: [{item, count}]}}; it is written in one {@code set} and removed when empty.
- * Every release must still read records written by older versions ({@code v}). A record that cannot be decoded is
+ * Every release must still read records written by older versions ({@code v}; version 1 had only DECIDED records,
+ * version 2 adds PLAYING). A record that cannot be decoded is
  * never guessed: {@link CorruptLedgerException} stops all casino actions for that player.
  */
 public final class LedgerCodec {
 
-    public static final int VERSION = 1;
+    /** 2: {@link RoundState#PLAYING} (blackjack); records of version 1 read unchanged. */
+    public static final int VERSION = 2;
     private static final NamespacedKey V = Keys.key("v");
     private static final NamespacedKey ROUNDS = Keys.key("rounds");
     private static final NamespacedKey OWED = Keys.key("owed");
@@ -87,7 +89,7 @@ public final class LedgerCodec {
         }
         PersistentDataAdapterContext ctx = pdc.getAdapterContext();
         PersistentDataContainer root = ctx.newPersistentDataContainer();
-        root.set(V, PersistentDataType.INTEGER, VERSION);
+        root.set(V, PersistentDataType.INTEGER, version(ledger));
         List<PersistentDataContainer> rounds = new ArrayList<>();
         for (RoundRecord r : ledger.rounds()) {
             PersistentDataContainer c = ctx.newPersistentDataContainer();
@@ -105,6 +107,14 @@ public final class LedgerCodec {
         root.set(ROUNDS, PersistentDataType.LIST.dataContainers(), rounds);
         root.set(OWED, PersistentDataType.LIST.dataContainers(), containers(ctx, ledger.owed()));
         pdc.set(Keys.LEDGER, PersistentDataType.TAG_CONTAINER, root);
+    }
+
+    /**
+     * The lowest version that can hold {@code ledger}: 2 only while a PLAYING record is open, so a ledger without one
+     * stays readable by 0.3.x (a rollback blocks only players with an open blackjack hand from a crash).
+     */
+    static int version(Ledger ledger) {
+        return ledger.rounds().stream().anyMatch(r -> r.state() == RoundState.PLAYING) ? 2 : 1;
     }
 
     private static PersistentDataContainer container(PersistentDataAdapterContext ctx, ItemAmount a) {
