@@ -52,7 +52,9 @@ public final class ConfigLoader {
             warnings.add(FILE + ": bets.items is empty; using the mod's 18 bet items");
             items = d.bets().items();
         }
-        CasinoConfig.Bets bets = new CasinoConfig.Bets(r.integer("bets.max-stake", d.bets().maxStake(), 1, 64), items);
+        CasinoConfig.Bets bets = new CasinoConfig.Bets(r.integer("bets.max-stake", d.bets().maxStake(), 1, 64), items,
+                r.string("bets.cap-per", d.bets().capPer(), s -> s.equals(CasinoConfig.Bets.PER_SLOT)
+                        || s.equals(CasinoConfig.Bets.PER_ROUND)));
         String mode = r.string("machines.break", d.machines().breakMode(),
                 s -> s.equals("owner") || s.equals("anyone"));
         return new CasinoConfig(pack, bets,
@@ -66,7 +68,9 @@ public final class ConfigLoader {
                         r.integer("safety.sweep-ticks", d.safety().sweepTicks(), 1, 20)),
                 new CasinoConfig.Gui(r.integer("gui.click-guard-ticks", d.gui().clickGuardTicks(), 0, 40),
                         r.integer("gui.idle-close-seconds", d.gui().idleCloseSeconds(), 0, 3600)),
-                game(r, "slot", d.slot()), game(r, "wheel", d.wheel()), game(r, "plinko", d.plinko()));
+                game(r, "slot", d.slot()), game(r, "wheel", d.wheel()), game(r, "plinko", d.plinko()),
+                new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
+                        100)));
     }
 
     private static CasinoConfig.Slot game(Reader r, String section, CasinoConfig.Slot d) {

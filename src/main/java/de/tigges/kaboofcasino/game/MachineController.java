@@ -42,6 +42,8 @@ public abstract class MachineController implements MachineGame {
     /** The player who has (or last had) the menu open; one per machine. */
     protected UUID claimant;
     protected final Heartbeat heartbeat = new Heartbeat();
+    /** Tick of the last idle light update. */
+    private long lastIdleLights = Long.MIN_VALUE / 2;
 
     protected MachineController(Machine machine, CasinoContext ctx) {
         this.machine = machine;
@@ -276,6 +278,23 @@ public abstract class MachineController implements MachineGame {
     protected Location centre(World world) {
         return new Location(world, machine.anchor().x() + 0.5, machine.anchor().y() + 1.0,
                 machine.anchor().z() + 0.5);
+    }
+
+    /**
+     * True if this machine's idle lights should be sent now: its cadence ({@code idle-light-ticks}) passed, a
+     * player is within {@code idle-light-range}, and the global {@link de.tigges.kaboofcasino.visual.LightBudget}
+     * grants it a place this tick.
+     */
+    protected boolean idleLightsDue(World world, de.tigges.kaboofcasino.config.CasinoConfig.Slot settings, long now) {
+        int every = settings.idleLightTicks();
+        if (every <= 0 || now - lastIdleLights < every || !playerNear(world, settings.idleLightRange())) {
+            return false;
+        }
+        if (!ctx.lights().grant(machine.id(), now)) {
+            return false;
+        }
+        lastIdleLights = now;
+        return true;
     }
 
     protected boolean playerNear(World world, int range) {

@@ -49,8 +49,11 @@ public final class MachineService {
 
     /** Outcome of {@link #place}. */
     public enum PlaceResult {
-        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED
+        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_LEFT, CHUNK_RIGHT, CHUNK_BORDER, PLAYER_NEAR
     }
+
+    /** Other players must keep this distance (blocks, box to box) from every carrier while a machine is placed. */
+    public static final double PLAYER_CLEARANCE = 2.0;
 
     private final Supplier<CasinoConfig> config;
     private final Supplier<Messages> messages;
@@ -121,6 +124,19 @@ public final class MachineService {
         Facing facing = Facing.towardsPlayer(player.getFacing());
         Pos anchor = Pos.of(anchorBlock);
         List<Pos> carriers = type.carriers(anchor, facing);
+        // every part in one chunk: the record lives in the anchor chunk, verify/remove never load a neighbour
+        switch (type.chunkShift(anchor, facing)) {
+            case 0 -> { }
+            case -1 -> {
+                return PlaceResult.CHUNK_LEFT;
+            }
+            case 1 -> {
+                return PlaceResult.CHUNK_RIGHT;
+            }
+            default -> {
+                return PlaceResult.CHUNK_BORDER;
+            }
+        }
         for (Pos p : carriers) {
             if (p.y() < world.getMinHeight() || p.y() >= world.getMaxHeight()) {
                 return PlaceResult.NO_SPACE;
@@ -148,8 +164,18 @@ public final class MachineService {
         if (type == MachineType.SLOT_MACHINE && slotCrowded(anchor, facing)) {
             return PlaceResult.CROWDED;
         }
-        if (!player.isOp() && underSpawnProtection(world, anchor)) {
-            return PlaceResult.DENIED;
+        if (!player.isOp()) {
+            for (Pos p : carriers) {
+                if (underSpawnProtection(world, p)) {
+                    return PlaceResult.DENIED;
+                }
+            }
+        }
+        for (Player other : world.getPlayers()) {
+            if (!other.equals(player) && other.getGameMode() != org.bukkit.GameMode.SPECTATOR
+                    && near(other.getBoundingBox(), carriers, PLAYER_CLEARANCE)) {
+                return PlaceResult.PLAYER_NEAR;
+            }
         }
         List<BlockState> before = new ArrayList<>();
         for (Pos p : carriers) {
@@ -205,6 +231,19 @@ public final class MachineService {
         return false;
     }
 
+    /** True if {@code box} comes within {@code distance} blocks of any carrier block (box to box). */
+    static boolean near(BoundingBox box, List<Pos> carriers, double distance) {
+        for (Pos p : carriers) {
+            double dx = Math.max(0, Math.max(p.x() - box.getMaxX(), box.getMinX() - (p.x() + 1)));
+            double dy = Math.max(0, Math.max(p.y() - box.getMaxY(), box.getMinY() - (p.y() + 1)));
+            double dz = Math.max(0, Math.max(p.z() - box.getMaxZ(), box.getMinZ() - (p.z() + 1)));
+            if (dx * dx + dy * dy + dz * dz <= distance * distance) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean underSpawnProtection(World world, Pos pos) {
         int radius = Bukkit.getSpawnRadius();
         if (radius <= 0 || !world.equals(Bukkit.getWorlds().getFirst())) {
@@ -231,14 +270,22 @@ public final class MachineService {
         machine.game().despawn();
         unregister(machine);
         if (world != null) {
+            // never load a chunk here: carriers in unloaded chunks (only old data across a chunk border) stay
             for (Pos p : machine.carriers()) {
+                if (!world.isChunkLoaded(p.chunkX(), p.chunkZ())) {
+                    Log.get().warn("{} #{}: carrier {} is in an unloaded chunk and stays a barrier",
+                            machine.type().id(), machine.record().number(), p);
+                    continue;
+                }
                 Block b = p.block(world);
                 if (b.getType() == Material.BARRIER) {
                     b.setType(Material.AIR, false);
                 }
             }
             Pos a = machine.anchor();
-            ChunkRecords.remove(world.getChunkAt(a.chunkX(), a.chunkZ()), machine.id());
+            if (world.isChunkLoaded(a.chunkX(), a.chunkZ())) {
+                ChunkRecords.remove(world.getChunkAt(a.chunkX(), a.chunkZ()), machine.id());
+            }
             if (drop != null) {
                 world.dropItemNaturally(new Location(world, a.x() + 0.5, a.y() + 0.5, a.z() + 0.5), drop);
             }
@@ -352,7 +399,7 @@ public final class MachineService {
         }
         for (Pos p : machine.carriers()) {
             if (!world.isChunkLoaded(p.chunkX(), p.chunkZ())) {
-                return true; // the other part's chunk is not loaded: cannot tell, check again later
+                continue; // that part's chunk is not loaded (old data across a chunk border): check it later
             }
             if (p.block(world).getType() != Material.BARRIER) {
                 Log.get().warn("{} #{} at {}: carrier {} is {} (no event: /fill or an exploit); machine removed",
@@ -390,9 +437,15 @@ public final class MachineService {
             case NO_SUPPORT -> Msg.MACHINE_NO_SUPPORT;
             case CROWDED -> Msg.SLOT_SPACING;
             case DENIED -> Msg.MACHINE_PLACE_DENIED;
+            case CHUNK_LEFT, CHUNK_RIGHT, CHUNK_BORDER -> Msg.MACHINE_CHUNK_BORDER;
+            case PLAYER_NEAR -> Msg.MACHINE_PLAYER_NEAR;
             case PLACED -> null;
         };
-        if (msg != null) {
+        if (msg == Msg.MACHINE_CHUNK_BORDER) {
+            messages.get().actionBar(player, msg, Messages.text("direction",
+                    result == PlaceResult.CHUNK_LEFT ? "links" : result == PlaceResult.CHUNK_RIGHT ? "rechts"
+                            : "zur Seite"));
+        } else if (msg != null) {
             messages.get().actionBar(player, msg);
         }
     }

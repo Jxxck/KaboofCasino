@@ -112,6 +112,11 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             }
 
             @Override
+            public boolean capPerRound() {
+                return config.bets().capPerRound();
+            }
+
+            @Override
             public int maxOpenRounds() {
                 return config.rounds().maxOpen();
             }
@@ -130,7 +135,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         PackSessions sessions = new PackSessions();
         sessions.required(config.pack().enabled());
         CasinoContext ctx = new CasinoContext(this, () -> config, () -> messages, engine, new CasinoRandom(), layout,
-                menus, sessions, ledger, machines, System::currentTimeMillis);
+                menus, sessions, ledger, machines, System::currentTimeMillis,
+                new de.tigges.kaboofcasino.visual.LightBudget(() -> this.config.lights().maxUpdatesPerTick()));
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
             case FORTUNE_WHEEL -> new WheelController(machine, ctx);

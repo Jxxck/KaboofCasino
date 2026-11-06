@@ -62,7 +62,13 @@ public final class WagerEngine {
 
     /** Settings the engine reads per call (config reloads apply to the next round). */
     public interface Limits {
+        /** Highest stake per bet slot, or per round if {@link #capPerRound()}. */
         int maxStake();
+
+        /** true: {@link #maxStake} covers all stakes of a round together; false: each stake (the mod). */
+        default boolean capPerRound() {
+            return false;
+        }
 
         int maxOpenRounds();
 
@@ -87,8 +93,9 @@ public final class WagerEngine {
 
     /**
      * The checks of {@link #commitAll}: owed list empty, room for one open record per stake, every item a bet item,
-     * every count >= 1, the stakes together at most {@code bets.max-stake} (PLAN decision 1: per round), and enough
-     * plain items of every item in the storage slots (stakes of the same item add up).
+     * every count >= 1, every stake (or, with {@code bets.cap-per: round}, all together) at most
+     * {@code bets.max-stake}, and enough plain items of every item in the storage slots (stakes of the same item
+     * add up).
      */
     public Refused checkAll(Account account, List<ItemAmount> stakes) {
         Ledger ledger = account.ledger();
@@ -109,9 +116,12 @@ public final class WagerEngine {
             if (stake.count() < 1) {
                 return new Refused(Refusal.BAD_COUNT, stake.item());
             }
+            if (stake.count() > limits.maxStake()) {
+                return new Refused(Refusal.MAX_STAKE);
+            }
             total += stake.count();
         }
-        if (total > limits.maxStake()) {
+        if (limits.capPerRound() && total > limits.maxStake()) {
             return new Refused(Refusal.MAX_STAKE);
         }
         for (ItemAmount need : ItemAmount.merge(stakes)) {
@@ -147,9 +157,9 @@ public final class WagerEngine {
             rounds.add(round);
             next = next.withRound(round);
         }
-        for (Request request : requests) {
-            account.take(request.stake().item(), request.stake().count());
-        }
+        // plan every take first (merged per item, nothing changes if planning fails), then apply and write the ledger
+        Account.TakePlan takes = account.planTake(requests.stream().map(Request::stake).toList());
+        account.applyTake(takes);
         account.ledger(next);
         for (RoundRecord round : rounds) {
             sink.started(account.id(), account.name(), round);

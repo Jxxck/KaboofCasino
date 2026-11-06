@@ -84,7 +84,7 @@ final class PlinkoRig {
         }
         out.add("kaboofcasino:plinko/ball");
         out.add("kaboofcasino:plinko/lights");
-        out.add("kaboofcasino:plinko/rims");
+        out.add("kaboofcasino:plinko/pockets");
         return out;
     }
 
@@ -204,7 +204,11 @@ final class PlinkoRig {
         return item;
     }
 
-    /** Pocket rims {@code gray(0.45 + 0.55 p)}; the mod draws none while every level is at most 0.01. */
+    /**
+     * The pockets: float k = level of pocket k (the pack shows the rim above 0.01 and the glow in alpha steps from
+     * 0.52 on, like {@code PlinkoRenderer.rims/glows}), colour k = the rim tint {@code gray(0.45 + 0.55 p)}. Nothing
+     * is resent while every pocket stays dark.
+     */
     void pockets(float[] levels) {
         if (rims == null) {
             return;
@@ -213,22 +217,19 @@ final class PlinkoRig {
         for (float p : levels) {
             any |= p > 0.01f;
         }
-        if (!any) {
-            if (rimsShown) {
-                rims.setItemStack(ItemStack.empty());
-                rimsShown = false;
-            }
+        if (!any && !rimsShown) {
             return;
         }
-        ItemStack item = Displays.model("kaboofcasino:plinko/rims");
+        ItemStack item = Displays.model("kaboofcasino:plinko/pockets");
         CustomModelData.Builder data = CustomModelData.customModelData();
         for (float p : levels) {
+            data.addFloat(p);
             int g = (int) Math.round(255 * Math.clamp(0.45 + 0.55 * p, 0.0, 1.0));
             data.addColor(Color.fromRGB(g, g, g));
         }
         item.setData(DataComponentTypes.CUSTOM_MODEL_DATA, data.build());
         rims.setItemStack(item);
-        rimsShown = true;
+        rimsShown = any;
     }
 
     void panel(Component text) {

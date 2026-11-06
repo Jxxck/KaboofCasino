@@ -74,24 +74,35 @@ public final class PlayerAccount implements Account {
     }
 
     @Override
-    public void take(String item, long count) {
-        Material m = material(item);
+    public TakePlan planTake(List<ItemAmount> items) {
         PlayerInventory inv = player.getInventory();
-        long left = count;
-        // plan first (one take per slot), apply afterwards
-        List<int[]> plan = new ArrayList<>();
-        for (int slot = 0; slot < 36 && left > 0; slot++) {
-            ItemStack s = inv.getItem(slot);
-            if (s != null && s.getType() == m && isPlain(s)) {
-                int n = (int) Math.min(left, s.getAmount());
-                plan.add(new int[] {slot, s.getAmount() - n});
-                left -= n;
+        List<int[]> steps = new ArrayList<>();
+        for (ItemAmount need : ItemAmount.merge(items)) {
+            Material m = material(need.item());
+            long left = need.count();
+            for (int slot = 0; slot < 36 && left > 0; slot++) {
+                ItemStack s = inv.getItem(slot);
+                if (s != null && s.getType() == m && isPlain(s)) {
+                    int n = (int) Math.min(left, s.getAmount());
+                    steps.add(new int[] {slot, s.getAmount() - n});
+                    left -= n;
+                }
+            }
+            if (left > 0) {
+                throw new IllegalStateException("cannot take " + need + " from " + player.getName());
             }
         }
-        if (left > 0) {
-            throw new IllegalStateException("cannot take " + count + "x" + item + " from " + player.getName());
-        }
-        for (int[] step : plan) {
+        return new Steps(List.copyOf(steps));
+    }
+
+    /** Slot -> new amount (0 = empty), one entry per slot. */
+    private record Steps(List<int[]> steps) implements TakePlan {
+    }
+
+    @Override
+    public void applyTake(TakePlan plan) {
+        PlayerInventory inv = player.getInventory();
+        for (int[] step : ((Steps) plan).steps()) {
             if (step[1] == 0) {
                 inv.setItem(step[0], null);
             } else {

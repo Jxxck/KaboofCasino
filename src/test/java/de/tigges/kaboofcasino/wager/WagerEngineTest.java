@@ -2,6 +2,7 @@ package de.tigges.kaboofcasino.wager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -126,18 +127,70 @@ class WagerEngineTest {
     }
 
     @Test
-    void theStakeCapCoversTheWholeRoundAndEveryStakeNeedsARecordSlot() {
+    void takesArePlannedMergedBeforeAnythingChanges() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 10).with(IRON_BLOCK, 5);
+        a.failPlanOn = IRON_BLOCK;
+        assertThrows(IllegalStateException.class, () -> engine.commitAll(a, List.of(request(DIAMOND, 4, 0),
+                request(IRON_BLOCK, 2, 0))));
+        assertEquals(10, a.count(DIAMOND), "planning failed: nothing taken");
+        assertEquals(5, a.count(IRON_BLOCK));
+        assertEquals(0, a.ledgerWrites);
+        a.failPlanOn = null;
+        assertInstanceOf(WagerEngine.Committed.class, engine.commitAll(a, List.of(request(DIAMOND, 4, 0),
+                request(DIAMOND, 4, 0), request(IRON_BLOCK, 2, 0))));
+        assertEquals(1, a.takePlans, "one plan for all stakes");
+        assertEquals(2, a.count(DIAMOND));
+        assertEquals(3, a.count(IRON_BLOCK));
+    }
+
+    /** The same limits with {@code bets.cap-per: round}. */
+    private final WagerEngine roundEngine = new WagerEngine(new WagerEngine.Limits() {
+        @Override
+        public int maxStake() {
+            return 64;
+        }
+
+        @Override
+        public boolean capPerRound() {
+            return true;
+        }
+
+        @Override
+        public int maxOpenRounds() {
+            return 4;
+        }
+
+        @Override
+        public Set<String> betItems() {
+            return Set.of(DIAMOND, IRON_BLOCK);
+        }
+    }, sink, () -> now);
+
+    @Test
+    void theCapIsPerSlotByDefaultLikeTheMod() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 192);
+        assertInstanceOf(WagerEngine.Committed.class, engine.commitAll(a, List.of(request(DIAMOND, 64, 0),
+                request(DIAMOND, 64, 0), request(DIAMOND, 64, 0))), "3 x 64 in one round");
+        assertEquals(0, a.count(DIAMOND));
+        FakeAccount b = new FakeAccount().with(DIAMOND, 100);
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.MAX_STAKE),
+                engine.commitAll(b, List.of(request(DIAMOND, 1, 0), request(DIAMOND, 65, 0))));
+        assertEquals(100, b.count(DIAMOND));
+    }
+
+    @Test
+    void theRoundCapCoversAllSlotsAndEveryStakeNeedsARecordSlot() {
         FakeAccount a = new FakeAccount().with(DIAMOND, 64).with(IRON_BLOCK, 64);
         assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.MAX_STAKE),
-                engine.commitAll(a, List.of(request(DIAMOND, 40, 0), request(IRON_BLOCK, 25, 0))));
+                roundEngine.commitAll(a, List.of(request(DIAMOND, 40, 0), request(IRON_BLOCK, 25, 0))));
         assertInstanceOf(WagerEngine.Committed.class,
-                engine.commitAll(a, List.of(request(DIAMOND, 40, 0), request(IRON_BLOCK, 24, 0))));
+                roundEngine.commitAll(a, List.of(request(DIAMOND, 40, 0), request(IRON_BLOCK, 24, 0))));
         // 2 of 4 record slots used: three more stakes do not fit, two do
-        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.ROUNDS_FULL), engine.commitAll(a,
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.ROUNDS_FULL), roundEngine.commitAll(a,
                 List.of(request(DIAMOND, 1, 0), request(DIAMOND, 1, 0), request(DIAMOND, 1, 0))));
         assertInstanceOf(WagerEngine.Committed.class,
-                engine.commitAll(a, List.of(request(DIAMOND, 1, 0), request(DIAMOND, 1, 0))));
-        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.BAD_COUNT), engine.commitAll(a, List.of()));
+                roundEngine.commitAll(a, List.of(request(DIAMOND, 1, 0), request(DIAMOND, 1, 0))));
+        assertEquals(new WagerEngine.Refused(WagerEngine.Refusal.BAD_COUNT), roundEngine.commitAll(a, List.of()));
     }
 
     @Test

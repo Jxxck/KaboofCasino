@@ -8,6 +8,7 @@ import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.machine.MachineService;
 import de.tigges.kaboofcasino.pack.PackSessions;
 import de.tigges.kaboofcasino.wager.LedgerListener;
+import de.tigges.kaboofcasino.visual.LightBudget;
 import de.tigges.kaboofcasino.wager.WagerEngine;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -21,5 +22,6 @@ import org.bukkit.plugin.Plugin;
  */
 public record CasinoContext(Plugin plugin, Supplier<CasinoConfig> config, Supplier<Messages> messages,
                             WagerEngine engine, CasinoRandom random, GuiLayout layout, MenuService menus,
-                            PackSessions packs, LedgerListener ledger, MachineService machines, LongSupplier clock) {
+                            PackSessions packs, LedgerListener ledger, MachineService machines, LongSupplier clock,
+                            LightBudget lights) {
 }

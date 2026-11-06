@@ -404,7 +404,7 @@ public final class PlinkoController extends MachineController {
                     line.append(Component.text(PanelText.multiplier(q), TextColor.color(color))
                             .decoration(TextDecoration.BOLD, true));
                 } else {
-                    line.append(Component.text("…", PanelText.WHITE));
+                    line.append(Component.text("     ")); // the mod leaves the cell empty until the ball lands
                 }
             }
             text.append(nl).append(line.build());
@@ -487,8 +487,7 @@ public final class PlinkoController extends MachineController {
             }
             return;
         }
-        int every = ctx.config().get().plinko().idleLightTicks();
-        if (every > 0 && now % every == 0 && playerNear(world, ctx.config().get().plinko().idleLightRange())) {
+        if (idleLightsDue(world, ctx.config().get().plinko(), now)) {
             rig.lights(idleLamps(time), idleBulbs(time));
         }
     }

@@ -22,8 +22,11 @@ pack:
   timeout-seconds: 300
 
 bets:
-  # Höchsteinsatz in Items pro Runde (PLAN Entscheidung 1).
+  # Höchsteinsatz in Items (PLAN Entscheidung 1), je Einsatzfeld oder je Runde (siehe cap-per).
   max-stake: 64
+  # slot: max-stake gilt je Einsatzfeld wie im Mod (Glücksrad/Plinko: 3 Felder, also bis 3 × 64 pro Runde).
+  # round: alle Felder einer Runde zusammen höchstens max-stake.
+  cap-per: slot
   # Erlaubte Einsätze: die 18 Items des Mods. Ausgezahlt wird dasselbe Item × Multiplikator.
   items:
     - minecraft:coal
@@ -88,6 +91,12 @@ wheel:
   win-chance: -1
   idle-light-ticks: 4
   idle-light-range: 16
+
+lights:
+  # Leerlauf-Lichter aller Automaten zusammen: höchstens so viele Updates pro Tick (reihum). Jedes Update schickt
+  # alle Lampenfarben eines Automaten an alle Spieler in der Nähe; so bleibt der Verkehr begrenzt, egal wie viele
+  # Automaten stehen. Bei wenigen Automaten bleibt es beim Takt aus idle-light-ticks.
+  max-updates-per-tick: 4
 
 plinko:
   # Plinko. -1 = Quoten wie im Mod (RTP 998/1024). 0..100 = erzwungene Gewinnchance je Kugel (CasinoOdds des Mods).

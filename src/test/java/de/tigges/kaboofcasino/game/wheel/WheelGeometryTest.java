@@ -72,7 +72,7 @@ class WheelGeometryTest {
             }
         }
         assertTrue(maxAngle <= FortuneWheelSpin.FLAP_LIMIT + 1e-9, "flapper " + maxAngle);
-        // the mod reaches its clamp (36 degrees); the display clamps at WheelRig.PENNANT_MAX
+        // the mod reaches its clamp (36 degrees); the display uses the same limit
         maxAngle = Math.min(maxAngle, WheelRig.PENNANT_MAX);
         for (JsonElement e : mesh.getAsJsonArray("elements")) {
             JsonObject el = e.getAsJsonObject();
@@ -88,7 +88,9 @@ class WheelGeometryTest {
                         double wx = 8 + cx * Math.cos(rad) - y * Math.sin(rad);
                         double wy = 30 + cx * Math.sin(rad) + y * Math.cos(rad);
                         assertTrue(wx >= -16 && wx <= 32, "pennant x " + wx + " at " + a);
-                        assertTrue(wy >= -16 && wy <= 32, "pennant y " + wy + " at " + a + " (max angle "
+                        // at +36 degrees the mod's pennant corner (x 3.06) reaches 32.154 px: 0.154 px above the
+                        // machine, exactly like the mod (the -36 degree side reaches 32.08)
+                        assertTrue(wy >= -16 && wy <= 32.16, "pennant y " + wy + " at " + a + " (max angle "
                                 + maxAngle + ")");
                     }
                 }

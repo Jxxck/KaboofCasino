@@ -62,6 +62,45 @@ public enum MachineType {
         return out;
     }
 
+    /** The viewer's right (the footprint's +x) as a block step (dx, dz) for {@code facing}. */
+    public static int[] right(Facing facing) {
+        int x = 1;
+        int z = 0;
+        for (int i = 0; i < facing.turns(); i++) {
+            int nx = -z;
+            z = x;
+            x = nx;
+        }
+        return new int[] {x, z};
+    }
+
+    /**
+     * Whether the footprint fits into one chunk: 0 if it does, otherwise the shift along the viewer's right that
+     * makes it fit (-1 = one block to the left, +1 = one block to the right), or 2 if neither does.
+     */
+    public int chunkShift(Pos anchor, Facing facing) {
+        if (oneChunk(carriers(anchor, facing))) {
+            return 0;
+        }
+        int[] r = right(facing);
+        for (int shift : new int[] {-1, 1}) {
+            if (oneChunk(carriers(anchor.offset(r[0] * shift, 0, r[1] * shift), facing))) {
+                return shift;
+            }
+        }
+        return 2;
+    }
+
+    private static boolean oneChunk(List<Pos> carriers) {
+        Pos first = carriers.getFirst();
+        for (Pos p : carriers) {
+            if (p.chunkX() != first.chunkX() || p.chunkZ() != first.chunkZ()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Lowest carrier row relative to the anchor (needs centre support below). */
     public int bottom() {
         int min = Integer.MAX_VALUE;

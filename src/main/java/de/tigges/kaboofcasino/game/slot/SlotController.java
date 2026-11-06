@@ -329,8 +329,7 @@ public final class SlotController extends MachineController {
             }
             return;
         }
-        int every = ctx.config().get().slot().idleLightTicks();
-        if (every > 0 && now % every == 0 && playerNear(world, ctx.config().get().slot().idleLightRange())) {
+        if (idleLightsDue(world, ctx.config().get().slot(), now)) {
             rig.lights(idleColors(world.getGameTime()));
         }
     }

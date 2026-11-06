@@ -116,10 +116,11 @@ The forward has to exist for that mode.
 
 - **Commit** (`WagerEngine.commitAll`, one tick): one record per stake (the slot machine has one, a wheel or Plinko
   round up to three, each paid in its own item). Checks for all stakes together: owed empty, open records + stakes
-  <= `rounds.max-open` (default 8), every item in `bets.items`, every count >= 1, the stakes together at most
-  `bets.max-stake` (PLAN decision 1: per round), enough *plain* items of every item (stakes of the same item add
-  up). Then the takes (one take per inventory slot, clone + `setItem`) and **one** ledger write with all records;
-  all or nothing. The game decides the outcome **before** the commit, so every record holds its final payout
+  <= `rounds.max-open` (default 8), every item in `bets.items`, every count >= 1, every stake at most
+  `bets.max-stake` (`bets.cap-per: slot`, the default, like the mod: a stack per bet slot) or all stakes together
+  (`cap-per: round`), enough *plain* items of every item (stakes of the same item add up). Then the takes are
+  planned for all stakes merged per item (`Account.planTake`, nothing changes if planning fails), applied (one take
+  per inventory slot, clone + `setItem`) and **one** ledger write with all records follows; all or nothing. The game decides the outcome **before** the commit, so every record holds its final payout
   (`RoundState.DECIDED`).
 - **Settle** (one tick): record out + payout into `owed` in one write, then `deliverOwed` gives what fits and keeps the
   rest owed. `deliverOwed` gives one item type at a time and writes the ledger right after each give, so an
@@ -153,9 +154,11 @@ The forward has to exist for that mode.
 
 - Footprint: `MachineType.carriers(anchor, facing)` (offsets rotate with the facing). Barriers are the carriers: collision,
   clicks, immunity. Positions are `util.Pos` (world key + three ints), never `Block#getBlockKey` (Y 1023 collides).
-- Placement (`MachineService.place`): replaceable + in height + world border + no living entity + no liquid and no
-  waterlogged block at any carrier, solid-centre support, game rules (slot: the mod's spacing rule `crowded`), spawn
-  protection for non-ops; barriers set, then a synthetic `BlockPlaceEvent` **per carrier** (any veto reverts all
+- Placement (`MachineService.place`): all carriers in one chunk (a 3x3 machine across a chunk border is refused
+  with the side to move it to: "stell sie einen Block weiter nach links/rechts"), replaceable + in height + world
+  border + no living entity + no liquid and no waterlogged block at any carrier, no other non-spectator player within
+  2 blocks (box to box) of any carrier, solid-centre support under the whole bottom row, game rules (slot: the mod's spacing rule `crowded`), spawn
+  protection for non-ops at every carrier; barriers set, then a synthetic `BlockPlaceEvent` **per carrier** (any veto reverts all
   three), record into the chunk PDC, index row, rig spawned, one item taken.
 - Breaking: `BlockDamageEvent` starts the plugin's timer (oak-plank speed, hardness 3.0, `BreakProgress`), cracks via
   `sendBlockDamage` on all carriers, `BlockDamageAbortEvent`/distance (in the machine's world)/quit stop it; only placer + ops
@@ -166,6 +169,11 @@ The forward has to exist for that mode.
   carrier (`PortalCreateEvent`), fire, `EntityChangeBlockEvent`. `/fill`, `/setblock`, structures, Litematica and the
   piston exploits arrive without events: `MachineService.verify` checks every carrier every `machines.verify-ticks`,
   at chunk load and at every interaction; a missing carrier removes the machine (remaining barriers to air, no drop).
+- `verify` skips carriers in unloaded chunks and checks the rest; `remove` never loads a chunk (carriers in unloaded
+  chunks stay; with the one-chunk rule that only concerns old data).
+- Idle lights of all machines share `lights.max-updates-per-tick` (default 4, `visual.LightBudget`): a machine that is
+  due (its `idle-light-ticks` passed, a player within `idle-light-range`) queues once and is served in turn, so the
+  packet volume stays bounded however many machines stand; with few machines every one keeps its cadence.
 - Records: `ChunkRecords.put/remove` rewrite the raw container list and keep every other entry verbatim, also an
   unreadable one (CRITICAL `MACHINE_RECORD_UNREADABLE` when read; that machine stays inactive, nothing is lost).
 - Rigs: all entities at the anchor's bottom centre, `setPersistent(false)` inside the spawn consumer, tagged
@@ -362,8 +370,8 @@ Bets and payouts:
 - Three bet slots as a selection (the slot machine's model, per slot; see `StakeMenu`); nothing stays in the machine
   when the menu closes (the mod keeps stakes in the block entity, owner-locked, and ejects them when the machine
   breaks).
-- The three slots together hold at most `bets.max-stake` (64) items (PLAN decision 1, per round); the mod allows a
-  stack per slot (192).
+- Each slot holds up to `bets.max-stake` (64) like the mod's stack per slot (3 x 64 per round); `bets.cap-per:
+  round` restores PLAN decision 1's cap for the whole round.
 - Each slot is one record; a paying slot settles where the mod starts ejecting (wheel: result + 12; Plinko: that
   ball's landing + 10), a slot that pays nothing at the result (wheel) or at its landing (Plinko). Winnings go into the
   inventory (overflow owed) instead of owner-locked item entities; the ejection pace (1/2/3 ticks by stacks pending,
@@ -373,17 +381,17 @@ Bets and payouts:
 - The machine unlocks like the mod: when everything is out, the result is shown (Plinko) and `readyTick` passed.
 
 Look:
-- Plate blur: the mod cross-fades two blur levels with a translucent second pass; a display cannot fade, so it
-  shows the level that has more than half the weight.
+- Plate blur cross-fade: the mod's continuous alpha becomes baked blends at weights 0.25 / 0.5 / 0.75 per transition
+  (quarter steps of `FortuneWheelBlur`).
 - Wheel flash: brightness 9/15 instead of the grey tint 0.62.
-- Pennant: clamped at 32 instead of 36 degrees (stays inside the machine; see the pitfalls).
-- Plinko pocket glow (translucent, alpha 0..97) is not drawn; the rims (grey tint) mark the pockets, and while any
-  pocket glows all nine rims are shown (the mod draws only those above 0.01).
+- Plinko pocket glow: four baked alpha steps instead of the continuous alpha (0..97); the rims appear per pocket
+  above 0.01 as in the mod.
+- The pennant uses the mod's 36 degree limit; there its corner reaches 0.154 px above the machine, like the mod.
 - Plinko's lamps, bulbs, rims and the wheel's bulbs are self-lit full bright like the mod; the faces of the converted
   meshes keep their per-face shading (the mod forces an up normal).
 - Machine labels (creative + Croupier's Hand only in the mod) are not built; the floating panel is a text display:
-  head + name, title, the stake icons, Plinko's landed multipliers and the result line, without the felt and brass
-  frame, the 3D item icons and the per-viewer fades.
+  head + name, title, the stake icons, Plinko's landed multipliers (empty until a ball lands) and the result line,
+  without the felt and brass frame, the 3D item icons and the per-viewer fades.
 - GUI: upper part 20 px higher, felt rows under the button removed, the button 72x14 instead of 72x18; the left panel
   19 px and the payout panels 15 px narrower (wheel: columns 304..318; Plinko: 261..266 and 312..320) with the
   lettering re-centred; the wheel's bet frames moved by -5/0/+5 px, Plinko's by (+2, +7/+3/-1) px onto the grid,
@@ -429,6 +437,7 @@ testing/craft-test.sh                                                    # craft
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
 - Step 2 ships as `KaboofCasino-0.2.0.jar`: remove `KaboofCasino-0.1.0.jar` from `plugins/`. The live `config.yml`
-  gets the new `wheel:`/`plinko:` sections merged in (natural odds); its `rounds.max-open: 4` stays (new installs: 8).
-  With 4, one three-slot round plus one more stake fit at a time; two three-slot rounds at once are refused
-  ("rounds.full").
+  gets the new keys merged in: `wheel:`/`plinko:` (natural odds), `lights.max-updates-per-tick: 4` and
+  `bets.cap-per: slot` (so the live cap becomes 64 per bet slot, 3 x 64 per wheel/Plinko round, like the mod; set
+  `round` for 64 per round). Its `rounds.max-open: 4` stays (new installs: 8): one three-slot round plus one more
+  stake fit at a time; two three-slot rounds at once are refused ("rounds.full").

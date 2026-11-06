@@ -22,8 +22,15 @@ class StakeMenuRulesTest {
     }
 
     @Test
+    void perSlotCapIgnoresTheOtherSlots() {
+        // cap per slot (default): the menu passes others = 0, so every slot can hold a full 64
+        assertEquals(64, StakeMenu.countFor(ClickType.LEFT, null, D, 64, 0, 192, 64));
+        assertEquals(64, StakeMenu.countFor(ClickType.SHIFT_LEFT, null, D, 64, 0, 128, 64));
+    }
+
+    @Test
     void theRoundTotalAndTheOwnedItemsCap() {
-        // 40 items in the other slots: at most 24 more in this one
+        // cap per round: 40 items in the other slots, at most 24 more in this one
         assertEquals(24, StakeMenu.countFor(ClickType.SHIFT_LEFT, null, D, 64, 40, 100, 64));
         assertEquals(24, StakeMenu.countFor(ClickType.LEFT, null, D, 64, 40, 100, 64));
         // only 7 diamonds not already staked in another slot

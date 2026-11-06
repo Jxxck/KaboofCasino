@@ -107,7 +107,10 @@ class PackBuildTest {
                 "assets/roulettecasino/items/plinko.json", "assets/roulettecasino/items/roulette_mechanism.json",
                 "assets/kaboofcasino/items/wheel/plate_2.json", "assets/kaboofcasino/items/wheel/pennant.json",
                 "assets/kaboofcasino/items/wheel/bulbs.json", "assets/kaboofcasino/items/plinko/ball.json",
-                "assets/kaboofcasino/items/plinko/lights.json", "assets/kaboofcasino/items/plinko/rims.json",
+                "assets/kaboofcasino/items/plinko/lights.json", "assets/kaboofcasino/items/plinko/pockets.json",
+                "assets/kaboofcasino/items/wheel/plate.json",
+                "assets/kaboofcasino/textures/block/plinko_glow_4.png",
+                "assets/kaboofcasino/textures/block/wheel_plate_1_3.png",
                 "assets/roulettecasino/textures/block/casino_entity/fortune_wheel.png",
                 "assets/roulettecasino/textures/block/casino_entity/plinko.png",
                 "assets/kaboofcasino/items/gui/wheel_on.json", "assets/kaboofcasino/items/gui/plinko_off.json",
@@ -115,6 +118,75 @@ class PackBuildTest {
             assertTrue(entries.containsKey(path), path);
         }
         assertTrue(!entries.containsKey("assets/kaboofcasino/textures/font/text_h64.png"), "no unused sheet");
+    }
+
+    /** Every model an item definition names (also inside composite/range_dispatch) and every texture exists. */
+    @Test
+    void everyReferenceResolves() {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        java.util.Set<String> models = new java.util.TreeSet<>();
+        for (Map.Entry<String, byte[]> e : entries.entrySet()) {
+            if (e.getKey().matches("assets/[a-z_]+/items/.+\\.json")) {
+                collectModels(Json.parse(e.getValue()), models);
+            }
+        }
+        java.util.Deque<String> todo = new java.util.ArrayDeque<>(models);
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        while (!todo.isEmpty()) {
+            String id = todo.poll();
+            if (!seen.add(id) || id.startsWith("minecraft:")) {
+                continue;
+            }
+            String path = "assets/" + id.substring(0, id.indexOf(':')) + "/models/" + id.substring(id.indexOf(':') + 1)
+                    + ".json";
+            byte[] json = entries.get(path);
+            if (json == null) {
+                missing.add(path);
+                continue;
+            }
+            JsonObject model = Json.parse(json);
+            if (model.has("parent")) {
+                todo.add(withNamespace(model.get("parent").getAsString()));
+            }
+            if (model.has("textures")) {
+                for (Map.Entry<String, com.google.gson.JsonElement> t : model.getAsJsonObject("textures").entrySet()) {
+                    String tex = t.getValue().getAsString();
+                    if (tex.startsWith("#")) {
+                        continue;
+                    }
+                    tex = withNamespace(tex);
+                    if (!tex.startsWith("minecraft:")) {
+                        String texPath = "assets/" + tex.substring(0, tex.indexOf(':')) + "/textures/"
+                                + tex.substring(tex.indexOf(':') + 1) + ".png";
+                        if (!entries.containsKey(texPath)) {
+                            missing.add(texPath);
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(models.size() > 100, "only " + models.size() + " models referenced");
+        assertTrue(missing.isEmpty(), "unresolved: " + missing);
+    }
+
+    private static String withNamespace(String id) {
+        return id.contains(":") ? id : "minecraft:" + id;
+    }
+
+    private static void collectModels(com.google.gson.JsonElement e, java.util.Set<String> out) {
+        if (e.isJsonObject()) {
+            JsonObject o = e.getAsJsonObject();
+            if (o.has("type") && o.get("type").getAsString().equals("minecraft:model") && o.has("model")) {
+                out.add(withNamespace(o.get("model").getAsString()));
+            }
+            for (Map.Entry<String, com.google.gson.JsonElement> c : o.entrySet()) {
+                collectModels(c.getValue(), out);
+            }
+        } else if (e.isJsonArray()) {
+            for (com.google.gson.JsonElement c : e.getAsJsonArray()) {
+                collectModels(c, out);
+            }
+        }
     }
 
     @Test

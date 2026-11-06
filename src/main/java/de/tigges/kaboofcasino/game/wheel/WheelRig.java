@@ -35,10 +35,10 @@ final class WheelRig {
     static final double PANEL_Y = 2.7;
     static final double[] COIN_MOUTH = {8, -11.5, 15};
     /**
-     * The pennant's displayed swing: the mod clamps at 36 degrees, where a top corner of the pennant reaches 0.08 px
-     * above the machine (y 32.08); 32 degrees keeps it inside (WheelGeometryTest).
+     * The pennant's swing limit, the mod's own (36 degrees). There a top corner of the pennant reaches 0.154 px above
+     * the machine (y 32.154), exactly as in the mod (WheelGeometryTest allows that).
      */
-    static final double PENNANT_MAX = 32;
+    static final double PENNANT_MAX = FortuneWheelSpin.FLAP_LIMIT;
 
     private final MachineRecord record;
     private final World world;
@@ -87,16 +87,20 @@ final class WheelRig {
         for (int part = 0; part < 9; part++) {
             out.add("roulettecasino:block/fortune_wheel_" + part);
         }
-        for (int level = 0; level < 3; level++) {
-            out.add(plateModel(level));
-        }
+        out.add(PLATE);
         out.add("kaboofcasino:wheel/pennant");
         out.add("kaboofcasino:wheel/bulbs");
         return out;
     }
 
-    private static String plateModel(int level) {
-        return "kaboofcasino:wheel/plate_" + level;
+    /** The plate item: sharp, blurred or a cross-fade, chosen by its custom_model_data float (see the pack). */
+    static final String PLATE = "kaboofcasino:wheel/plate";
+
+    private static ItemStack plateItem(double blend) {
+        ItemStack item = Displays.model(PLATE);
+        item.setData(DataComponentTypes.CUSTOM_MODEL_DATA, CustomModelData.customModelData()
+                .addFloat((float) blend).build());
+        return item;
     }
 
     void spawn(int stop, float[] levels) {
@@ -112,7 +116,7 @@ final class WheelRig {
         }
         plateLevel = 0;
         plateTurn = FortuneWheelSpin.restTurn(stop);
-        plate = Displays.item(world, base, record.id(), Displays.model(plateModel(0)), plateTransform(plateTurn),
+        plate = Displays.item(world, base, record.id(), plateItem(0), plateTransform(plateTurn),
                 2.0f, d -> d.setBrightness(FULL));
         parts.add(plate);
         pennantAngle = 0;
@@ -165,27 +169,29 @@ final class WheelRig {
                 new Quaternionf().rotationZ((float) Math.toRadians(degrees)));
     }
 
-    /** The blur model the mod would show most of: lower level below half of the cross-fade, else the upper. */
-    static int blurLevel(double speed) {
+    /**
+     * The mod's blur state as one number: {@code lower + weight} of {@code FortuneWheelBlur.at(speed)} (0 = sharp,
+     * 1 = blur 1, 2 = blur 2, in between the cross-fade), quantised to the pack's quarter steps.
+     */
+    static int blendStep(double speed) {
         FortuneWheelBlur.Blend b = FortuneWheelBlur.at(speed);
-        return b.weight() < 0.5 ? b.lower() : b.upper();
+        return (int) Math.round((b.lower() + (b.lower() == b.upper() ? 0 : b.weight())) * 4);
     }
 
-    /** Plate position for {@code turn}; the client interpolates over {@code duration} ticks (0 on a model swap). */
+    /** Plate position for {@code turn}; the client interpolates over {@code duration} ticks. */
     void plate(double turn, double speed, int duration) {
         if (plate == null) {
             return;
         }
-        int level = blurLevel(speed);
-        boolean swap = level != plateLevel;
-        if (swap) {
-            plateLevel = level;
-            plate.setItemStack(Displays.model(plateModel(level)));
+        int step = blendStep(speed);
+        if (step != plateLevel) {
+            plateLevel = step;
+            plate.setItemStack(plateItem(step / 4.0));
         }
-        if (swap || Math.abs(turn - plateTurn) > 1e-4) {
+        if (Math.abs(turn - plateTurn) > 1e-4) {
             plateTurn = turn;
             plate.setInterpolationDelay(0);
-            plate.setInterpolationDuration(swap ? 0 : duration);
+            plate.setInterpolationDuration(duration);
             plate.setTransformation(plateTransform(turn));
         }
     }

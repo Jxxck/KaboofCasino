@@ -404,8 +404,7 @@ public final class WheelController extends MachineController {
             }
             return;
         }
-        int every = ctx.config().get().wheel().idleLightTicks();
-        if (every > 0 && now % every == 0 && playerNear(world, ctx.config().get().wheel().idleLightRange())) {
+        if (idleLightsDue(world, ctx.config().get().wheel(), now)) {
             rig.bulbs(idleLevels(world.getGameTime()));
         }
     }

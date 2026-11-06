@@ -16,7 +16,7 @@ import java.util.Objects;
  * @param slot     slot machine settings
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
-                           Slot slot, Slot wheel, Slot plinko) {
+                           Slot slot, Slot wheel, Slot plinko, Lights lights) {
 
     /**
      * @param enabled        send the pack at all
@@ -43,10 +43,21 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
         }
     }
 
-    /** @param items material keys like {@code minecraft:diamond} */
-    public record Bets(int maxStake, List<String> items) {
+    /**
+     * @param maxStake highest stake per unit ({@link #capPerRound}: per round, else per bet slot)
+     * @param items    material keys like {@code minecraft:diamond}
+     * @param capPer   {@code slot} (the mod: a stack per bet slot) or {@code round} (all slots of a round together)
+     */
+    public record Bets(int maxStake, List<String> items, String capPer) {
+        public static final String PER_SLOT = "slot";
+        public static final String PER_ROUND = "round";
+
         public Bets {
             items = List.copyOf(items);
+        }
+
+        public boolean capPerRound() {
+            return PER_ROUND.equals(capPer);
         }
     }
 
@@ -74,6 +85,10 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     public record Gui(int clickGuardTicks, int idleCloseSeconds) {
     }
 
+    /** @param maxUpdatesPerTick idle light updates of all machines together per tick (round robin) */
+    public record Lights(int maxUpdatesPerTick) {
+    }
+
     /**
      * Per machine type ({@code slot:}, {@code wheel:}, {@code plinko:}).
      *
@@ -95,7 +110,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
 
     public static final CasinoConfig DEFAULTS = new CasinoConfig(
             new Pack(true, false, Pack.MINECRAFT_PORT, "5.9.137.26", 25565, 25580, "0.0.0.0", 300),
-            new Bets(64, DEFAULT_BET_ITEMS),
+            new Bets(64, DEFAULT_BET_ITEMS, Bets.PER_SLOT),
             new Rounds(8),
             new Owed(20),
             new Machines("owner", 100),
@@ -103,5 +118,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Gui(4, 120),
             new Slot(-1, 4, 16),
             new Slot(-1, 4, 16),
-            new Slot(-1, 4, 16));
+            new Slot(-1, 4, 16),
+            new Lights(4));
 }

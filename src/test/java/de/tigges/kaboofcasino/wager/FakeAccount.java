@@ -23,6 +23,9 @@ final class FakeAccount implements Account {
     int ledgerWrites;
     /** give() throws for this item before changing anything (exception-safety tests). */
     String failOn;
+    /** planTake throws for this item (nothing may change). */
+    String failPlanOn;
+    int takePlans;
 
     FakeAccount with(String item, long count) {
         inventory.merge(item, count, Long::sum);
@@ -74,16 +77,33 @@ final class FakeAccount implements Account {
     }
 
     @Override
-    public void take(String item, long count) {
-        long have = count(item);
-        if (have < count) {
-            throw new IllegalStateException("take more than present");
+    public TakePlan planTake(List<ItemAmount> items) {
+        Map<String, Long> after = new LinkedHashMap<>(inventory);
+        for (ItemAmount need : ItemAmount.merge(items)) {
+            if (need.item().equals(failPlanOn)) {
+                throw new IllegalStateException("planning failure for " + need.item());
+            }
+            long have = after.getOrDefault(need.item(), 0L);
+            if (have < need.count()) {
+                throw new IllegalStateException("take more than present");
+            }
+            after.put(need.item(), have - need.count());
         }
-        if (have == count) {
-            inventory.remove(item);
-        } else {
-            inventory.put(item, have - count);
-        }
+        takePlans++;
+        return new Plan(after);
+    }
+
+    private record Plan(Map<String, Long> after) implements TakePlan {
+    }
+
+    @Override
+    public void applyTake(TakePlan plan) {
+        inventory.clear();
+        ((Plan) plan).after().forEach((item, n) -> {
+            if (n > 0) {
+                inventory.put(item, n);
+            }
+        });
     }
 
     @Override

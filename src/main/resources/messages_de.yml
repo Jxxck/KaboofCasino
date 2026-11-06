@@ -23,6 +23,8 @@ machine:
   running: "<yellow>Der Automat läuft gerade. Warte, bis die Runde vorbei ist."
   no-space: "<red>Hier ist kein Platz für den Automaten."
   no-support: "<red>Der Automat braucht festen Boden."
+  chunk-border: "<red>Die Maschine passt hier nicht ganz in einen Chunk – stell sie einen Block weiter nach <direction>."
+  player-near: "<red>Hier steht jemand zu nah – die Maschine braucht zwei Blöcke Abstand zu anderen Spielern."
   place-denied: "<red>Hier darfst du nichts bauen."
   removed: "<green>Automat entfernt."
   none: "<red>Du schaust auf keinen Casino-Automaten."
@@ -85,10 +87,12 @@ gui:
     # Einsatzfelder von Glücksrad und Plinko (Auswahl statt Hineinlegen)
     lore: "<gray>Linksklick: Feld wählen, nochmal: leeren\n<gray>Rechtsklick: eins weniger"
     active: "<gold>Gewähltes Feld"
-    active-lore: "<gray>Klick auf ein Item in deinem Inventar:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Shift-Linksklick: alles davon\n<gray>Alle Felder zusammen höchstens <max> Items."
+    active-lore: "<gray>Klick auf ein Item in deinem Inventar:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Shift-Linksklick: alles davon\n<gray>Höchstens <max> Items je Feld."
+    active-lore-round: "<gray>Klick auf ein Item in deinem Inventar:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Shift-Linksklick: alles davon\n<gray>Alle Felder zusammen höchstens <max> Items."
     empty: "<gray>Leeres Feld"
     empty-lore: "<gray>Linksklick: dieses Feld wählen"
-    play-lore: "<gray>Jedes Feld ist ein eigener Einsatz\n<gray>und zahlt im eigenen Item aus.\n<gray>Zusammen höchstens <max> Items."
+    play-lore: "<gray>Jedes Feld ist ein eigener Einsatz\n<gray>und zahlt im eigenen Item aus.\n<gray>Höchstens <max> Items je Feld."
+    play-lore-round: "<gray>Jedes Feld ist ein eigener Einsatz\n<gray>und zahlt im eigenen Item aus.\n<gray>Zusammen höchstens <max> Items."
   wheel:
     # block.roulettecasino.fortune_wheel, gui.roulettecasino.wheel.bet, .play
     title: "Glücksrad"

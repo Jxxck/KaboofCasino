@@ -26,8 +26,9 @@ import org.bukkit.inventory.ItemStack;
  * round is committed. One slot is active (gold frame when empty, glint when filled); clicks on the own inventory set
  * the active slot (left: that stack, right: +1, shift-left: all of that item); filling an empty slot moves the
  * marker to the next empty one. A slot click selects it, a left click on the active slot clears it, a right click
- * takes one away. All slots together hold at most {@code bets.max-stake} items (PLAN decision 1: per round). Each
- * slot is its own stake, paid in its own item (the mod: one ball per slot in Plinko).
+ * takes one away. Each slot holds at most {@code bets.max-stake} items (the mod: a stack per slot), or with
+ * {@code bets.cap-per: round} all slots together. Each slot is its own stake, paid in its own item (the mod: one
+ * ball per slot in Plinko).
  */
 public abstract class StakeMenu extends GameMenu {
 
@@ -120,7 +121,7 @@ public abstract class StakeMenu extends GameMenu {
      *
      * @param current the active slot's stake (null if empty)
      * @param stack   the clicked stack's size
-     * @param others  items in the other slots (all items)
+     * @param others  items in the other slots (all items) that count against {@code max} (0 with the cap per slot)
      * @param ownedFree owned plain items of this item minus those in the other slots
      */
     static long countFor(ClickType click, ItemAmount current, String item, int stack, long others, long ownedFree,
@@ -152,7 +153,8 @@ public abstract class StakeMenu extends GameMenu {
                 }
             } else if (i == active) {
                 icon = DisplayCopies.model("kaboofcasino:gui/stake_active", m.render(Msg.GUI_STAKE_ACTIVE),
-                        m.lines(Msg.GUI_STAKE_ACTIVE_LORE, Messages.text("max",
+                        m.lines(ctx.config().get().bets().capPerRound() ? Msg.GUI_STAKE_ACTIVE_LORE_ROUND
+                                : Msg.GUI_STAKE_ACTIVE_LORE, Messages.text("max",
                                 Integer.toString(ctx.config().get().bets().maxStake()))));
             } else {
                 icon = DisplayCopies.model("kaboofcasino:gui/blank", m.render(Msg.GUI_STAKE_EMPTY),
@@ -167,7 +169,8 @@ public abstract class StakeMenu extends GameMenu {
                     m.lines(Msg.GUI_SLOT_COLLECT_LORE));
         } else {
             button = DisplayCopies.model(buttonModel(!stakes().isEmpty()), m.render(buttonName()),
-                    m.lines(Msg.GUI_STAKES_PLAY_LORE, Messages.text("max",
+                    m.lines(ctx.config().get().bets().capPerRound() ? Msg.GUI_STAKES_PLAY_LORE_ROUND
+                            : Msg.GUI_STAKES_PLAY_LORE, Messages.text("max",
                             Integer.toString(ctx.config().get().bets().maxStake()))));
         }
         ItemStack blank = DisplayCopies.model("kaboofcasino:gui/blank", m.render(owed ? Msg.GUI_SLOT_COLLECT
@@ -241,7 +244,7 @@ public abstract class StakeMenu extends GameMenu {
             return;
         }
         int max = ctx.config().get().bets().maxStake();
-        long others = others(active);
+        long others = ctx.config().get().bets().capPerRound() ? others(active) : 0;
         long ownedFree = new PlayerAccount(player).countPlain(key) - othersOf(active, key);
         long count = countFor(click, stakes[active], key, clicked.getAmount(), others, ownedFree, max);
         if (count < (click == ClickType.SHIFT_LEFT ? ownedFree : 1) && others + count >= max) {
