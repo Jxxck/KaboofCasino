@@ -219,6 +219,25 @@ class WagerEngineTest {
     }
 
     @Test
+    void severalRoundsSettleInOneWriteAndOnlyOnce() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 30);
+        commit(a, DIAMOND, 5, 15);
+        commit(a, DIAMOND, 5, 0);
+        commit(a, DIAMOND, 5, 5);
+        List<UUID> ids = a.ledger().rounds().stream().map(RoundRecord::id).toList();
+        WagerEngine.Settlement s = engine.settleRounds(a, List.of(ids.get(0), ids.get(2), UUID.randomUUID()),
+                SettleReason.NORMAL);
+        assertEquals(2, s.rounds().size());
+        assertEquals(20, s.paid());
+        assertEquals(20, s.deliveredCount());
+        assertEquals(List.of(ids.get(1)), a.ledger().rounds().stream().map(RoundRecord::id).toList());
+        assertEquals(15 + 20, a.count(DIAMOND));
+        // again: nothing left to settle, nothing paid twice
+        assertTrue(engine.settleRounds(a, List.of(ids.get(0), ids.get(2)), SettleReason.NORMAL).rounds().isEmpty());
+        assertEquals(35, a.count(DIAMOND));
+    }
+
+    @Test
     void heldRoundsSurviveQuitAndJoinAndSettleOnceAfterwards() {
         FakeAccount a = new FakeAccount().with(DIAMOND, 20);
         commit(a, DIAMOND, 5, 10);

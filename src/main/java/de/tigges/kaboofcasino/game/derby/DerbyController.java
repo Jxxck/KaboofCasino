@@ -65,6 +65,8 @@ public final class DerbyController extends MachineController {
     static final int MAX_PLAYERS = 64;
     static final int PANEL_AFTER_RESULT = 70;
     static final int DUE_AFTER_RESULT = 12;
+    /** The payout is spread over these ticks after the result ({@code resultTick + 12 .. + 16}). */
+    static final int PAYOUT_TICKS = 5;
     /** A record's watchdog end: the race's end (or the countdown's plus the longest race) + this. */
     static final long RECORD_ENDS_MILLIS = 60_000;
     /** The longest race ({@code endTick} of the slowest plan, games.md 7: 243..276). */
@@ -73,15 +75,22 @@ public final class DerbyController extends MachineController {
     static final double[] START_SPOT = {24, 14, 32};
     static final double[] MIDDLE = {24, 20, 32};
     static final double[] RAIN = {24, 24, 32};
-    private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xFFD268), 1.25f);
-    private static final Particle.DustOptions RED_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xDF3B4B), 1.15f);
-    private static final Particle.DustOptions GREEN_CONFETTI = new Particle.DustOptions(Color.fromRGB(0x36D886),
-            1.15f);
+    /**
+     * A race older than its {@code endTick} + this, or a countdown older than its 200 ticks + this, is stuck (an error
+     * in a later tick step): its entrants settle as stored (TIMEOUT), the machine is free again.
+     */
+    static final int STUCK_AFTER_TICKS = 600;
+    /** How long a viewer's owed count is reused by the menu snapshot. */
+    static final int OWED_CACHE_TICKS = 10;
+    /** {@code DuckDerbyBlockEntity} 51-59, the mod's ints as they are. */
+    private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(16765288), 1.25f);
+    private static final Particle.DustOptions RED_CONFETTI = new Particle.DustOptions(Color.fromRGB(14629707), 1.15f);
+    private static final Particle.DustOptions GREEN_CONFETTI = new Particle.DustOptions(Color.fromRGB(3594374), 1.15f);
     private static final Particle.DustOptions[] DUCK_CONFETTI = {
-        new Particle.DustOptions(Color.fromRGB(0xFFD148), 1.3f),
-        new Particle.DustOptions(Color.fromRGB(0xD83A48), 1.3f),
-        new Particle.DustOptions(Color.fromRGB(0xF2EED6), 1.3f),
-        new Particle.DustOptions(Color.fromRGB(0x7C88A0), 1.3f)
+        new Particle.DustOptions(Color.fromRGB(16765000), 1.3f),
+        new Particle.DustOptions(Color.fromRGB(14170696), 1.3f),
+        new Particle.DustOptions(Color.fromRGB(15920342), 1.3f),
+        new Particle.DustOptions(Color.fromRGB(8161440), 1.3f)
     };
 
     private DerbyRig rig;
@@ -96,6 +105,8 @@ public final class DerbyController extends MachineController {
     private final ItemAmount[] displayed = new ItemAmount[DerbyView.SLOTS];
     private long displayUntil = -1;
     private boolean chunkHeld;
+    /** Owed item count per menu viewer and the tick it was read ({@link #snapshot}). */
+    private final Map<UUID, long[]> owedCache = new java.util.HashMap<>();
 
     /** One staked bet row of an entrant. */
     record Seat(int slot, ItemAmount stake, UUID round) {
@@ -133,6 +144,10 @@ public final class DerbyController extends MachineController {
         boolean won;
         boolean refunded;
         boolean paid;
+        /** Entrants settled so far by the spread payout, and the time it took. */
+        int payIndex;
+        long payNanos;
+        long payMaxNanos;
 
         Race(DerbyRules.Race drawn, long start) {
             this.drawn = drawn;
@@ -207,7 +222,7 @@ public final class DerbyController extends MachineController {
         }
         if (rig == null) {
             rig = new DerbyRig(machine.record(), world,
-                    gameTime -> ctx.lights().grant(machine.id(), Bukkit.getCurrentTick()));
+                    gameTime -> ctx.lights().grant(machine.id(), Bukkit.getCurrentTick()), ctx.plugin());
         }
         rig.spawn();
     }
@@ -397,6 +412,7 @@ public final class DerbyController extends MachineController {
     void claim(Player player) {
         if (Usability.usable(player)) {
             ctx.ledger().collect(player);
+            owedCache.remove(player.getUniqueId());
         }
     }
 
@@ -474,6 +490,8 @@ public final class DerbyController extends MachineController {
             cancelEnrollment("group races no longer allowed: refunded");
             return;
         }
+        long t0 = System.nanoTime();
+        long tPlan;
         DerbyRules.Race drawn;
         try {
             drawn = DerbyRules.draw(true, -1, settings.winChance(), ctx.random()::nextInt, ctx.random()::nextLong);
@@ -486,6 +504,7 @@ public final class DerbyController extends MachineController {
             cancelEnrollment("no race plan: refunded");
             return;
         }
+        tPlan = System.nanoTime();
         int second = drawn.second();
         long ends = ctx.clock().getAsLong() + drawn.plan().endTick() * 50L + RECORD_ENDS_MILLIS;
         for (Entrant e : List.copyOf(entrants.values())) {
@@ -504,8 +523,8 @@ public final class DerbyController extends MachineController {
             cancelEnrollment("nobody left at the start");
             return;
         }
-        Log.get().info("duck derby #{}: group race starts with {} entrant(s)", machine.record().number(),
-                entrants.size());
+        Log.get().info("duck derby #{}: group race starts with {} entrant(s) (draw and plan {} ms, records {} ms)",
+                machine.record().number(), entrants.size(), ms(tPlan - t0), ms(System.nanoTime() - tPlan));
         launch(world, drawn, now);
     }
 
@@ -513,9 +532,10 @@ public final class DerbyController extends MachineController {
     private WagerEngine.Revision decide(Player p, Entrant e, DerbyRules.Race drawn, int second, long ends) {
         try {
             PlayerAccount account = new PlayerAccount(p);
+            de.tigges.kaboofcasino.wager.Ledger ledger = account.ledger();
             List<RoundRecord> revised = new ArrayList<>();
             for (Seat s : e.seats) {
-                RoundRecord old = account.ledger().round(s.round()).orElse(null);
+                RoundRecord old = ledger.round(s.round()).orElse(null);
                 if (old == null) {
                     return WagerEngine.Revision.GONE;
                 }
@@ -563,6 +583,10 @@ public final class DerbyController extends MachineController {
             return;
         }
         long now = world.getGameTime();
+        if (race != null ? raceStuck(now, race.start, race.plan().endTick())
+                : enrolling() && countdownStuck(now, enrollmentUntil)) {
+            unstick(now);
+        }
         if (enrolling()) {
             enrollTick(world, now);
         }
@@ -583,6 +607,66 @@ public final class DerbyController extends MachineController {
                 menu.refresh(snapshot(p));
             }
         }
+    }
+
+    /**
+     * The payout ({@code resultTick + 12}, when the mod's credits fall due), spread over the ticks + 12 .. + 16 in join
+     * order so 64 entrants never cost one tick ~30 ms: step k settles the first {@code ceil(n * (k + 1) / 5)}.
+     */
+    private void payBatch(Race r, int step) {
+        List<Entrant> all = List.copyOf(entrants.values());
+        int upTo = payUpTo(all.size(), step);
+        long t0 = System.nanoTime();
+        while (r.payIndex < upTo) {
+            settle(all.get(r.payIndex++), SettleReason.NORMAL, true);
+        }
+        long took = System.nanoTime() - t0;
+        r.payNanos += took;
+        r.payMaxNanos = Math.max(r.payMaxNanos, took);
+        if (r.payIndex >= all.size()) {
+            r.paid = true;
+            Log.get().info("duck derby #{}: payout of {} entrant(s) took {} ms over {} tick(s) (largest tick {} ms)",
+                    machine.record().number(), all.size(), ms(r.payNanos), step + 1, ms(r.payMaxNanos));
+        }
+    }
+
+    /** How many entrants are paid after payout step {@code step} (0 = the due tick): all by step 4. */
+    static int payUpTo(int entrants, int step) {
+        if (step >= PAYOUT_TICKS - 1) {
+            return entrants;
+        }
+        return (int) Math.min(entrants, ((long) entrants * (step + 1) + PAYOUT_TICKS - 1) / PAYOUT_TICKS);
+    }
+
+    private static String ms(long nanos) {
+        return String.format(java.util.Locale.ROOT, "%.2f", nanos / 1e6);
+    }
+
+    /** A race past {@code endTick} + 600 ticks (its start counts as tick 0). */
+    static boolean raceStuck(long now, long raceStart, int endTick) {
+        return now - raceStart > (long) endTick + STUCK_AFTER_TICKS;
+    }
+
+    /** A countdown past its 200 ticks + 600. */
+    static boolean countdownStuck(long now, long enrollmentUntil) {
+        return enrollmentUntil >= 0 && now - (enrollmentUntil - ENROLL_TICKS) > ENROLL_TICKS + STUCK_AFTER_TICKS;
+    }
+
+    /** The guard: every entrant settles as stored (TIMEOUT), race and countdown end, the chunk is released. */
+    private void unstick(long now) {
+        Log.get().warn("duck derby #{}: {} stuck at tick {} ({} entrant(s)); they settle as stored, the machine is "
+                + "free again", machine.record().number(), race != null ? "race" : "countdown",
+                race != null ? now - race.start : now - (enrollmentUntil - ENROLL_TICKS), entrants.size());
+        for (Entrant e : List.copyOf(entrants.values())) {
+            settle(e, SettleReason.TIMEOUT, false);
+        }
+        entrants.clear();
+        race = null;
+        enrollmentUntil = -1;
+        groupRace = false;
+        Arrays.fill(displayed, null);
+        displayUntil = -1;
+        holdChunk(false);
     }
 
     private void raceTick(World world, Race r, long now) {
@@ -620,10 +704,7 @@ public final class DerbyController extends MachineController {
             confetti(world, r, elapsed, 0.7);
         }
         if (r.stage >= 2 && !r.paid && sinceResult >= DUE_AFTER_RESULT) {
-            r.paid = true;
-            for (Entrant e : entrants.values()) {
-                settle(e, SettleReason.NORMAL, true);
-            }
+            payBatch(r, (int) (sinceResult - DUE_AFTER_RESULT));
         }
         if (r.stage >= 2 && r.paid && elapsed >= plan.endTick()) {
             race = null;
@@ -635,9 +716,10 @@ public final class DerbyController extends MachineController {
     }
 
     /**
-     * Settles an entrant's records (refund in the countdown, the result in the race). With {@code effects} the mod's
-     * delivery cues follow ({@code DerbyCredits.pay}): "N Gegenstände erhalten" and, within 16 blocks, the payout
-     * sound at the anchor and five happy-villager particles from the machine to the player.
+     * Settles an entrant's records (refund in the countdown, the result in the race) with one ledger read and one write
+     * ({@link WagerEngine#settleRounds}). With {@code effects} the mod's delivery cues follow ({@code DerbyCredits.pay}):
+     * "N Gegenstände erhalten" and, within 16 blocks of the anchor block's centre, the payout sound there and five
+     * happy-villager particles from the machine to the player. Offline or dead: the quit/death hooks settled them.
      */
     private void settle(Entrant e, SettleReason reason, boolean effects) {
         if (e.settled) {
@@ -645,59 +727,54 @@ public final class DerbyController extends MachineController {
         }
         e.settled = true;
         Player p = Bukkit.getPlayer(e.player);
-        long owedBefore = owedCount(p);
-        long paid = 0;
+        if (p == null || p.isDead()) {
+            return;
+        }
+        WagerEngine.Settlement done;
+        PlayerAccount account = new PlayerAccount(p);
         try {
-            if (p != null && !p.isDead()) {
-                PlayerAccount account = new PlayerAccount(p);
-                for (Seat s : e.seats) {
-                    RoundRecord r = account.ledger().round(s.round()).orElse(null);
-                    if (r != null) {
-                        paid += r.payout().stream().mapToLong(ItemAmount::count).sum();
-                    }
-                }
-            }
+            done = ctx.engine().settleRounds(account, e.seats.stream().map(Seat::round).toList(), reason);
         } catch (LedgerCodec.CorruptLedgerException ex) {
             Log.critical("LEDGER_UNREADABLE", "derby settlement of {} failed: {}", e.name, ex.getMessage());
             return;
         }
-        for (Seat s : e.seats) {
-            settleRound(e.player, e.name, s.round(), reason);
+        owedCache.remove(e.player);
+        long delivered = done.deliveredCount();
+        if (done.paid() > delivered) {
+            try {
+                List<ItemAmount> owed = account.ledger().owed();
+                if (!owed.isEmpty()) {
+                    ctx.messages().get().send(p, Msg.OWED_REMAINING, Messages.component("items",
+                            de.tigges.kaboofcasino.util.ItemNames.list(owed)));
+                }
+            } catch (LedgerCodec.CorruptLedgerException ex) {
+                Log.critical("LEDGER_UNREADABLE", "derby owed of {} unreadable: {}", e.name, ex.getMessage());
+            }
         }
-        if (!effects || p == null || p.isDead() || paid <= 0) {
-            return;
-        }
-        long delivered = paid - Math.max(0, owedCount(p) - owedBefore);
-        if (delivered <= 0) {
+        if (!effects || delivered <= 0) {
             return;
         }
         ctx.messages().get().actionBar(p, Msg.DERBY_RECEIVED, Messages.text("count", Long.toString(delivered)));
         World world = world();
-        Location origin = world == null ? null : new Location(world, machine.anchor().x(), machine.anchor().y(),
-                machine.anchor().z());
-        if (origin != null && p.getWorld().equals(world)
-                && p.getLocation().distanceSquared(origin) <= (double) NEAR * NEAR) {
-            world.playSound(net.kyori.adventure.sound.Sound.sound(net.kyori.adventure.key.Key.key("roulettecasino",
-                    "duck_payout"), net.kyori.adventure.sound.Sound.Source.BLOCK, 0.43f, 1.0f),
-                    origin.getX() + 0.5, origin.getY() + 0.5, origin.getZ() + 0.5);
-            for (int n = 1; n <= 5; n++) {
-                double f = n / 5.0;
-                world.spawnParticle(Particle.HAPPY_VILLAGER,
-                        origin.getX() + 0.5 + (p.getX() - origin.getX() - 0.5) * f,
-                        origin.getY() + 1 + (p.getY() + 0.7 - origin.getY() - 1.0) * f,
-                        origin.getZ() + 0.5 + (p.getZ() - origin.getZ() - 0.5) * f, 1, 0.03, 0.03, 0.03, 0.0);
-            }
+        if (world == null || !p.getWorld().equals(world)) {
+            return;
         }
-    }
-
-    private static long owedCount(Player p) {
-        if (p == null) {
-            return 0;
+        Location centre = new Location(world, machine.anchor().x() + 0.5, machine.anchor().y() + 0.5,
+                machine.anchor().z() + 0.5);
+        if (p.getLocation().distanceSquared(centre) > (double) NEAR * NEAR) {
+            return;
         }
-        try {
-            return new PlayerAccount(p).ledger().owed().stream().mapToLong(ItemAmount::count).sum();
-        } catch (LedgerCodec.CorruptLedgerException e) {
-            return 0;
+        world.playSound(net.kyori.adventure.sound.Sound.sound(net.kyori.adventure.key.Key.key("roulettecasino",
+                "duck_payout"), net.kyori.adventure.sound.Sound.Source.BLOCK, 0.43f, 1.0f),
+                centre.getX(), centre.getY(), centre.getZ());
+        double ox = machine.anchor().x();
+        double oy = machine.anchor().y();
+        double oz = machine.anchor().z();
+        for (int n = 1; n <= 5; n++) {
+            double f = n / 5.0;
+            world.spawnParticle(Particle.HAPPY_VILLAGER, ox + 0.5 + (p.getX() - ox - 0.5) * f,
+                    oy + 1 + (p.getY() + 0.7 - oy - 1.0) * f, oz + 0.5 + (p.getZ() - oz - 0.5) * f, 1, 0.03, 0.03,
+                    0.03, 0.0);
         }
     }
 
@@ -812,18 +889,30 @@ public final class DerbyController extends MachineController {
                 Arrays.asList(displayed));
     }
 
+    /** The viewer's owed entries, decoded at most every {@link #OWED_CACHE_TICKS} ticks (the menu asks every tick). */
+    private int owedEntries(Player viewer, long now) {
+        long[] cached = owedCache.get(viewer.getUniqueId());
+        if (cached != null && now - cached[0] < OWED_CACHE_TICKS && now >= cached[0]) {
+            return (int) cached[1];
+        }
+        int n;
+        try {
+            n = new PlayerAccount(viewer).ledger().owed().size();
+        } catch (LedgerCodec.CorruptLedgerException e) {
+            n = 0;
+        }
+        owedCache.keySet().removeIf(id -> Bukkit.getPlayer(id) == null);
+        owedCache.put(viewer.getUniqueId(), new long[] {now, n});
+        return n;
+    }
+
     /** The lobby data of {@code viewer}'s bet menu ({@code DerbyLobby.json}). */
     DerbySnapshot snapshot(Player viewer) {
         World w = world();
         long now = w != null ? w.getGameTime() : viewer.getWorld().getGameTime();
         int seconds = enrolling() ? (int) Math.max(0, (enrollmentUntil - now + 19) / 20) : 0;
         Entrant own = enrolling() ? entrants.get(viewer.getUniqueId()) : null;
-        int credits = 0;
-        try {
-            credits = new PlayerAccount(viewer).ledger().owed().size();
-        } catch (LedgerCodec.CorruptLedgerException e) {
-            credits = 0;
-        }
+        int credits = owedEntries(viewer, now);
         return new DerbySnapshot(race != null, enrolling(), seconds, own != null,
                 DerbyRules.groupAllowed(ctx.config().get().derby().winChance()), credits,
                 entrants.values().stream().map(Entrant::member).toList(), own == null ? -1 : own.lane,

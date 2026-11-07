@@ -241,6 +241,11 @@ The forward has to exist for that mode.
 pivot lands exactly where the mod's `SlotMachineLayout.toBlock` puts it (`RigMathTest` checks all facings).
 `Rf = rotationY(−turns·90°)` (the mod's renderer turn).
 
+Floating panels of every machine (slot, wheel, Plinko, roulette, blackjack, poker, derby) are text displays with one
+opacity for every viewer: the mod's look-angle dimming (`CasinoFloatingPanels.faded` with `DerbyPanelFocus.opacity`:
+down to 25 % when the panel is more than ~5-28° off the camera's view) and its 7.5-10-block distance fade are not
+built; the panels show fully within 10 blocks and are cut beyond.
+
 Slot specifics:
 - Body: the mod's three block models via generated item definitions `roulettecasino:block/slot_machine_*`.
 - Reels: 72 generated **partial** drums (`kaboofcasino:slot/drum_<reel>_<blur>_<face>`: 22 facets of 7.5° covering
@@ -830,9 +835,24 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   loaded (counted plugin ticket) from the first entrant to the race's end, so a race with nobody near still ends and
   pays on time. A table removed by an admin settles what is stored: the refund in the countdown, the result in the
   race (the mod makes the credits due at once).
-- Rewards: the mod's `DerbyCredits` ledger (pay only within 16 blocks, on the claim button or at join) is the
-  plugin's owed list: winnings go straight into the inventory wherever the player is, the rest owed and delivered
-  by the owed timer, `/casino abholen` or the menu's "Gewinn abholen" button (shown while anything is owed).
+- Rewards: the mod's `DerbyCredits` ledger (pay only within 16 blocks of the machine, on the claim button or at
+  join, and only to a living player) is the plugin's owed list: winnings go straight into the inventory wherever the
+  player is (the 16 blocks, measured from the anchor block's centre like the mod, only decide the payout sound and
+  particles), the rest owed and delivered by the owed timer, `/casino abholen` or the menu's "Gewinn abholen" button.
+  A player who dies with a race's result open gets it in the death drops (the grave) instead of the mod's ledger
+  waiting until he is alive again. The plugin's global owed lock applies: while anything is owed no new round starts
+  (`OWED_PENDING`), so "Gewinn abholen" takes the SOLO button's place while anything is owed (SOLO could not start
+  then anyway; the menu has no free slot for a separate claim button) - a deviation from the mod's separate button.
+- Plugin additions: "Das Gruppenrennen ist voll (64 Spieler)." and "Die Anmeldung ist geschlossen: Das Rennen startet
+  gleich." (the mod only refuses silently, `joinGroup` returns false), and the stuck guard: a race older than its
+  `endTick` + 600 ticks or a countdown older than its 200 + 600 ticks settles every entrant as stored (TIMEOUT) and
+  frees the machine (`DerbyStuckGuardTest`), checked first in every tick so an error later in the tick cannot stop it.
+- Load: a launch and a payout read and write each entrant's ledger once (`WagerEngine.settleRounds`); the menu's owed
+  count is cached for 10 ticks per viewer. The payout is spread over `resultTick + 12 .. + 16` (step k settles the
+  first ceil(n (k + 1) / 5) entrants in join order). Measured on the test instance with 8 bots, 3 bet rows each
+  (three races): records at the launch 1.3-3.3 ms (0.2-0.4 ms per entrant: ~11-14 ms for 64), payout 4.5-8.8 ms in
+  total (0.6-1.1 ms per entrant: ~35-70 ms for 64, so 7-14 ms per payout tick), the race plan itself 19-30 ms on the
+  busy test server (8 ms warm in a test JVM) once per race, solo or group.
 - Legacy shared bets (`startLegacy`, unreachable in the mod) and the exchange rules are not built; the `forced` winner
   argument is never used by the mod's menu and is not built.
 - Config `derby:` `win-chance` (-1 natural, 0..100 solo only), `needs-support` (default true: one of the twelve cells on
@@ -851,20 +871,29 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   entities (render.md 2.5: 21 with a label). All stand at the anchor's bottom centre (light = the renderer's
   `lightCoords`, also for the tub), culling box 7.2 x 2.0 holding the machine, the sign and every duck pose in all
   facings (`DerbyGeometryTest`, against an independent evaluation of the renderer's pose stack and the blockstate).
-  Cadence: ducks and gates every tick with the pose of now + 1 and interpolation 1, only what changed and only while a
-  player's eyes are within 64 blocks of the anchor (the renderer's view distance; the scan is cached 4 ticks); at rest
-  nothing is sent, a race with nobody near costs the cached scan; the first update in range glides the ducks to the
-  current pose in one tick. The bulbs are resent only when a grey changes.
+  Cadence (`DerbyRigCadence`): ducks and gates every tick with the pose of now + 1 and interpolation 1 while a
+  player's eyes are within 64 blocks of the anchor (the renderer's view distance); with nobody that near but a player
+  inside the display tracking range (128 = `spigot.yml` `entity-tracking-range.display`, a constant because Paper's
+  getters for it are deprecated, capped at view distance x 16; horizontal like the tracker) every 4th tick with the
+  pose of now + 4 and interpolation 4, each send granted by the shared idle budget (asked only when due), so a client
+  with a higher entity distance sees the race too; nobody tracking: nothing. Only what changed is sent, at rest
+  nothing; the player scan is cached 4 ticks. Race traffic per tracking player: 3.76 display updates per race tick
+  (75/s) with someone within 64 blocks, 0.96 (19/s) with the nearest player at 100 blocks (`DerbyRigCadenceTest`).
+  The bulbs are resent only when a grey changes.
 - **Panel**: one text display centred like the renderer's at machine (24, 2.6 blocks, 32) (a group panel taller than
   70 px lifted as `sharedPanel` does; moved when its line count changes), view range 10 (hard cut instead of the
   7.5-10 fade), rebuilt only when its content changes and only while a player is within 24 blocks. Group: the
   countdown "Start in N s" with the brass bar (the remaining time in 20 steps), "N Spieler" / "N Spieler · Rennen
   läuft" / from `resultTick` "SIEGER: X · ZWEITER: Y", up to 8 entrants in join order (the lane strip under the head,
-  name, up to three stakes), "+ N Spieler". Solo: the player's head and name, per staked lane the duck's name on the
+  name, up to three stakes), "+ N Spieler". Own entry first (`DerbyLobby.visible`): an entrant within 12 blocks whose
+  order differs gets his own copy (a text display not visible by default, `showEntity` to him only, the shared one
+  `hideEntity`'d for him; kept to 14 blocks, `DerbyPanelViewers`); it goes when he walks away, leaves the world, quits,
+  the group panel ends or the rig despawns, the shared panel shown to him again first (Paper keeps both directions per
+  entity id, so nothing stale is left). Solo: the player's head and name, per staked lane the duck's name on the
   lane colour over the bronze line (`background` draws `HEADER_EDGE` only as a line) and its stakes, from `resultTick`
   "SIEGER: <Ente>" / "ZWEITER: <Ente>" in bold with the duck's colour. Words are the mod's lang keys with German
   fallbacks; bars and strips are glyphs of the pack font `kaboofcasino:derby_panel`. Not built: the felt texture and
-  brass frame of the panel, 3D item icons, the per-viewer fade and own-entry-first order, the countdown's 1.5 x text
+  brass frame of the panel, 3D item icons, the per-viewer fade and look-angle dimming, the countdown's 1.5 x text
   size, the winner/second column frames (the result lines name both); the lane box is 11 px instead of 14 to fit a
   text line, and the header label is centred with the German name's width.
 
@@ -877,7 +906,9 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   the group_unavailable tooltip when the win chance forbids groups), the lobby as 8 player heads in row 5 (own entry
   first; name, duck and "Einsatz bestätigt" in the tooltip) with a pager in 53; the help panel re-laid out above the
   inventory. Deviations: lanes on 18 px grid columns instead of the 52 px pitch, brand and hint moved to the right
-  panel, heads instead of drawn names, one pager instead of the two arrows, an 18 px help button, buttons 83 px wide.
+  panel, the lobby as a row of head items (forced: a chest can show players only as items in slots, names only in
+  tooltips) instead of drawn names and skins, one pager instead of the two arrows, an 18 px help button, buttons 83 px
+  wide.
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`

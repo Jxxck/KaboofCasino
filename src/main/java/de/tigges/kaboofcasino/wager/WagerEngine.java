@@ -235,6 +235,50 @@ public final class WagerEngine {
         return round;
     }
 
+    /** What {@link #settleRounds} did: the settled records and what was delivered right after. */
+    public record Settlement(List<RoundRecord> rounds, List<ItemAmount> delivered) {
+
+        public Settlement {
+            rounds = List.copyOf(rounds);
+            delivered = List.copyOf(delivered);
+        }
+
+        public long paid() {
+            return rounds.stream().flatMap(r -> r.payout().stream()).mapToLong(ItemAmount::count).sum();
+        }
+
+        public long deliveredCount() {
+            return delivered.stream().mapToLong(ItemAmount::count).sum();
+        }
+    }
+
+    /**
+     * Settles several open rounds of one account (a derby entrant's bet rows) with one ledger read and one write
+     * (records out, payouts into owed), then delivers what fits. Missing ids are skipped.
+     */
+    public Settlement settleRounds(Account account, java.util.Collection<UUID> ids, SettleReason reason) {
+        Threads.requireMain();
+        Ledger ledger = account.ledger();
+        List<RoundRecord> settled = new ArrayList<>();
+        Ledger next = ledger;
+        for (UUID id : ids) {
+            RoundRecord r = next.round(id).orElse(null);
+            if (r != null) {
+                settled.add(r);
+                next = next.withoutRound(id).plusOwed(r.payout());
+            }
+        }
+        if (settled.isEmpty()) {
+            return new Settlement(List.of(), List.of());
+        }
+        account.ledger(next);
+        long now = clock.getAsLong();
+        for (RoundRecord r : settled) {
+            sink.settled(account.id(), r, reason, now);
+        }
+        return new Settlement(settled, deliverOwed(account));
+    }
+
     /** Settles every open round (quit, stop, join recovery). Returns the settled records. */
     public List<RoundRecord> settleAll(Account account, SettleReason reason) {
         return settleAll(account, reason, id -> false);

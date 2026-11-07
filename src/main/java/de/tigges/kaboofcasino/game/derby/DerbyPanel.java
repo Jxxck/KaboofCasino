@@ -21,7 +21,8 @@ import net.kyori.adventure.text.format.TextDecoration;
  *   <li><b>group</b> ({@code shared && members > 0}): while enrolling the countdown "Start in N s" and its bar (the
  *       remaining time over 200 ticks, in 20 steps); the title "N Spieler", while racing "N Spieler · Rennen läuft",
  *       from the result tick a second line "SIEGER: X · ZWEITER: Y"; up to 8 bettors in join order (head with the
- *       lane strip under it, name, up to three stakes as item sprite and "×N"); "+ N Spieler" when more entered;</li>
+ *       lane strip under it, name, up to three stakes as item sprite and "×N"; an entrant near the panel gets his own
+ *       copy with his entry first, {@link DerbyPanelViewers}); "+ N Spieler" when more entered;</li>
  *   <li><b>solo</b> (otherwise, while any shown bet is set): the player's head and name (the badge, while no group
  *       session runs and an entrant exists), per staked lane its header (the duck's name on the lane colour inside
  *       box over its bronze line) and its stakes one per row, and from the result tick "SIEGER: &lt;duck&gt;" and
@@ -138,8 +139,17 @@ public final class DerbyPanel {
         }
     }
 
-    /** {@code extractRenderState}/{@code extractPanel}/{@code panel} at game tick {@code gameTime}; null = no panel. */
+    /** {@code extractRenderState}/{@code extractPanel}/{@code panel} at game tick {@code gameTime} for everyone (the
+     * entrants in join order); null = no panel. */
     public static Content content(DerbyView view, long gameTime) {
+        return content(view, gameTime, null);
+    }
+
+    /**
+     * The panel as {@code viewer} sees it: {@code DerbyLobby.visible(members, viewer, 8)} puts his own entry first
+     * (then the others in join order); null = everyone's order. Only the group panel's bettors depend on the viewer.
+     */
+    public static Content content(DerbyView view, long gameTime, UUID viewer) {
         if (view == null) {
             return null;
         }
@@ -147,7 +157,7 @@ public final class DerbyPanel {
         int second = winner >= 0 ? view.secondShown(gameTime) : -1;
         if (view.shared() && view.members() > 0) {
             List<Bettor> bettors = new ArrayList<>();
-            for (DerbyMember m : DerbyMember.visible(view.bettors(), null, MAX_BETTORS)) {
+            for (DerbyMember m : DerbyMember.visible(view.bettors(), viewer, MAX_BETTORS)) {
                 bettors.add(new Bettor(m.id(), m.name(), Math.floorMod(m.lane(), 4),
                         m.stakes().subList(0, Math.min(STAKES, m.stakes().size()))));
             }

@@ -189,6 +189,29 @@ class DerbyPanelTest {
         assertEquals(1, count(DerbyPanel.render(DerbyPanel.content(one, START)), "gui.roulettecasino.derby.person"));
     }
 
+    /** {@code DerbyLobby.visible(members, viewer, 8)}: the viewer's own entry first, then the others in join order. */
+    @Test
+    void theViewersOwnEntryComesFirst() {
+        List<DerbyMember> members = new ArrayList<>();
+        for (int n = 0; n < 10; n++) {
+            members.add(member(n, n % 4, COAL));
+        }
+        DerbyView v = new DerbyView(-1, null, true, true, START + 200, 10, members, List.of());
+        DerbyPanel.Shared everyone = (DerbyPanel.Shared) DerbyPanel.content(v, START);
+        assertEquals(new UUID(7, 0), everyone.bettors().get(0).id());
+        DerbyPanel.Shared third = (DerbyPanel.Shared) DerbyPanel.content(v, START, new UUID(7, 2));
+        assertEquals(List.of(2, 0, 1, 3, 4, 5, 6, 7),
+                third.bettors().stream().map(b -> (int) b.id().getLeastSignificantBits()).toList());
+        DerbyPanel.Shared ninth = (DerbyPanel.Shared) DerbyPanel.content(v, START, new UUID(7, 9));
+        assertEquals(List.of(9, 0, 1, 2, 3, 4, 5, 6),
+                ninth.bettors().stream().map(b -> (int) b.id().getLeastSignificantBits()).toList());
+        // the first entrant and anyone not entered see everyone's order; the solo panel has no order
+        assertEquals(everyone, DerbyPanel.content(v, START, new UUID(7, 0)));
+        assertEquals(everyone, DerbyPanel.content(v, START, new UUID(9, 9)));
+        DerbyView s = solo(plan(0), 1, DIAMONDS);
+        assertEquals(DerbyPanel.content(s, START + 3), DerbyPanel.content(s, START + 3, new UUID(7, 1)));
+    }
+
     @Test
     void groupSessionWithoutMembersFallsBackToTheSoloRule() {
         // shared but members 0: the renderer draws the solo columns (no badge during a group session)
