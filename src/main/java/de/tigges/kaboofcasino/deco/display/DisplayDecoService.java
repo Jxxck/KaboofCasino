@@ -75,6 +75,8 @@ public final class DisplayDecoService {
     private final SpeakerHooks music;
     private final Map<UUID, DecoBlock> byId = new HashMap<>();
     private final Map<Pos, DecoBlock> byCell = new HashMap<>();
+    /** Loaded candle blocks (chandelier, sconce): the only ones {@link DecoFlames} looks at. */
+    private final Map<UUID, DecoBlock> candles = new java.util.LinkedHashMap<>();
     /** Loaded decorations by anchor chunk ({@code world chunkKey}), for chunk unloads. */
     private final Map<String, Set<UUID>> byChunk = new HashMap<>();
     private final Deque<UUID> pendingSpawns = new ArrayDeque<>();
@@ -153,6 +155,7 @@ public final class DisplayDecoService {
         byId.clear();
         byCell.clear();
         byChunk.clear();
+        candles.clear();
         pendingSpawns.clear();
         pendingChecks.clear();
         verifyQueue.clear();
@@ -179,6 +182,11 @@ public final class DisplayDecoService {
 
     public Collection<DecoBlock> all() {
         return List.copyOf(byId.values());
+    }
+
+    /** The loaded chandeliers and sconces (live view; the flames only read it). */
+    Collection<DecoBlock> flameBlocks() {
+        return java.util.Collections.unmodifiableCollection(candles.values());
     }
 
     /** Live view for read-only loops that do not add or remove decorations. */
@@ -210,6 +218,9 @@ public final class DisplayDecoService {
 
     private void register(DecoBlock b) {
         byId.put(b.id(), b);
+        if (DecoFlames.burns(b.type())) {
+            candles.put(b.id(), b);
+        }
         byChunk.computeIfAbsent(chunkOf(b.anchor()), k -> new HashSet<>()).add(b.id());
         for (Pos p : b.cells()) {
             byCell.put(p, b);
@@ -219,6 +230,7 @@ public final class DisplayDecoService {
 
     private void unregister(DecoBlock b) {
         byId.remove(b.id());
+        candles.remove(b.id());
         Set<UUID> inChunk = byChunk.get(chunkOf(b.anchor()));
         if (inChunk != null) {
             inChunk.remove(b.id());
@@ -332,26 +344,33 @@ public final class DisplayDecoService {
         Log.get().debug("{} at {} removed ({})", b.type().id(), b.anchor(), why);
     }
 
-    /** The number of items a decoration drops (stacked decor: its count; a double slab: 2). */
+    /** The number of items a decoration drops (stacked decor: its count; slabs: the deco slabs in the cell). */
     static int dropCount(DecoBlock b, World world) {
         if (b.type().place() == DecoType.Place.STACKED) {
             return b.record().count();
         }
-        if (b.type().carrier() == DecoType.Carrier.SLAB && world != null
-                && b.anchor().block(world).getBlockData() instanceof Slab s && s.getType() == Slab.Type.DOUBLE) {
-            return 2;
+        if (b.type().carrier() == DecoType.Carrier.SLAB) {
+            return slabDrop(b.record().state(), world != null && carrierDouble(b.anchor().block(world)));
         }
         return 1;
     }
 
+    /**
+     * Deco slabs a slab cell drops: the count the record stores (1, or 2 after the same deco slab was added), never
+     * more than the carrier holds; a record from 0.5.0 (state 0) falls back to the carrier (double = 2).
+     */
+    static int slabDrop(int stored, boolean carrierDouble) {
+        int carrier = carrierDouble ? 2 : 1;
+        return stored <= 0 ? carrier : Math.min(stored, carrier);
+    }
+
+    private static boolean carrierDouble(Block block) {
+        return block.getBlockData() instanceof Slab s && s.getType() == Slab.Type.DOUBLE;
+    }
+
+    /** Turns a cell that still holds {@code type}'s carrier into air (water if waterlogged); anything else stays. */
     private static void clearCarrier(DecoType type, Block block) {
-        Material m = block.getType();
-        boolean ours = switch (type.carrier()) {
-            case BARRIER -> m == Material.BARRIER;
-            case LIGHT -> m == Material.LIGHT;
-            case STAIRS, SLAB -> m == type.vanilla();
-        };
-        if (!ours) {
+        if (!carrierMaterial(type, block.getType()) && !legacyShelf(type, block.getType())) {
             return;
         }
         boolean wet = block.getBlockData() instanceof Waterlogged w && w.isWaterlogged();
@@ -532,7 +551,10 @@ public final class DisplayDecoService {
     /**
      * The /fill checker: every carrier must still be there (light levels are repaired) and the support the mod needs
      * must hold. A missing carrier (/fill, /setblock, a structure, Litematica, a piston exploit) removes the decoration
-     * without a drop; lost support pops it with its item at the block, as the mod's {@code updateShape} does.
+     * without a drop, and every other cell that still holds its carrier (the other light blocks of a sign or
+     * chandelier) becomes air; the block that replaced the missing one stays. Lost support pops the decoration with
+     * its item at the block, as the mod's {@code updateShape} does. A display shelf from 0.5.0 still on its light
+     * carrier gets its barrier ({@link #convertLegacyShelf}).
      *
      * @return true if the decoration is intact
      */
@@ -542,10 +564,14 @@ public final class DisplayDecoService {
                 continue;
             }
             Block block = p.block(w);
+            if (legacyShelf(b.type(), block.getType())) {
+                convertLegacyShelf(b, block);
+                continue;
+            }
             if (!carrierPresent(b.type(), block)) {
                 Log.get().warn("{} at {}: carrier {} is {} (no event: /fill or an exploit); decoration removed",
                         b.type().id(), b.anchor(), p, block.getType().getKey());
-                remove(b, "carrier missing at " + p, Drop.NONE, 0, null, true);
+                remove(b, "carrier missing at " + p, Drop.NONE, 0, null, false);
                 return false;
             }
         }
@@ -557,11 +583,42 @@ public final class DisplayDecoService {
     }
 
     static boolean carrierPresent(DecoType type, Block block) {
+        return carrierMaterial(type, block.getType());
+    }
+
+    /** True if {@code m} is the carrier of {@code type} (also the test of what {@code remove} turns into air). */
+    static boolean carrierMaterial(DecoType type, Material m) {
         return switch (type.carrier()) {
-            case BARRIER -> block.getType() == Material.BARRIER;
-            case LIGHT -> block.getType() == Material.LIGHT;
-            case STAIRS, SLAB -> block.getType() == type.vanilla();
+            case BARRIER -> m == Material.BARRIER;
+            case LIGHT -> m == Material.LIGHT;
+            case STAIRS, SLAB -> m == type.vanilla();
         };
+    }
+
+    /** A bottle or glass display shelf placed by 0.5.0, still standing on the light block that carried it then. */
+    static boolean legacyShelf(DecoType type, Material m) {
+        return (type == DecoType.BOTTLE_DISPLAY_SHELF || type == DecoType.GLASS_DISPLAY_SHELF) && m == Material.LIGHT;
+    }
+
+    /**
+     * Gives a 0.5.0 shelf its barrier, unless a living entity is in the cell or an offline player logged out within a
+     * block of it (it would be inside a solid block): then the light block stays until a later check finds the cell
+     * clear. Until converted such a shelf has no click box (it cannot be broken), nothing else changes.
+     */
+    private void convertLegacyShelf(DecoBlock b, Block block) {
+        Pos p = Pos.of(block);
+        org.bukkit.util.BoundingBox box = new org.bukkit.util.BoundingBox(p.x(), p.y(), p.z(), p.x() + 1, p.y() + 1,
+                p.z() + 1);
+        for (Entity e : block.getWorld().getNearbyEntities(box)) {
+            if (e instanceof org.bukkit.entity.LivingEntity) {
+                return;
+            }
+        }
+        if (ctx.machines().logouts().blocks(p)) {
+            return;
+        }
+        block.setType(Material.BARRIER, false);
+        Log.get().info("{} at {}: light carrier of 0.5.0 replaced by a barrier", b.type().id(), b.anchor());
     }
 
     /** The light level a light carrier cell must have (the mod's {@code lightLevel} of that block state). */
@@ -676,6 +733,10 @@ public final class DisplayDecoService {
 
     /** The record state with the connection mask recomputed (tables, rope posts, bars); other types unchanged. */
     int connectedState(DecoBlock b, World w) {
+        if (b.type().carrier() == DecoType.Carrier.SLAB && b.record().state() <= 0) {
+            // a 0.5.0 slab record (no count stored): take the carrier's, as 0.5.0 did, and store it from now on
+            return slabDrop(0, carrierDouble(b.anchor().block(w)));
+        }
         DecoType.Connect c = b.type().connect();
         if (c != DecoType.Connect.SAME && c != DecoType.Connect.BAR) {
             return b.record().state();

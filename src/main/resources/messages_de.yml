@@ -71,6 +71,9 @@ error:
 
 deco:
   switch-off: "<red>Casino-Deko kann gerade nicht platziert werden (Server-Einstellung fehlt). Sag einem Admin Bescheid."
+  # admin status of the full-block deco (one line in /casino for admins): <states> <source>
+  status-on: "<green>Block-Deko aktiv</green> <gray>– Paper block-updates.disable-mushroom-block-updates = true (gelesen über <source>), <states> Zustände."
+  status-off: "<red>Block-Deko AUS</red> <gray>– Paper block-updates.disable-mushroom-block-updates = false (gelesen über <source>): Platzieren gesperrt, reservierte Zustände droppen Vanilla-Loot. In config/paper-global.yml auf true setzen und neu starten."
   # display decoration: only the casino's own refusals speak; the mod's silent ones stay silent
   chunk-border: "<red>Das passt hier nicht ganz in einen Chunk – setz es einen Block weiter nach <direction>."
   chunk-border-far: "<red>Das passt hier nicht ganz in einen Chunk – setz es <blocks> Blöcke weiter nach <direction>."

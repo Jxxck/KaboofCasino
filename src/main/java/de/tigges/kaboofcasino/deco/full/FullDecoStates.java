@@ -26,12 +26,14 @@ import java.util.Set;
  *       side or two adjacent sides; jigsaw pieces are rotated/mirrored, so every rotation of those patterns
  *       counts. The huge-mushroom features themselves always place {@code down=false}.</li>
  * </ul>
- * That leaves 30 red, 22 brown and 30 stem states (82). Used: 72 (stem 23, red 30, brown 19), spare: stem masks
- * 24..30, brown 27, 29, 30.
+ * That leaves 30 red, 22 brown and 30 stem states (82). Used: 80 - the first 72 by the layout (stem 23, red 30,
+ * brown 19), then the appendix ({@link #APPENDIX}) on the spare states in pool order (stem, red, brown); spare now:
+ * brown masks 29 and 30. The remaining mod content (poker, duck derby, TVs, dealer station, speaker, guide) has no
+ * full cube, so nothing else will need them.
  *
- * <p>Pilasters have 4 x 4 x 4 x 4 = 256 states in the mod; 19 per pilaster fit ({@link #PILASTERS}): no band, and
- * on each axis the same band on both sides (a straight wall) or on one side (a wall end). Everything else is shown
- * by the nearest of them ({@link PilasterChoice}).
+ * <p>Pilasters have 4 x 4 x 4 x 4 = 256 states in the mod; 23 per pilaster fit ({@link #PILASTERS}): no band; on
+ * each axis the same band on both sides (a straight wall) or on one side (a wall end); and the four outer corners at
+ * baseboard height (appended). Everything else is shown by the nearest of them ({@link PilasterChoice}).
  */
 public final class FullDecoStates {
 
@@ -92,8 +94,27 @@ public final class FullDecoStates {
                     MushroomState.UP | MushroomState.SOUTH | MushroomState.WEST,
                     MushroomState.UP | MushroomState.WEST | MushroomState.NORTH));
 
-    /** The 19 pilaster states of each pilaster, in table order. */
+    /** The pilaster states of each pilaster, in table order: the 19 of the layout, then the 4 appended corners. */
     public static final List<Pilaster> PILASTERS;
+
+    /** The four outer corners at baseboard height (band 1 on two adjacent sides): north-east, east-south, ... */
+    public static final List<Pilaster> CORNERS = List.of(new Pilaster(1, 1, 0, 0), new Pilaster(0, 1, 1, 0),
+            new Pilaster(0, 0, 1, 1), new Pilaster(1, 0, 0, 1));
+
+    /** One appended state: a deco block variant placed on the next spare state (append only, never reorder). */
+    public record Appended(DecoBlock block, Side facing, Pilaster pilaster) {
+    }
+
+    /** Added after the first 72; they take the spare states in pool order (stem, red, brown; ascending masks). */
+    public static final List<Appended> APPENDIX = List.of(
+            new Appended(DecoBlock.DARK_OAK_PILASTER, null, CORNERS.get(0)),
+            new Appended(DecoBlock.DARK_OAK_PILASTER, null, CORNERS.get(1)),
+            new Appended(DecoBlock.DARK_OAK_PILASTER, null, CORNERS.get(2)),
+            new Appended(DecoBlock.DARK_OAK_PILASTER, null, CORNERS.get(3)),
+            new Appended(DecoBlock.CLASSIC_DARK_OAK_PILASTER, null, CORNERS.get(0)),
+            new Appended(DecoBlock.CLASSIC_DARK_OAK_PILASTER, null, CORNERS.get(1)),
+            new Appended(DecoBlock.CLASSIC_DARK_OAK_PILASTER, null, CORNERS.get(2)),
+            new Appended(DecoBlock.CLASSIC_DARK_OAK_PILASTER, null, CORNERS.get(3)));
 
     private static final List<Entry> ENTRIES;
     private static final Map<MushroomState, Entry> BY_STATE = new HashMap<>();
@@ -111,6 +132,8 @@ public final class FullDecoStates {
             pilasters.add(new Pilaster(b, 0, 0, 0));
             pilasters.add(new Pilaster(0, 0, b, 0));
         }
+        List<Pilaster> base = List.copyOf(pilasters);
+        pilasters.addAll(CORNERS);
         PILASTERS = List.copyOf(pilasters);
 
         Map<MushroomBlock, List<DecoBlock>> layout = new LinkedHashMap<>();
@@ -128,6 +151,7 @@ public final class FullDecoStates {
         layout.put(MushroomBlock.BROWN, List.of(DecoBlock.CLASSIC_DARK_OAK_PILASTER));
 
         List<Entry> entries = new ArrayList<>();
+        List<MushroomState> spare = new ArrayList<>();
         for (Map.Entry<MushroomBlock, List<DecoBlock>> e : layout.entrySet()) {
             List<Integer> masks = usableMasks(e.getKey());
             int next = 0;
@@ -142,13 +166,18 @@ public final class FullDecoStates {
                         }
                     }
                     case PILASTER -> {
-                        for (Pilaster p : PILASTERS) {
+                        for (Pilaster p : base) {
                             entries.add(new Entry(MushroomState.downTrue(e.getKey(), masks.get(next++)), block,
                                     null, p));
                         }
                     }
                 }
             }
+            masks.subList(next, masks.size()).forEach(m -> spare.add(MushroomState.downTrue(e.getKey(), m)));
+        }
+        int next = 0;
+        for (Appended a : APPENDIX) {
+            entries.add(new Entry(spare.get(next++), a.block(), a.facing(), a.pilaster()));
         }
         ENTRIES = List.copyOf(entries);
         for (Entry entry : ENTRIES) {

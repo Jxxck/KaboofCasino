@@ -13,7 +13,6 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.MultipleFacing;
-import org.bukkit.block.structure.StructureRotation;
 
 /**
  * Reading and writing deco states in the world. A block is deco only if its state is in {@link FullDecoStates};
@@ -70,19 +69,6 @@ final class DecoWorld {
             throw new IllegalArgumentException("not a reserved state: " + state);
         }
         return d.clone();
-    }
-
-    /**
-     * True if Paper's {@code block-updates.disable-mushroom-block-updates} is on. Probed without side effects: with the
-     * switch on, {@code HugeMushroomBlock.rotate} returns the state unchanged (the same flag that also disables
-     * {@code updateShape} and {@code getStateForPlacement}); with it off a cap with only its north face turns east.
-     */
-    static boolean mushroomUpdatesDisabled() {
-        BlockData probe = Bukkit.createBlockData(
-                "minecraft:red_mushroom_block[down=false,east=false,north=true,south=false,up=false,west=false]");
-        BlockData turned = probe.clone();
-        turned.rotate(StructureRotation.CLOCKWISE_90);
-        return turned.equals(probe);
     }
 
     static BlockFace face(Side side) {

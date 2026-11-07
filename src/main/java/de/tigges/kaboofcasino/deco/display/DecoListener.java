@@ -352,6 +352,12 @@ final class DecoListener implements Listener {
             }
             return;
         }
+        if (held.isPresent() && mergesIntoForeignSlab(held.get(), event.getBlockReplacedState().getType())) {
+            // a deco slab onto a plain slab of its carrier: vanilla would merge them into one double block, which
+            // would then count as two deco slabs (dupe); the mod's slab never merges with another block either
+            event.setCancelled(true);
+            return;
+        }
         if (vanillaDeco && service.ctx().config().get().machines().refuseLogoutSpots()
                 && service.ctx().machines().logouts().blocks(pos)) {
             event.setCancelled(true);
@@ -366,14 +372,26 @@ final class DecoListener implements Listener {
         Optional<DecoType> held = DecoItems.of(event.getItemInHand());
         if (held.isPresent() && held.get().vanillaCarrier() && placed.getType() == held.get().vanilla()) {
             Optional<DecoBlock> existing = service.at(pos);
+            boolean slab = held.get().carrier() == DecoType.Carrier.SLAB;
             if (existing.isEmpty()) {
+                // slabs store the number of deco slabs in the cell (the record, not the carrier, says what drops)
                 DecoRecord record = new DecoRecord(java.util.UUID.randomUUID(), held.get(), pos,
-                        de.tigges.kaboofcasino.machine.Facing.SOUTH, 0, event.getPlayer().getUniqueId(),
+                        de.tigges.kaboofcasino.machine.Facing.SOUTH, slab ? 1 : 0, event.getPlayer().getUniqueId(),
                         System.currentTimeMillis());
                 service.add(record, placed.getWorld());
+            } else if (slab && existing.get().type() == held.get()) {
+                service.update(existing.get(), existing.get().record().withState(2), placed.getWorld());
             }
         }
         service.checkAround(pos);
+    }
+
+    /**
+     * True if placing a deco slab replaces a block of its own carrier material that has no deco record: that is a
+     * plain (vanilla) single slab, and vanilla would merge both into one double slab. Stairs never merge.
+     */
+    static boolean mergesIntoForeignSlab(DecoType held, org.bukkit.Material replaced) {
+        return held.carrier() == DecoType.Carrier.SLAB && replaced == held.vanilla();
     }
 
     // ---- explosions ------------------------------------------------------------------------------------------------

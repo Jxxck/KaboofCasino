@@ -19,8 +19,6 @@ public final class DecoGeometry {
     // the mod's outline boxes (south frame, px)
     static final double[] SCONCE = {2.5, 0.5, 0.0, 13.5, 14.75, 9.0};
     static final double[] VIP_ONLY_PLAQUE = {1.0, 3.0, 0.0, 15.0, 13.0, 2.0};
-    static final double[] BOTTLE_DISPLAY_SHELF = {0.0, 0.0, 0.0, 16.0, 16.0, 6.0};
-    static final double[] GLASS_DISPLAY_SHELF = {0.0, 1.0, 0.0, 16.0, 10.6, 6.0};
     /** {@code SpeakerBlock}: body plus foot / wall bracket / ceiling mount, as one bounding box each. */
     static final double[][] SPEAKER = {{2.0, 0.0, 3.0, 14.0, 14.0, 13.0}, {2.0, 2.0, 0.0, 14.0, 14.0, 13.0},
             {2.0, 2.0, 3.0, 14.0, 16.0, 13.0}};
@@ -136,8 +134,6 @@ public final class DecoGeometry {
             }
             case CHANDELIER_WALL_SCONCE -> out.add(box(turn(SCONCE, turns), 0, 0));
             case VIP_ONLY_PLAQUE -> out.add(box(turn(VIP_ONLY_PLAQUE, turns), 0, 0));
-            case BOTTLE_DISPLAY_SHELF -> out.add(box(turn(BOTTLE_DISPLAY_SHELF, turns), 0, 0));
-            case GLASS_DISPLAY_SHELF -> out.add(box(turn(GLASS_DISPLAY_SHELF, turns), 0, 0));
             case CASINO_SPEAKER -> out.add(box(turn(SPEAKER[r.face()], turns), 0, 0));
             case CASINO_CHANDELIER -> {
                 out.add(box(CHANDELIER_BODY, 0, 0));

@@ -109,11 +109,15 @@ class PilasterChoiceTest {
         // wall end: cornice only on the east, west open
         assertEquals(new Pilaster(0, 2, 0, 0), PilasterChoice.choose(new Pilaster(0, 2, 0, 0),
                 EnumSet.of(Side.NORTH, Side.WEST, Side.SOUTH), AVAILABLE));
-        // outer corner (walls east and south): only one of the two visible faces can be exact
-        Pilaster corner = PilasterChoice.choose(new Pilaster(0, 1, 1, 0), EnumSet.of(Side.NORTH, Side.WEST),
+        // outer corners at baseboard height are exact (all four orientations)
+        for (Pilaster c : FullDecoStates.CORNERS) {
+            assertEquals(c, PilasterChoice.choose(c, ALL, AVAILABLE));
+        }
+        // a cornice corner (walls east and south) is not reserved: only one of the two visible faces is exact
+        Pilaster corner = PilasterChoice.choose(new Pilaster(0, 2, 2, 0), EnumSet.of(Side.NORTH, Side.WEST),
                 AVAILABLE);
-        assertEquals(new Pilaster(0, 1, 0, 0), corner);
-        assertEquals(face(new Pilaster(0, 1, 1, 0), Side.NORTH), face(corner, Side.NORTH));
+        assertEquals(new Pilaster(0, 2, 0, 0), corner);
+        assertEquals(face(new Pilaster(0, 2, 2, 0), Side.NORTH), face(corner, Side.NORTH));
         // free-standing, nothing around
         assertEquals(new Pilaster(0, 0, 0, 0), PilasterChoice.choose(new Pilaster(0, 0, 0, 0), ALL, AVAILABLE));
     }

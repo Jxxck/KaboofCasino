@@ -23,8 +23,10 @@ package de.tigges.kaboofcasino.music;
  *       station starts are.</li>
  *   <li><b>Stop</b> (stopSound of the track): leaving 48 blocks, the station going idle or restarting (new epoch or
  *       seed), world change, death, quit, music switched off.</li>
- *   <li><b>Vanilla music</b>: stopped when the range is entered and every {@link #VANILLA_STOP_TICKS} while in
- *       range (the client then waits its normal delay before it picks a new song).</li>
+ *   <li><b>Vanilla music</b>: a category-only stopSound(MUSIC) at every check while in range, i.e. every
+ *       {@link #CHECK_TICKS} (at most once per tick). The mod stops it every tick and cancels the music manager; a
+ *       song that a client starts in between (e.g. with the "constant" music frequency) plays at most half a
+ *       second.</li>
  * </ul>
  */
 final class Playback {
@@ -46,8 +48,6 @@ final class Playback {
     static final int SETTLE_MAX_TICKS = 200;
     static final float QUIET_TARGET = 0.3f;
     static final float QUIET_RATIO = 3.0f;
-    /** Vanilla music is stopped this often while in range. */
-    static final int VANILLA_STOP_TICKS = 200;
 
     enum State {
         /** Out of range (or no station). */
@@ -82,7 +82,6 @@ final class Playback {
     private long pendingSince;
     private double lastDistance;
     private long lastDistanceTick;
-    private long nextVanillaStop = Long.MIN_VALUE;
     private long lastVanillaStop = Long.MIN_VALUE;
 
     /** {@code CasinoSoundClient}: {@code t = clamp((d - 12) / 36, 0, 1)}, {@code 0.7 * (1 - smoothstep(t))}. */
@@ -123,7 +122,7 @@ final class Playback {
             stop(out);
             return;
         }
-        if (tick >= nextVanillaStop) {
+        if (lastVanillaStop != tick) {
             stopVanilla(tick, out);
         }
         double distance = Math.sqrt(distanceSq);
@@ -203,7 +202,6 @@ final class Playback {
     private void stopVanilla(long tick, Out out) {
         out.stopVanillaMusic();
         lastVanillaStop = tick;
-        nextVanillaStop = tick + VANILLA_STOP_TICKS;
     }
 
     /** The playing track ended: the next one of the shared order at the volume for the current distance. */
@@ -232,6 +230,5 @@ final class Playback {
         }
         state = State.IDLE;
         track = -1;
-        nextVanillaStop = Long.MIN_VALUE;
     }
 }

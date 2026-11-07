@@ -136,6 +136,73 @@ class DecoRulesTest {
         assertEquals(1, record(0).chain());
     }
 
+    /**
+     * The slab dupe (review): a deco slab never merges into a plain slab of its carrier, and what a slab cell drops is
+     * the stored count, capped by the carrier; a 0.5.0 record (0) reads the carrier.
+     */
+    @Test
+    void slabsCountWhatWasPlaced() {
+        assertTrue(DecoListener.mergesIntoForeignSlab(DecoType.RUBY_VELVET_SLAB, Material.CRIMSON_SLAB));
+        assertTrue(DecoListener.mergesIntoForeignSlab(DecoType.SAPPHIRE_VELVET_SLAB, Material.WARPED_SLAB));
+        assertFalse(DecoListener.mergesIntoForeignSlab(DecoType.RUBY_VELVET_SLAB, Material.AIR));
+        assertFalse(DecoListener.mergesIntoForeignSlab(DecoType.RUBY_VELVET_SLAB, Material.WARPED_SLAB));
+        assertFalse(DecoListener.mergesIntoForeignSlab(DecoType.RUBY_VELVET_STAIRS, Material.CRIMSON_STAIRS));
+        assertEquals(1, DisplayDecoService.slabDrop(1, false));
+        assertEquals(1, DisplayDecoService.slabDrop(1, true)); // a deco half in a double block: one deco slab
+        assertEquals(2, DisplayDecoService.slabDrop(2, true));
+        assertEquals(1, DisplayDecoService.slabDrop(2, false)); // never more than the carrier holds
+        assertEquals(2, DisplayDecoService.slabDrop(0, true)); // 0.5.0 record: as 0.5.0 did
+        assertEquals(1, DisplayDecoService.slabDrop(0, false));
+    }
+
+    /**
+     * A decoration that lost one carrier is removed; its other cells are cleared only where they still hold its
+     * carrier (the sign's and chandelier's other light blocks), the block that replaced the missing one stays.
+     */
+    @Test
+    void onlyOwnCarriersAreCleared() {
+        assertTrue(DisplayDecoService.carrierMaterial(DecoType.CASINO_SIGN, Material.LIGHT));
+        assertFalse(DisplayDecoService.carrierMaterial(DecoType.CASINO_SIGN, Material.STONE));
+        assertFalse(DisplayDecoService.carrierMaterial(DecoType.CASINO_SIGN, Material.AIR));
+        assertTrue(DisplayDecoService.carrierMaterial(DecoType.CASINO_CHAIR, Material.BARRIER));
+        assertFalse(DisplayDecoService.carrierMaterial(DecoType.CASINO_CHAIR, Material.LIGHT));
+        assertTrue(DisplayDecoService.carrierMaterial(DecoType.IVORY_MARBLE_SLAB, Material.POLISHED_DIORITE_SLAB));
+        assertFalse(DisplayDecoService.carrierMaterial(DecoType.IVORY_MARBLE_SLAB, Material.POLISHED_DIORITE));
+    }
+
+    /** The display cabinets are solid barriers dug at the mod's speed; 0.5.0 shelves on light blocks are converted. */
+    @Test
+    void displayShelvesAreSolid() {
+        for (DecoType t : new DecoType[] {DecoType.BOTTLE_DISPLAY_SHELF, DecoType.GLASS_DISPLAY_SHELF}) {
+            assertEquals(DecoType.Carrier.BARRIER, t.carrier());
+            assertEquals(DecoType.Place.WALL, t.place());
+            assertEquals(Material.CHEST, t.material()); // the axe is the fast tool, no tool needed for the drop
+            assertEquals(0.8, t.hardness()); // CasinoBarAndDecor.small(Blocks.CHEST, ...): strength(0.8F)
+            assertTrue(DecoGeometry.clickBoxes(new DecoRecord(UUID.randomUUID(), t, A, Facing.NORTH, 0,
+                    new UUID(0, 0), 0)).isEmpty(), "a barrier is its own click target");
+            assertTrue(DisplayDecoService.legacyShelf(t, Material.LIGHT));
+            assertFalse(DisplayDecoService.legacyShelf(t, Material.BARRIER));
+        }
+        assertFalse(DisplayDecoService.legacyShelf(DecoType.VIP_ONLY_PLAQUE, Material.LIGHT));
+    }
+
+    /** Digging ignores the plugin's own break-speed modifiers and computes the rest like vanilla. */
+    @Test
+    void breakSpeedWithoutForeignModifiers() {
+        assertTrue(DecoBreaks.FOREIGN_BREAK_SPEED.test(new org.bukkit.NamespacedKey("kaboofcasino", "deco_dig")));
+        assertFalse(DecoBreaks.FOREIGN_BREAK_SPEED.test(org.bukkit.NamespacedKey.minecraft("effect.haste")));
+        var add = org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER;
+        var scalar = org.bukkit.attribute.AttributeModifier.Operation.ADD_SCALAR;
+        var mult = org.bukkit.attribute.AttributeModifier.Operation.MULTIPLY_SCALAR_1;
+        assertEquals(1.0, DecoBreaks.attributeValue(1.0, java.util.List.of()), 1e-12);
+        // (1 + 0.5) + 1.5 * 0.2 = 1.8, then x 1.5 = 2.7
+        assertEquals(2.7, DecoBreaks.attributeValue(1.0, java.util.List.of(new DecoBreaks.Modifier(0.5, add),
+                new DecoBreaks.Modifier(0.2, scalar), new DecoBreaks.Modifier(0.5, mult))), 1e-12);
+        assertEquals(0.0, DecoBreaks.attributeValue(1.0, java.util.List.of(new DecoBreaks.Modifier(-5, add))), 1e-12);
+        assertEquals(1024.0, DecoBreaks.attributeValue(1.0, java.util.List.of(new DecoBreaks.Modifier(5000, add))),
+                1e-12);
+    }
+
     private static DecoRecord record(int state) {
         return new DecoRecord(UUID.randomUUID(), DecoType.CASINO_SOFA, A, Facing.SOUTH, state, new UUID(0, 0), 0);
     }

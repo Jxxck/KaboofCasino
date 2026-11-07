@@ -96,9 +96,10 @@ public enum DecoType {
             Connect.NONE, "Serviertablett"),
     VIP_ONLY_PLAQUE("casinodeco:vip_only_plaque", Carrier.LIGHT, Place.WALL, Material.DARK_OAK_PLANKS,
             Material.IRON_BLOCK, 0.8, 0, Connect.NONE, "Schild für VIPs"),
-    BOTTLE_DISPLAY_SHELF("casinodeco:bottle_display_shelf", Carrier.LIGHT, Place.WALL, Material.CHEST,
+    /** The two display cabinets are solid in the mod (16 x 16 x 6 and 16 x 9.6 x 6 px): barrier carriers. */
+    BOTTLE_DISPLAY_SHELF("casinodeco:bottle_display_shelf", Carrier.BARRIER, Place.WALL, Material.CHEST,
             Material.OAK_PLANKS, 0.8, 0, Connect.NONE, "Flaschenregal"),
-    GLASS_DISPLAY_SHELF("casinodeco:glass_display_shelf", Carrier.LIGHT, Place.WALL, Material.CHEST,
+    GLASS_DISPLAY_SHELF("casinodeco:glass_display_shelf", Carrier.BARRIER, Place.WALL, Material.CHEST,
             Material.OAK_PLANKS, 0.8, 0, Connect.NONE, "Gläserregal"),
     // ---- speaker --------------------------------------------------------------------------------------------------
     CASINO_SPEAKER("casinosound:casino_speaker", Carrier.LIGHT, Place.SPEAKER, Material.OAK_PLANKS,

@@ -59,40 +59,64 @@ final class DecoFlames {
         return a >= r ? 0.0 : (double) (r - a) / ((double) r * r);
     }
 
+    /** The blocks with candles (the only ones in {@link DisplayDecoService#flameBlocks}). */
+    static boolean burns(DecoType type) {
+        return type == DecoType.CASINO_CHANDELIER || type == DecoType.CHANDELIER_WALL_SCONCE;
+    }
+
+    /**
+     * True if a player whose block is (dx, dy, dz) away from a candle block's anchor can see its flames: the client
+     * animates blocks less than 32 blocks away per axis; the chandelier's cells lie one block around its anchor.
+     */
+    static boolean inRange(int dx, int dy, int dz) {
+        return Math.abs(dx) <= 32 && Math.abs(dy) <= 32 && Math.abs(dz) <= 32;
+    }
+
+    /**
+     * Every tick, only over the loaded chandeliers and sconces; the players of a world are fetched once per tick and
+     * each candle block keeps only those in range before rolling per cell.
+     */
     void tick() {
-        for (DecoBlock b : service.values()) {
-            DecoType t = b.type();
-            if (t != DecoType.CASINO_CHANDELIER && t != DecoType.CHANDELIER_WALL_SCONCE
-                    && t != DecoType.CASINO_SPEAKER || !b.spawned()) {
+        java.util.Collection<DecoBlock> blocks = service.flameBlocks();
+        if (blocks.isEmpty()) {
+            return;
+        }
+        java.util.Map<String, List<Player>> playersByWorld = new java.util.HashMap<>();
+        java.util.Map<String, World> worlds = new java.util.HashMap<>();
+        List<Player> near = new java.util.ArrayList<>();
+        for (DecoBlock b : blocks) {
+            if (!b.spawned()) {
                 continue;
             }
-            World world = DisplayDecoService.world(b.anchor());
+            Pos a = b.anchor();
+            World world = worlds.computeIfAbsent(a.world(), k -> DisplayDecoService.world(a));
             if (world == null) {
                 continue;
             }
-            List<Player> players = world.getPlayers();
-            if (players.isEmpty()) {
+            List<Player> players = playersByWorld.computeIfAbsent(a.world(), k -> world.getPlayers());
+            near.clear();
+            for (Player player : players) {
+                Location at = player.getLocation();
+                if (inRange(a.x() - at.getBlockX(), a.y() - at.getBlockY(), a.z() - at.getBlockZ())) {
+                    near.add(player);
+                }
+            }
+            if (near.isEmpty()) {
                 continue;
             }
-            if (t == DecoType.CASINO_SPEAKER) {
-                // the speaker's note particles belong to the music (music.SpeakerNotes, off with music.enabled)
-                continue;
-            }
-            if (t == DecoType.CHANDELIER_WALL_SCONCE) {
-                Pos p = b.anchor();
-                if (p.block(world).getBlockData() instanceof Waterlogged w && w.isWaterlogged()) {
+            if (b.type() == DecoType.CHANDELIER_WALL_SCONCE) {
+                if (a.block(world).getBlockData() instanceof Waterlogged w && w.isWaterlogged()) {
                     continue;
                 }
                 double[][] points = new double[SCONCE.length][];
                 for (int i = 0; i < SCONCE.length; i++) {
                     points[i] = DecoGeometry.turnPoint(SCONCE[i], b.record().facing().turns());
                 }
-                roll(players, p, points, SCONCE_CRACKLE);
+                roll(near, a, points, SCONCE_CRACKLE);
             } else {
                 for (int part = 0; part < 9; part++) {
                     if (CHANDELIER[part].length > 0) {
-                        roll(players, DecoGeometry.chandelierBody(b.anchor(), part), CHANDELIER[part],
-                                CHANDELIER_CRACKLE);
+                        roll(near, DecoGeometry.chandelierBody(a, part), CHANDELIER[part], CHANDELIER_CRACKLE);
                     }
                 }
             }
@@ -116,11 +140,6 @@ final class DecoFlames {
                 candle(player, cell.x() + f[0] / 16.0, cell.y() + f[1] / 16.0, cell.z() + f[2] / 16.0, crackle);
             }
         }
-    }
-
-    /** {@code BlockPos.asLong}: x 26 bits << 38, z 26 bits << 12, y 12 bits. */
-    static long asLong(int x, int y, int z) {
-        return ((long) x & 0x3FFFFFFL) << 38 | ((long) y & 0xFFFL) | ((long) z & 0x3FFFFFFL) << 12;
     }
 
     /** {@code CasinoChandelierBlock.candle}. */

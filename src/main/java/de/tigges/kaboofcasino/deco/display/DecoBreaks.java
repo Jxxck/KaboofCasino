@@ -162,7 +162,7 @@ final class DecoBreaks {
                 default -> 8.1e-4;
             };
         }
-        speed *= attribute(player, Attribute.BLOCK_BREAK_SPEED, 1.0);
+        speed *= breakSpeed(player);
         if (player.isInWater() && player.getEyeLocation().getBlock().getType() == Material.WATER) {
             ItemStack helmet = player.getInventory().getHelmet();
             boolean aqua = helmet != null && helmet.containsEnchantment(Enchantment.AQUA_AFFINITY);
@@ -173,6 +173,61 @@ final class DecoBreaks {
             speed /= 5.0;
         }
         return speed / type.hardness() / (harvests(type, tool) ? 30.0 : 100.0);
+    }
+
+    /**
+     * {@code block_break_speed} modifiers that are not the player's own and must not speed up (or slow down) digging a
+     * decoration: every modifier the plugin itself adds (namespace {@code kaboofcasino}, e.g. the full-cube deco's
+     * transient modifier while a player targets a reserved mushroom state). One predicate to narrow or widen.
+     */
+    static final java.util.function.Predicate<org.bukkit.NamespacedKey> FOREIGN_BREAK_SPEED =
+            key -> "kaboofcasino".equals(key.getNamespace());
+
+    /** One modifier for {@link #attributeValue}. */
+    record Modifier(double amount, org.bukkit.attribute.AttributeModifier.Operation operation) {
+    }
+
+    /** The player's {@code block_break_speed} without {@link #FOREIGN_BREAK_SPEED} modifiers. */
+    static double breakSpeed(Player player) {
+        AttributeInstance a = player.getAttribute(Attribute.BLOCK_BREAK_SPEED);
+        if (a == null) {
+            return 1.0;
+        }
+        boolean foreign = false;
+        java.util.List<Modifier> own = new java.util.ArrayList<>();
+        for (org.bukkit.attribute.AttributeModifier m : a.getModifiers()) {
+            if (FOREIGN_BREAK_SPEED.test(m.getKey())) {
+                foreign = true;
+            } else {
+                own.add(new Modifier(m.getAmount(), m.getOperation()));
+            }
+        }
+        return foreign ? attributeValue(a.getBaseValue(), own) : a.getValue();
+    }
+
+    /**
+     * Vanilla {@code AttributeInstance.calculateValue}: base + every ADD_NUMBER, then + base' x every ADD_SCALAR, then
+     * x (1 + every MULTIPLY_SCALAR_1), clamped to {@code block_break_speed}'s range 0..1024.
+     */
+    static double attributeValue(double base, java.util.List<Modifier> modifiers) {
+        double sum = base;
+        for (Modifier m : modifiers) {
+            if (m.operation() == org.bukkit.attribute.AttributeModifier.Operation.ADD_NUMBER) {
+                sum += m.amount();
+            }
+        }
+        double result = sum;
+        for (Modifier m : modifiers) {
+            if (m.operation() == org.bukkit.attribute.AttributeModifier.Operation.ADD_SCALAR) {
+                result += sum * m.amount();
+            }
+        }
+        for (Modifier m : modifiers) {
+            if (m.operation() == org.bukkit.attribute.AttributeModifier.Operation.MULTIPLY_SCALAR_1) {
+                result *= 1.0 + m.amount();
+            }
+        }
+        return Math.max(0.0, Math.min(1024.0, result));
     }
 
     private static double attribute(Player player, Attribute attribute, double def) {

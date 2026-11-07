@@ -249,19 +249,43 @@ class PackSnifferTest {
     }
 
     @Test
-    void downloadsAreLimited() {
+    void eachPackHasItsOwnPool() {
         GamePortPack host = host();
-        for (int i = 0; i < GamePortPack.MAX_DOWNLOADS; i++) {
-            assertTrue(host.tryAcquire());
+        DownloadSlots.Pool casino = host.slots().of(pack);
+        DownloadSlots.Pool songs = host.slots().of(music);
+        assertEquals(16, casino.limits().slots());
+        assertEquals(4, songs.limits().slots());
+        for (int i = 0; i < 4; i++) {
+            assertTrue(songs.tryAcquire());
         }
-        EmbeddedChannel ch = channel(host);
-        ch.writeInbound(bytes("GET " + pack.path() + " HTTP/1.1\r\n\r\n"));
-        String r = new String(outbound(ch), StandardCharsets.ISO_8859_1);
+        EmbeddedChannel full = channel(host);
+        full.writeInbound(bytes("GET " + music.path() + " HTTP/1.1\r\n\r\n"));
+        String r = new String(outbound(full), StandardCharsets.ISO_8859_1);
         assertTrue(r.startsWith("HTTP/1.1 503") && r.contains("Retry-After: 5"), r);
-        host.release();
+        assertFalse(full.isOpen());
         EmbeddedChannel ok = channel(host);
         ok.writeInbound(bytes("GET " + pack.path() + " HTTP/1.1\r\n\r\n"));
-        assertTrue(new String(outbound(ok), StandardCharsets.ISO_8859_1).startsWith("HTTP/1.1 200"));
+        byte[] response = outbound(ok);
+        assertTrue(new String(response, StandardCharsets.ISO_8859_1).startsWith("HTTP/1.1 200"),
+                "music downloads never take the casino pack's slots");
+        assertEquals(0, casino.active(), "released after the download");
+
+        for (int i = 0; i < 16; i++) {
+            assertTrue(casino.tryAcquire());
+        }
+        EmbeddedChannel busy = channel(host);
+        busy.writeInbound(bytes("GET " + pack.path() + " HTTP/1.1\r\n\r\n"));
+        assertTrue(new String(outbound(busy), StandardCharsets.ISO_8859_1).startsWith("HTTP/1.1 503"));
+        EmbeddedChannel head = channel(host);
+        head.writeInbound(bytes("HEAD " + pack.path() + " HTTP/1.1\r\n\r\n"));
+        assertTrue(new String(outbound(head), StandardCharsets.ISO_8859_1).startsWith("HTTP/1.1 200"),
+                "HEAD needs no slot");
+        songs.release();
+        EmbeddedChannel song = channel(host);
+        song.writeInbound(bytes("GET " + music.path() + " HTTP/1.1\r\n\r\n"));
+        assertTrue(new String(outbound(song), StandardCharsets.ISO_8859_1).startsWith("HTTP/1.1 200"));
+        assertEquals(3, songs.active());
+        assertEquals(16, casino.active());
     }
 
     @Test

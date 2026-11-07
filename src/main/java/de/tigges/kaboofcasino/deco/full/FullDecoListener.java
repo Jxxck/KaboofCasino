@@ -4,7 +4,6 @@ import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.deco.full.FullDecoStates.Entry;
-import de.tigges.kaboofcasino.util.Log;
 import io.papermc.paper.event.player.PlayerPickBlockEvent;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -12,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import org.bukkit.ExplosionResult;
 import org.bukkit.GameMode;
@@ -44,13 +44,18 @@ import org.bukkit.inventory.PlayerInventory;
 
 /**
  * The full-block deco in the world (render.md 4.4, server.md 3.4). The state is the identity: a block is deco
- * exactly when its state is in {@link FullDecoStates}; nothing else is ever touched.
+ * exactly when its state is in {@link FullDecoStates}; nothing else is ever touched. Everything below depends on
+ * Paper's {@code disable-mushroom-block-updates}, read live per event ({@link PaperSwitch}): while it is off nothing is
+ * placed and nothing is converted - reserved states then place, break, explode and pick like vanilla mushroom blocks
+ * (vanilla loot), so no deco item can be minted from blocks that neighbour updates may have rewritten.
  * <ul>
  *   <li>Placing: vanilla places the item's {@code block_state} (vanilla rules, spawn protection and
  *       {@code BlockPlaceEvent} apply). Refused while Paper's {@code disable-mushroom-block-updates} is off. Stars
  *       take the placer's horizontal facing, pilasters their connections; pilaster neighbours are refreshed.</li>
  *   <li>Breaking (survival): the mushroom loot (also silk touch / fortune) is replaced by one deco item in
- *       {@code BlockDropItemEvent}, which Paper fires only after the block was removed. Creative: nothing.</li>
+ *       {@code BlockDropItemEvent}, which Paper fires only after the block was removed. Creative: nothing. Stone
+ *       floors follow the mod's harvest rule (polished andesite: a pickaxe, checked with the tool the block was
+ *       broken with), otherwise nothing drops. Digging time: {@link DecoDigging}.</li>
  *   <li>Explosions: deco blocks leave the vanilla block list and are removed here, dropping the deco item with the
  *       explosion's yield; {@code TRIGGER_BLOCK}/{@code KEEP} explosions leave them alone (like vanilla).</li>
  *   <li>Other destruction ({@code Level.destroyBlock}: withers, {@code /setblock ... destroy}): the deco item
@@ -68,14 +73,21 @@ final class FullDecoListener implements Listener {
     private final DecoWorld world;
     private final PilasterUpdates updates;
     private final Supplier<Messages> messages;
+    private final BooleanSupplier active;
     private final Map<Object, List<Taken>> explosions = new IdentityHashMap<>();
     private final Map<Object, DecoBlock> drops = new IdentityHashMap<>();
-    private boolean warnedSwitch;
+    /** The block of the running player break and whether its tool harvests it (BlockBreakEvent -> drop event). */
+    private Block breaking;
+    private boolean breakingHarvests;
 
-    FullDecoListener(DecoWorld world, PilasterUpdates updates, Supplier<Messages> messages) {
+    /**
+     * @param active Paper's switch, read live ({@link FullDecoService#active()})
+     */
+    FullDecoListener(DecoWorld world, PilasterUpdates updates, Supplier<Messages> messages, BooleanSupplier active) {
         this.world = world;
         this.updates = updates;
         this.messages = messages;
+        this.active = active;
     }
 
     // ---- placing -----------------------------------------------------------------------------------------------
@@ -86,20 +98,18 @@ final class FullDecoListener implements Listener {
         if (DecoWorld.entry(event.getBlockPlaced()).isEmpty() && FullDecoItems.of(event.getItemInHand()).isEmpty()) {
             return;
         }
-        if (DecoWorld.mushroomUpdatesDisabled()) {
+        if (active.getAsBoolean()) {
             return;
         }
         event.setCancelled(true);
         messages.get().actionBar(event.getPlayer(), Msg.DECO_SWITCH_OFF);
-        if (!warnedSwitch) {
-            warnedSwitch = true;
-            Log.get().warn("Refused to place casino deco: block-updates.disable-mushroom-block-updates is false in "
-                    + "config/paper-global.yml (logged once)");
-        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlaced(BlockPlaceEvent event) {
+        if (!active.getAsBoolean()) {
+            return;
+        }
         Block block = event.getBlockPlaced();
         Optional<Entry> entry = DecoWorld.entry(block);
         if (entry.isPresent()) {
@@ -127,7 +137,17 @@ final class FullDecoListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        updates.changed(event.getBlock());
+        breaking = null;
+        Optional<Entry> entry = DecoWorld.entry(event.getBlock());
+        if (entry.isPresent()) {
+            // the tool before mineBlock (it may break on this block): the mod's playerDestroy uses that one
+            breaking = event.getBlock();
+            breakingHarvests = DecoDigging.harvests(entry.get().block(),
+                    event.getPlayer().getInventory().getItemInMainHand());
+        }
+        if (active.getAsBoolean()) {
+            updates.changed(event.getBlock());
+        }
     }
 
     /**
@@ -136,16 +156,21 @@ final class FullDecoListener implements Listener {
      */
     @EventHandler(priority = EventPriority.LOWEST)
     public void onDropItems(BlockDropItemEvent event) {
+        Block brokenBlock = breaking;
+        boolean brokenHarvests = breakingHarvests;
+        breaking = null;
         BlockData before = event.getBlockState().getBlockData();
         Optional<Entry> entry = DecoWorld.entry(before);
-        if (entry.isEmpty()) {
-            return;
+        if (entry.isEmpty() || !active.getAsBoolean()) {
+            return; // vanilla loot
         }
         event.getItems().clear();
-        if (event.getBlock().getBlockData().equals(before)) {
-            return;
+        if (event.getBlock().getBlockData().equals(before) || event.getPlayer().getGameMode() == GameMode.CREATIVE) {
+            return; // not broken / creative: nothing
         }
-        if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
+        boolean harvests = event.getBlock().equals(brokenBlock) ? brokenHarvests
+                : DecoDigging.harvests(entry.get().block(), event.getPlayer().getInventory().getItemInMainHand());
+        if (harvests) {
             drops.put(event, entry.get().block());
         }
     }
@@ -161,6 +186,9 @@ final class FullDecoListener implements Listener {
     /** {@code Level.destroyBlock} (withers, {@code /setblock ... destroy}): the deco item instead of the loot. */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDestroy(BlockDestroyEvent event) {
+        if (!active.getAsBoolean()) {
+            return;
+        }
         Optional<Entry> entry = DecoWorld.entry(event.getBlock());
         if (entry.isPresent() && event.willDrop()) {
             event.setWillDrop(false);
@@ -177,7 +205,9 @@ final class FullDecoListener implements Listener {
         if (deco != null) {
             drop(event.getBlock(), deco);
         }
-        updates.changed(event.getBlock());
+        if (active.getAsBoolean()) {
+            updates.changed(event.getBlock());
+        }
     }
 
     // ---- explosions --------------------------------------------------------------------------------------------
@@ -204,7 +234,8 @@ final class FullDecoListener implements Listener {
 
     /** Deco blocks leave the vanilla list (no mushroom loot); destroying explosions only. */
     private void take(Event event, List<Block> blocks, ExplosionResult result) {
-        if (result != ExplosionResult.DESTROY && result != ExplosionResult.DESTROY_WITH_DECAY) {
+        if (result != ExplosionResult.DESTROY && result != ExplosionResult.DESTROY_WITH_DECAY
+                || !active.getAsBoolean()) {
             return;
         }
         List<Taken> taken = new ArrayList<>();
@@ -221,7 +252,7 @@ final class FullDecoListener implements Listener {
 
     private void finish(Event event, boolean cancelled, float yield, List<Block> destroyed) {
         List<Taken> taken = explosions.remove(event);
-        if (cancelled) {
+        if (cancelled || !active.getAsBoolean()) {
             return;
         }
         if (taken != null) {
@@ -252,6 +283,9 @@ final class FullDecoListener implements Listener {
     }
 
     private void moved(Block piston, List<Block> blocks, BlockFace direction) {
+        if (!active.getAsBoolean()) {
+            return;
+        }
         List<Block> touched = new ArrayList<>();
         touched.add(piston.getRelative(direction));
         for (Block b : blocks) {
@@ -264,12 +298,16 @@ final class FullDecoListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBurn(BlockBurnEvent event) {
-        updates.changed(event.getBlock());
+        if (active.getAsBoolean()) {
+            updates.changed(event.getBlock());
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityChange(EntityChangeBlockEvent event) {
-        updates.changed(event.getBlock());
+        if (active.getAsBoolean()) {
+            updates.changed(event.getBlock());
+        }
     }
 
     // ---- pick block and composters -----------------------------------------------------------------------------
@@ -277,7 +315,7 @@ final class FullDecoListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPick(PlayerPickBlockEvent event) {
         Optional<Entry> entry = DecoWorld.entry(event.getBlock());
-        if (entry.isEmpty()) {
+        if (entry.isEmpty() || !active.getAsBoolean()) {
             return;
         }
         event.setCancelled(true);
@@ -347,5 +385,11 @@ final class FullDecoListener implements Listener {
     void clear() {
         explosions.clear();
         drops.clear();
+        breaking = null;
+    }
+
+    /** For tests: deco drops waiting for their MONITOR handler. */
+    int pendingDrops() {
+        return drops.size();
     }
 }

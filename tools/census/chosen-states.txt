@@ -1,7 +1,9 @@
 # KaboofCasino full-block deco: the reserved huge-mushroom states (plugin FullDecoStates, pack tool DecoFullStates;
 # both tests compare their table with this file). One state per line: <vanilla state> # <the mod's state it shows>.
-# PERSISTENT: placed blocks are stored as these states - never change or reorder a line; new blocks only take spare
-# states (stem masks 24..30, brown 27/29/30). mushroom_census.py --chosen reads it (text after '#' is ignored).
+# PERSISTENT: placed blocks are stored as these states - never change or reorder a line; new states are only
+# appended (FullDecoStates.APPENDIX) and take the spare states in pool order. States 1-72: step 4; 73-80: the
+# pilasters' outer corners at baseboard height (07.11.). Spare now: brown masks 29, 30. mushroom_census.py --chosen
+# reads this file (text after '#' is ignored).
 minecraft:mushroom_stem[down=true,east=false,north=false,south=false,up=false,west=false] # casinodeco:ruby_trellis
 minecraft:mushroom_stem[down=true,east=false,north=false,south=false,up=false,west=true] # casinodeco:ruby_stars[facing=north]
 minecraft:mushroom_stem[down=true,east=false,north=false,south=true,up=false,west=false] # casinodeco:ruby_stars[facing=east]
@@ -74,3 +76,11 @@ minecraft:brown_mushroom_block[down=true,east=true,north=true,south=true,up=fals
 minecraft:brown_mushroom_block[down=true,east=true,north=false,south=false,up=true,west=true] # casinodeco:classic_dark_oak_pilaster[east=0,north=3,south=3,west=0]
 minecraft:brown_mushroom_block[down=true,east=true,north=false,south=true,up=true,west=true] # casinodeco:classic_dark_oak_pilaster[east=0,north=3,south=0,west=0]
 minecraft:brown_mushroom_block[down=true,east=false,north=true,south=true,up=true,west=false] # casinodeco:classic_dark_oak_pilaster[east=0,north=0,south=3,west=0]
+minecraft:mushroom_stem[down=true,east=false,north=true,south=false,up=true,west=false] # casinodeco:dark_oak_pilaster[east=1,north=1,south=0,west=0]
+minecraft:mushroom_stem[down=true,east=false,north=true,south=false,up=true,west=true] # casinodeco:dark_oak_pilaster[east=1,north=0,south=1,west=0]
+minecraft:mushroom_stem[down=true,east=false,north=true,south=true,up=true,west=false] # casinodeco:dark_oak_pilaster[east=0,north=0,south=1,west=1]
+minecraft:mushroom_stem[down=true,east=false,north=true,south=true,up=true,west=true] # casinodeco:dark_oak_pilaster[east=0,north=1,south=0,west=1]
+minecraft:mushroom_stem[down=true,east=true,north=true,south=false,up=true,west=false] # casinodeco:classic_dark_oak_pilaster[east=1,north=1,south=0,west=0]
+minecraft:mushroom_stem[down=true,east=true,north=true,south=false,up=true,west=true] # casinodeco:classic_dark_oak_pilaster[east=1,north=0,south=1,west=0]
+minecraft:mushroom_stem[down=true,east=true,north=true,south=true,up=true,west=false] # casinodeco:classic_dark_oak_pilaster[east=0,north=0,south=1,west=1]
+minecraft:brown_mushroom_block[down=true,east=false,north=true,south=true,up=true,west=true] # casinodeco:classic_dark_oak_pilaster[east=0,north=1,south=0,west=1]

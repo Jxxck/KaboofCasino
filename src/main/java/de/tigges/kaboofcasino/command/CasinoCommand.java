@@ -38,6 +38,7 @@ public final class CasinoCommand implements BasicCommand {
 
     private final CasinoContext ctx;
     private final RoundLog log;
+    private final java.util.function.Supplier<Component> adminStatus;
     private final Reloader reloader;
 
     /** Reloads config and messages; returns the number of warnings. */
@@ -47,9 +48,24 @@ public final class CasinoCommand implements BasicCommand {
     }
 
     public CasinoCommand(CasinoContext ctx, RoundLog log, Reloader reloader) {
+        this(ctx, log, reloader, () -> null);
+    }
+
+    /** @param adminStatus status lines for admins under {@code /casino} and after {@code /casino reload} (full deco) */
+    public CasinoCommand(CasinoContext ctx, RoundLog log, Reloader reloader,
+                         java.util.function.Supplier<Component> adminStatus) {
         this.ctx = ctx;
         this.log = log;
         this.reloader = reloader;
+        this.adminStatus = adminStatus;
+    }
+
+    /** The admin status line (Paper's mushroom switch for the full deco), if any. */
+    private void adminStatus(CommandSender sender) {
+        Component status = sender.hasPermission("kaboofcasino.admin") ? adminStatus.get() : null;
+        if (status != null) {
+            sender.sendMessage(status);
+        }
     }
 
     @Override
@@ -73,8 +89,10 @@ public final class CasinoCommand implements BasicCommand {
             }
             case "give" -> admin(sender, () -> give(sender, args));
             case "remove", "entfernen" -> admin(sender, () -> remove(sender));
-            case "reload" -> admin(sender, () -> m.send(sender, Msg.COMMAND_RELOADED,
-                    Messages.text("warnings", Integer.toString(reloader.reload()))));
+            case "reload" -> admin(sender, () -> {
+                m.send(sender, Msg.COMMAND_RELOADED, Messages.text("warnings", Integer.toString(reloader.reload())));
+                adminStatus(sender);
+            });
             default -> m.send(sender, Msg.COMMAND_USAGE);
         }
     }
@@ -90,6 +108,7 @@ public final class CasinoCommand implements BasicCommand {
     private void info(CommandSender sender) {
         Messages m = ctx.messages().get();
         m.lines(Msg.COMMAND_INFO).forEach(sender::sendMessage);
+        adminStatus(sender);
         if (sender instanceof Player p) {
             Ledger l;
             try {

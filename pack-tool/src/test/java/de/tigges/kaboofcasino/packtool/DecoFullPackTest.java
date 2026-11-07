@@ -48,11 +48,12 @@ class DecoFullPackTest {
 
     @Test
     void tableShape() {
-        assertEquals(72, DecoFullStates.ENTRIES.size());
+        assertEquals(80, DecoFullStates.ENTRIES.size());
         assertEquals(27, DecoFullStates.decoBlocks().size());
-        assertEquals(23, DecoFullStates.of("mushroom_stem").size());
+        assertEquals(30, DecoFullStates.of("mushroom_stem").size());
         assertEquals(30, DecoFullStates.of("red_mushroom_block").size());
-        assertEquals(19, DecoFullStates.of("brown_mushroom_block").size());
+        assertEquals(20, DecoFullStates.of("brown_mushroom_block").size());
+        assertEquals(23, DecoFullStates.PILASTERS.size());
         Set<String> seen = new HashSet<>();
         for (DecoFullStates.Entry e : DecoFullStates.ENTRIES) {
             assertTrue(seen.add(e.block() + e.mask()), "duplicate " + e);
@@ -131,7 +132,21 @@ class DecoFullPackTest {
                 }
             }
         }
-        assertEquals(72, reservedSeen);
+        assertEquals(80, reservedSeen);
+    }
+
+    /** An appended baseboard corner shows the band stub on the two faces next to its walls, like the mod. */
+    @Test
+    void cornerStatesShowTheModsFaces() {
+        DecoFullStates.Entry ne = DecoFullStates.ENTRIES.get(72);
+        assertEquals("dark_oak_pilaster", ne.deco());
+        assertEquals(Map.of("north", "1", "east", "1", "south", "0", "west", "0"), ne.modProps());
+        JsonArray parts = parts(ne.block());
+        List<String> models = new ArrayList<>();
+        applied(parts, 12, parts.size(), ne.vanillaProps()).forEach(a -> models.addAll(DecoFullPack.modelsOf(a)));
+        assertEquals(List.of("casinodeco:block/dark_oak_pilaster_caps", "casinodeco:block/dark_oak_pilaster_north_1_0",
+                "casinodeco:block/dark_oak_pilaster_south_0_1", "casinodeco:block/dark_oak_pilaster_east_0_1",
+                "casinodeco:block/dark_oak_pilaster_west_1_0"), models);
     }
 
     @Test

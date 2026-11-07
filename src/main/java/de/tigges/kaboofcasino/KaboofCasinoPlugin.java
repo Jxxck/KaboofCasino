@@ -169,7 +169,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         displayDeco.enable();
         Recipes.load(getClassLoader());
         Recipes.register(messages);
-        CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload);
+        CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload, () -> fullDeco.status());
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register("casino", "KaboofCasino (MineVegas Casino)", List.of(), command));
 
@@ -241,7 +241,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     /** {@code /casino reload}: config and texts (not the pack, not the HTTP port). */
     private int reload() {
         try {
-            return loadSettings();
+            int warnings = loadSettings();
+            return fullDeco == null ? warnings : warnings + fullDeco.reloaded();
         } catch (RuntimeException e) {
             Log.get().error("reload failed; the old settings stay", e);
             return 1;

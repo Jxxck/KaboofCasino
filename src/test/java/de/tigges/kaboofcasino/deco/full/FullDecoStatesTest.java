@@ -21,9 +21,9 @@ import org.junit.jupiter.api.Test;
 class FullDecoStatesTest {
 
     @Test
-    void seventyTwoUniqueStatesNeverDownFalseNeverDefaultNeverGenerated() {
+    void eightyUniqueStatesNeverDownFalseNeverDefaultNeverGenerated() {
         List<Entry> entries = FullDecoStates.entries();
-        assertEquals(72, entries.size());
+        assertEquals(80, entries.size());
         Set<MushroomState> states = new HashSet<>();
         Set<String> modStates = new HashSet<>();
         for (Entry e : entries) {
@@ -36,7 +36,7 @@ class FullDecoStatesTest {
         }
         Map<MushroomBlock, Integer> perBlock = new EnumMap<>(MushroomBlock.class);
         entries.forEach(e -> perBlock.merge(e.state().block(), 1, Integer::sum));
-        assertEquals(Map.of(MushroomBlock.STEM, 23, MushroomBlock.RED, 30, MushroomBlock.BROWN, 19), perBlock);
+        assertEquals(Map.of(MushroomBlock.STEM, 30, MushroomBlock.RED, 30, MushroomBlock.BROWN, 20), perBlock);
         assertEquals(30, FullDecoStates.usableMasks(MushroomBlock.RED).size());
         assertEquals(22, FullDecoStates.usableMasks(MushroomBlock.BROWN).size());
         assertEquals(30, FullDecoStates.usableMasks(MushroomBlock.STEM).size());
@@ -56,9 +56,10 @@ class FullDecoStatesTest {
                 }
             }
         }
-        assertEquals(72, deco);
+        assertEquals(80, deco);
         assertTrue(FullDecoStates.lookup(MushroomState.downTrue(MushroomBlock.RED, MushroomState.ALL)).isEmpty());
-        assertTrue(FullDecoStates.lookup(MushroomState.downTrue(MushroomBlock.STEM, 24)).isEmpty(), "spare");
+        assertTrue(FullDecoStates.lookup(MushroomState.downTrue(MushroomBlock.BROWN, 29)).isEmpty(), "spare");
+        assertTrue(FullDecoStates.lookup(MushroomState.downTrue(MushroomBlock.BROWN, 30)).isEmpty(), "spare");
     }
 
     @Test
@@ -67,7 +68,7 @@ class FullDecoStatesTest {
             int expected = switch (b.kind()) {
                 case PLAIN -> 1;
                 case STARS -> 4;
-                case PILASTER -> 19;
+                case PILASTER -> 23;
             };
             assertEquals(expected, FullDecoStates.of(b).size(), b.name());
             Entry item = FullDecoStates.itemState(b);
@@ -88,8 +89,8 @@ class FullDecoStatesTest {
             }
         }
         assertEquals(27, DecoBlock.values().length);
-        assertEquals(19, FullDecoStates.PILASTERS.size());
-        assertEquals(19, new HashSet<>(FullDecoStates.PILASTERS).size());
+        assertEquals(23, FullDecoStates.PILASTERS.size());
+        assertEquals(23, new HashSet<>(FullDecoStates.PILASTERS).size());
     }
 
     @Test
@@ -115,6 +116,28 @@ class FullDecoStatesTest {
         }
         assertEquals("minecraft:mushroom_stem[down=true,east=false,north=false,south=false,up=false,west=false]",
                 MushroomState.downTrue(MushroomBlock.STEM, 0).key());
+    }
+
+    /**
+     * Append only: the first 72 states (step 4, possibly placed in worlds) are byte-for-byte what they were; the
+     * appendix are the pilasters' baseboard corners on the former spare states (censused 07.11. 03:15 UTC: 0 each).
+     */
+    @Test
+    void theFirstSeventyTwoNeverChange() throws Exception {
+        List<String> lines = FullDecoStates.lines();
+        byte[] sha = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(String.join("\n", lines.subList(0, 72)).getBytes(StandardCharsets.UTF_8));
+        assertEquals("5ae688c52c79151545b8d3c3b0a34a8993627c60ad8caff65ecf036fcc29331a",
+                java.util.HexFormat.of().formatHex(sha));
+        List<Entry> appended = FullDecoStates.entries().subList(72, 80);
+        for (int i = 0; i < 8; i++) {
+            Entry e = appended.get(i);
+            assertEquals(i < 4 ? DecoBlock.DARK_OAK_PILASTER : DecoBlock.CLASSIC_DARK_OAK_PILASTER, e.block());
+            assertEquals(FullDecoStates.CORNERS.get(i % 4), e.pilaster());
+        }
+        assertEquals(MushroomState.downTrue(MushroomBlock.STEM, 24), appended.get(0).state());
+        assertEquals(MushroomState.downTrue(MushroomBlock.BROWN, 27), appended.get(7).state());
+        assertEquals(FullDecoStates.CORNERS, FullDecoStates.PILASTERS.subList(19, 23));
     }
 
     /** The table is persistent: it must stay equal to the file the census and the pack tool use. */

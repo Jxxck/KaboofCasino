@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -106,7 +107,7 @@ class PlaybackTest {
         check(p, 0, 20, log);
         assertEquals(List.of("vanilla"), log.take());
         check(p, 10, 20, log);
-        assertEquals(List.of(play(current(10), 20), "vanilla"), log.take());
+        assertEquals(List.of("vanilla", play(current(10), 20)), log.take());
     }
 
     @Test
@@ -119,9 +120,10 @@ class PlaybackTest {
             check(p, tick, d, log);
             tick += 10;
         }
-        assertEquals(List.of("vanilla"), log.take(), "nothing plays while he walks in");
+        assertEquals(Collections.nCopies(path.length, "vanilla"), log.take(),
+                "nothing plays while he walks in; vanilla music is stopped at every check");
         check(p, tick, 15, log);
-        assertEquals(List.of(play(current(tick), 15), "vanilla"), log.take());
+        assertEquals(List.of("vanilla", play(current(tick), 15)), log.take());
     }
 
     @Test
@@ -133,7 +135,7 @@ class PlaybackTest {
         check(p, 20, 20, log);
         log.take();
         check(p, 30, 11.5, log);
-        assertEquals(List.of("play " + current(30) + " 700", "vanilla"), log.take());
+        assertEquals(List.of("vanilla", "play " + current(30) + " 700"), log.take());
     }
 
     @Test
@@ -158,11 +160,11 @@ class PlaybackTest {
         Log log = new Log();
         check(p, 0, 30, log);
         check(p, 1, 29.8, log); // a speaker changed in his world: off-cadence check one tick later
-        assertEquals(List.of("vanilla"), log.take());
+        assertEquals(List.of("vanilla", "vanilla"), log.take());
         check(p, 10, 28, log); // still walking in
-        assertEquals(List.of(), log.take());
+        assertEquals(List.of("vanilla"), log.take());
         check(p, 20, 28, log);
-        assertEquals(List.of(play(current(20), 28), "vanilla"), log.take());
+        assertEquals(List.of("vanilla", play(current(20), 28)), log.take());
     }
 
     @Test
@@ -173,7 +175,7 @@ class PlaybackTest {
         int track = p.track();
         log.take();
         check(p, 10, 30, log);
-        assertEquals(List.of(), log.take(), "too loud now, but it keeps playing");
+        assertEquals(List.of("vanilla"), log.take(), "too loud now, but it keeps playing");
         check(p, 20, 48.5, log);
         assertEquals(List.of("stop " + track), log.take());
         assertEquals(Playback.State.IDLE, p.state());
@@ -196,7 +198,8 @@ class PlaybackTest {
         assertTrue(p.due(end));
         p.check(10, end, gameTime(10), 20.0 * 20.0, STATION, log);
         int second = order[(index + 1) % 6];
-        assertEquals(List.of("stop " + first, play(second, 20)), log.take(), "volume of the current distance");
+        assertEquals(List.of("vanilla", "stop " + first, play(second, 20)), log.take(),
+                "volume of the current distance");
         // walk the whole cycle: after the sixth the order repeats
         long t = end;
         int expected = index + 1;
@@ -217,7 +220,7 @@ class PlaybackTest {
         log.take();
         long end = MusicTimeline.LENGTH_MS[first] * 1_000_000L;
         p.check(10, end, gameTime(10), 46.0 * 46.0, STATION, log);
-        assertEquals(List.of("stop " + first), log.take());
+        assertEquals(List.of("vanilla", "stop " + first), log.take());
         assertEquals(Playback.State.PENDING, p.state());
     }
 
@@ -228,11 +231,11 @@ class PlaybackTest {
         check(p, 0, 45, log);
         check(p, 10, 45, log);
         int track = p.track();
-        assertEquals(List.of("vanilla", play(current(10), 45), "vanilla"), log.take());
+        assertEquals(List.of("vanilla", "vanilla", play(current(10), 45)), log.take());
         check(p, 20, 30, log); // 0.35 vs 0.014 playing
-        assertEquals(List.of("stop " + track), log.take());
+        assertEquals(List.of("vanilla", "stop " + track), log.take());
         check(p, 30, 30, log);
-        assertEquals(List.of(play(current(30), 30), "vanilla"), log.take());
+        assertEquals(List.of("vanilla", play(current(30), 30)), log.take());
     }
 
     @Test
@@ -243,7 +246,7 @@ class PlaybackTest {
         check(p, 10, 30, log);
         log.take();
         check(p, 20, 5, log); // 0.7 < 3 x 0.35
-        assertEquals(List.of(), log.take());
+        assertEquals(List.of("vanilla"), log.take());
         assertEquals(0.35f, p.playingVolume(), 1e-6);
     }
 
@@ -254,23 +257,33 @@ class PlaybackTest {
         for (long tick = 0; tick <= 400; tick += 10) {
             check(p, tick, 46, log);
         }
-        assertEquals(List.of("vanilla", "vanilla", "vanilla"), log.take(), "vanilla music every 10 s, no track");
+        assertEquals(Collections.nCopies(41, "vanilla"), log.take(), "vanilla music at every check, no track");
     }
 
     @Test
-    void vanillaMusicIsStoppedEveryTenSecondsInRange() {
+    void vanillaMusicIsStoppedAtEveryCheckInRangeOncePerTick() {
         Playback p = new Playback();
         Log log = new Log();
         List<Long> stops = new ArrayList<>();
         for (long tick = 0; tick <= 600; tick += 10) {
             check(p, tick, 8, log);
+            check(p, tick, 8, log); // a second check in the same tick (track end, speaker change)
             for (String e : log.take()) {
                 if (e.equals("vanilla")) {
                     stops.add(tick);
                 }
             }
         }
-        assertEquals(List.of(0L, 200L, 400L, 600L), stops.stream().distinct().toList());
+        List<Long> every = new ArrayList<>();
+        for (long tick = 0; tick <= 600; tick += 10) {
+            every.add(tick);
+        }
+        assertEquals(every, stops, "once per check, never twice in a tick (also not with the track start)");
+        int track = p.track();
+        check(p, 610, 60, log);
+        assertEquals(List.of("stop " + track), log.take(), "leaving: the track stops, no vanilla stop");
+        check(p, 620, 60, log);
+        assertEquals(List.of(), log.take(), "out of range: no stop-sound at all");
     }
 
     @Test
@@ -282,7 +295,7 @@ class PlaybackTest {
         log.take();
         Playback.Station fresh = new Playback.Station(gameTime(10), 99L);
         p.check(10, 0, gameTime(10), 25.0, fresh, log);
-        assertEquals(List.of("stop " + old, "play " + MusicTimeline.order(99L)[0] + " 700", "vanilla"), log.take(),
+        assertEquals(List.of("vanilla", "stop " + old, "play " + MusicTimeline.order(99L)[0] + " 700"), log.take(),
                 "the new playlist from its first track");
         p.check(20, 0, gameTime(20), 25.0, null, log);
         assertEquals(List.of("stop " + MusicTimeline.order(99L)[0]), log.take(), "idle station: silence");

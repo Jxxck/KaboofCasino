@@ -116,6 +116,18 @@ class DecoGeometryTest {
         assertTrue(DecoGeometry.clickBoxes(record(DecoType.CASINO_CHAIR, Facing.SOUTH, 0)).isEmpty());
     }
 
+    /** Only chandeliers and sconces are in the flame index; players up to 32 blocks per axis see them. */
+    @Test
+    void flameIndexAndRange() {
+        for (DecoType t : DecoType.values()) {
+            assertEquals(t == DecoType.CASINO_CHANDELIER || t == DecoType.CHANDELIER_WALL_SCONCE, DecoFlames.burns(t),
+                    t.id());
+        }
+        assertTrue(DecoFlames.inRange(32, -32, 0));
+        assertTrue(!DecoFlames.inRange(33, 0, 0));
+        assertTrue(!DecoFlames.inRange(0, 0, -40));
+    }
+
     @Test
     void candleRateIsTheClientsAnimateTickDistribution() {
         double atPlayer = 667.0 * (Math.pow(16.0 / 256, 3) + Math.pow(32.0 / 1024, 3));
@@ -124,15 +136,6 @@ class DecoGeometryTest {
         assertEquals(667.0 * (16.0 / 1024) * Math.pow(32.0 / 1024, 2), DecoFlames.rate(16, 0, 0), 1e-12);
         assertTrue(DecoFlames.rate(3, 1, 2) < atPlayer);
         assertTrue(atPlayer < 0.2, "at most one roll per tick");
-    }
-
-    /** {@code BlockPos.asLong} (the speaker notes' stagger): x << 38, z << 12, y in the low 12 bits. */
-    @Test
-    void blockPosAsLong() {
-        assertEquals((1L << 38) | 2L | (3L << 12), DecoFlames.asLong(1, 2, 3));
-        assertEquals(0x3FFFFFFL << 38, DecoFlames.asLong(-1, 0, 0));
-        assertEquals(1023L, DecoFlames.asLong(0, 1023, 0));
-        assertEquals(0xFFFL, DecoFlames.asLong(0, -1, 0));
     }
 
     @Test

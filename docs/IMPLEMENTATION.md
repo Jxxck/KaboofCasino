@@ -99,12 +99,17 @@ is needed (TCP 25565 reaches the server, 25580 is not forwarded). The URL is
   - `GET`/`HEAD /pack/<sha1>.zip` (query ignored) → 200, `application/zip`, Content-Length, the body is the
     embedded zip as a read-only buffer;
   - any other path → 404; other methods → 405 with `Allow: GET, HEAD`;
-  - more than `MAX_DOWNLOADS` (8) concurrent downloads → 503 with `Retry-After: 5`.
+  - each pack has its own download pool (`DownloadPolicy`: casino 16, music 4; music downloads can never take a casino
+    slot); a full pool → 503 with `Retry-After: 5`; HEAD needs no slot. A GET body is written in 64 KiB slices while
+    the channel is writable (≤ ~128 KiB queued per connection) and checked every second: nothing accepted for 15 s,
+    below 16 KiB/s on average after 20 s, or older than the hard cap (casino 300 s, music 180 s) → reset
+    (SO_LINGER 0) and the slot is free again.
 - Before answering, vanilla's `timeout` handler (ReadTimeoutHandler) is removed so a slow download is not cut after
   30 s; nothing else of the Minecraft pipeline is touched.
 - A client that sends nothing: after 5 s the sniffer passes through and vanilla's own read timeout takes over. An
   unfinished HTTP head at 5 s → 400 and close.
-- One INFO line per download (`Resource pack sent over the game port (N bytes in M ms, #k)`).
+- Two INFO lines per download: `Resource pack (<pack>) download #n started on the game port (casino a/8, music b/4)`
+  and `… sent: N bytes in M ms (…)` or `… cut (<reason>): sent/size bytes after M ms (…)`.
 - On disable, the listener is removed and every sniffer already installed becomes a pass-through (`disabled` flag),
   so a plugin reload never leaves a dead handler in the pipeline.
 - ProtocolLib 5.x (live) injects its handlers in `channelActive`/at login behind the decoder; tested together on the
@@ -115,7 +120,9 @@ is needed (TCP 25565 reaches the server, 25580 is not forwarded). The URL is
   login that follows the download within the throttle time would not be refused either: the download is not a
   handshake.
 
-`pack.serve: http-port`: the JDK `HttpServer` on `pack.bind:pack.port` (25580) as before; the URL uses `pack.port`.
+`pack.serve: http-port`: the JDK `HttpServer` on `pack.bind:pack.port` (25580) as before; the URL uses `pack.port`. Same pools and deadlines; 16 handler threads (one per slot + 4); a
+watchdog thread closes downloads that break the rules (also a write blocked on a non-reading client); slices of
+64 KiB (one big write made the JDK copy the body into a buffer twice its size).
 The forward has to exist for that mode.
 
 ## 3. The bet engine (PLAN decision 2)
@@ -481,24 +488,60 @@ Look:
 
 - **Full-cube deco** (27 blocks: 9 fabric floors, 5 stone floors, 11 dark-oak panels, 2 pilasters) are reserved
   vanilla mushroom-block states (render.md 4, PLAN decision 7; `block-updates.disable-mushroom-block-updates: true`
-  in `paper-global.yml` is required, placing deco is refused while it is off). Of the 96 `down=true` states 11 come
-  from world generation (the swamp abandoned camp template `campsite_swamp_2`) and 3 are the all-true defaults, so 82
-  are usable; 72 are used (`FullDecoStates`, `tools/census/chosen-states.txt`; never reorder, new blocks take spare
-  states). The census of the live world (2026-11-07 02:01 UTC, after the radius-5000 pre-generation: 581 401 + 44 857
-  + 144 832 chunks) found 0 blocks in any chosen state and no `down=true` state at all; rerun
-  `tools/census/mushroom_census.py` before deploying. Deviations: the vanilla mushroom block's feel (hardness 0.2,
-  wood sound, axe, not flammable, explodes easily, stone floors drop without a pickaxe), pilasters show 19 of their 256
-  connection states (straight walls, ends and T-junctions exact, outer corners show the band stub on one face),
-  star facing does not turn with structure rotation, pilasters update one tick later and only on events the plugin
-  sees. Natural and player-placed vanilla mushroom blocks keep their states with the switch on (tested).
+  in `paper-global.yml` is required). Of the 96 `down=true` states 11 come from world generation (the swamp
+  abandoned camp template `campsite_swamp_2`) and 3 are the all-true defaults, so 82 are usable; 80 are used
+  (`FullDecoStates`, `tools/census/chosen-states.txt`: the first 72 lines are pinned by a SHA-256 in the test; never
+  reorder, new blocks take spare states; spare: brown masks 29 and 30; the rest of the mod's content needs no full
+  cubes). The census of the live world (2026-11-07 02:01 UTC after the radius-5000 pre-generation: 581 401 + 44 857 +
+  144 832 chunks; the 8 pilaster corner states again at 03:15 UTC) found 0 blocks in any chosen state and no
+  `down=true` state at all; rerun `tools/census/mushroom_census.py` before deploying.
+- **The switch is read live** (`PaperSwitch`: Paper's `GlobalConfiguration.blockUpdates.disableMushroomBlockUpdates`
+  by reflection, the `rotate` behaviour as a fallback). While it is off (at enable, on `/casino reload` or at run
+  time) a CRITICAL is logged, placing deco is refused and every conversion stops: reserved states drop vanilla loot,
+  pick-block is vanilla, no pilaster/star rewrites. `/casino` and `/casino reload` show admins the status line.
+- **Digging like the mod**: the deco blocks have the mod's materials (wool floors 0.8 with shears fastest, panels as
+  planks 2.0 with the axe, stone floors 1.5 that drop only with a pickaxe: `POLISHED_ANDESITE.isPreferredTool`, as the
+  mod's `requiresCorrectToolForDrops`; explosions and destroy drops unchanged). Vanilla digging itself takes the mod's
+  time through one transient `block_break_speed` multiplier (`kaboofcasino:full_deco_dig`, `DecoDigging`), set while a
+  survival player in reach looks at a reserved state (a ray per tick) and when the left click starts, so the server
+  never insta-mines and the client's cracks, particles and sounds are its own. It is never saved
+  (`addTransientModifier`) and is removed by key on join, quit, death, respawn, world change, game-mode change, abort,
+  break, switch off and plugin disable; a held-slot change or hand swap recomputes it in the same tick. Expected times
+  (ticks): wool floor 24 by hand / 5 with shears, panel 61 by hand / 10 with an iron axe / 8 with Haste II, stone
+  floor 8 with an iron pickaxe (151 by hand, no drop). A real client may see one restore of the block when it clicks
+  before the attribute packet arrived.
+- Other full-deco deviations: wood sound for every block, not flammable, explodes easily (blast resistance 0.2); the
+  pilasters show 27 of their 256 connection states (no band, both or one side per axis, and the four baseboard outer
+  corners; T-junctions exact; other mixed bands show the nearest); star facing does not turn with structure rotation;
+  pilasters update one tick later and only on events the plugin sees. Natural and player-placed vanilla mushroom
+  blocks keep their states with the switch on (tested).
 - **Display deco** (41 types incl. chair, stool, sofa and the speaker): one record per block in the chunk PDC,
   displays rebuilt at chunk load, a round-robin verifier. Carriers: barrier (full collision, broken with the machine
   break timer; the item goes into the breaker's inventory), light blocks with the mod's light level plus an interaction
   box (one left click breaks), or vanilla stairs/slabs placed by vanilla from the deco item (crimson/warped under
   velvet, polished andesite/diorite/blackstone under checkers and marble; the display sits over them at 1.002).
-  Deviations: carriers are full cubes or nothing (rope post 1 block high, sign plates without collision), barrier and
-  light deco ignore explosions and fire, pistons never move or pop deco (refused), light-carrier deco breaks at the
-  first hit, stairs/slabs feel like their carrier, a large sign or chandelier must fit in one chunk.
+  Deviations: carriers are full cubes or nothing. A rope post's carrier is a barrier one block high, so a line of
+  rope posts is a 1-block wall that players can jump onto and walk across; the mod's post and the rope between two
+  posts collide up to 24 px (1.5 blocks), which nobody can jump, and raising it would need a second solid block above
+  the post, which the mod does not occupy. Sign plates have no collision. Barrier and light deco ignore explosions and
+  fire, pistons never move or pop deco (refused), light-carrier deco (signs, chandelier, sconce, VIP plaque, speaker)
+  breaks at the first hit, stairs/slabs feel like their carrier, a large sign or chandelier must fit in one chunk.
+- A deco slab never merges with a plain slab of its carrier: either order is refused, as the mod's slab only merges
+  with itself. The record stores how many deco slabs the cell holds (1, or 2 after the same deco slab was added);
+  breaking and explosions drop that, never more than the carrier holds. Records from 0.5.0 read the carrier once and
+  then store it.
+- A decoration that lost one carrier (no event: `/fill`, `/setblock`, a structure, an exploit) is removed without a
+  drop. Its other cells that still hold its carrier (the other light blocks of a large sign or chandelier) become air;
+  the block that replaced the missing one stays.
+- Candle flames run over an index of the loaded chandeliers and sconces only; each world's players are read once per
+  tick and filtered per block to 32 blocks per axis (the client's `animateTick` range).
+- The bottle and glass display shelves are solid barrier carriers on the wall (the mod's 16x16x6 and 16x9.6x6 px
+  cabinets), dug with the barrier timer at the mod's hardness 0.8 (copied from the chest, but `strength(0.8F)` in
+  `CasinoBarAndDecor.small`): axe fastest, no tool needed for the drop. A shelf placed by 0.5.0 on a light block gets
+  its barrier at its first check after load, unless a living entity or a logout spot is in the way; until then it
+  cannot be broken.
+- Digging a deco barrier ignores `block_break_speed` modifiers in the `kaboofcasino` namespace (the full-cube deco's
+  transient modifier); every other modifier counts as in vanilla.
 - **Seats**: right click (not sneaking, not riding, not in danger or combat: "Nicht jetzt – du bist in Gefahr."),
   one rider per seat, the mod's seat heights and yaw, cushion sounds; every dismount is steered to the mod's 12 spots
   with a vanilla-style safety check, then `Rescue.nearest`, then the top of the seat. Stand-up on damage, a targeting
@@ -508,7 +551,8 @@ Look:
   lounge music (Kevin MacLeod, CC BY 4.0, credits in `/casino credits` and in the music pack) plays to players who
   loaded the optional music pack: the current track of the shared timeline from its start when entering 48 blocks
   (a vanilla client cannot seek), at the mod's volume curve fixed at the start, the next track of the order after it,
-  stopped on leaving, the speaker going off, world change or death; vanilla music stopped every 10 s in range. Note
+  stopped on leaving, the speaker going off, world change or death; vanilla music stopped (category-only `stopSound(MUSIC)`) at every 10-tick check in range (the mod stops it every
+  tick and cancels the music manager). Note
   particles like the mod (the music's, off with `music.enabled: false`).
 
 **Music pack delivery:**
@@ -680,6 +724,12 @@ testing/craft-test.sh                                                    # craft
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
+- Download limits (step 4 fix, raised by the orchestrator): the casino pack has 16 slots and a 300 s cap with a 16 KiB/s
+  minimum, so a 4.7 MB download needs about 16 KiB/s on average (slower clients fail it, and with enforce are kicked; a
+  17th simultaneous first download of a new pack version gets 503); the music pack's 180 s needs about 124 KiB/s
+  (optional). Check with `python3 -I testing/pack-slowreader-test.py 25572
+  <casino_sha1> <music_sha1>` on the test instance: 503 for the 5th music GET, casino 200 + SHA ok, slow readers reset
+  after ~16-20 s, music 200 afterwards.
 - Step 4 ships as `KaboofCasino-0.5.0.jar` (26.7 MB: it embeds both packs): remove `KaboofCasino-0.4.0.jar`. Before the
   start: set `block-updates.disable-mushroom-block-updates: true` in `config/paper-global.yml` (Jack's OK), rerun the
   census (`python3 -I -B tools/census/mushroom_census.py`, read-only), and delete the old `command.credits` line from

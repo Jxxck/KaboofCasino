@@ -2,9 +2,11 @@ package de.tigges.kaboofcasino.pack;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelOption;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.ScheduledFuture;
 import java.util.Arrays;
@@ -17,9 +19,13 @@ import java.util.concurrent.TimeUnit;
  *   <li>Minecraft (handshake VarInt, legacy ping 0xFE, anything else): remove this handler and replay the buffered
  *       bytes untouched to the next handler.</li>
  *   <li>HTTP: answer only {@code GET|HEAD /pack/<sha1>.zip} of a served pack (the casino pack or the music pack;
- *       200, application/zip, Content-Length, Connection: close), 404 for other paths, 405 for other methods, 503 when
- *       {@link GamePortPack#MAX_DOWNLOADS} are running; close after the write. The game pipeline behind never sees a byte; only its read-timeout handler is removed so a
- *       slow download is not cut after 30 s.</li>
+ *       200, application/zip, Content-Length, Connection: close), 404 for other paths, 405 for other methods, 503
+ *       when the pack's own download pool is full (HEAD needs no slot); close after the write. The game pipeline
+ *       behind never sees a byte; only its read-timeout handler is removed, the download has its own deadlines.</li>
+ *   <li>A GET body goes out in {@link #CHUNK} slices while the channel is writable (at most ~128 KiB queued per
+ *       connection) and is checked every second against {@link DownloadPolicy}: stalled, too slow or over the hard
+ *       cap means a reset (SO_LINGER 0, so no kernel buffer is kept for a client that stopped reading) and the slot
+ *       is free again.</li>
  *   <li>Nothing within {@link GamePortPack#SNIFF_TIMEOUT_MILLIS}: pass through (vanilla's timeout takes over); a
  *       started but unfinished HTTP request is answered if its request line is complete, else closed.</li>
  * </ul>
@@ -31,11 +37,15 @@ final class PackSniffer extends ChannelInboundHandlerAdapter {
         SNIFFING, PASSED, HTTP
     }
 
+    /** Body slice per write. */
+    static final int CHUNK = 64 * 1024;
+
     private final GamePortPack host;
     private byte[] buffer = new byte[256];
     private int length;
     private State state = State.SNIFFING;
     private ScheduledFuture<?> timeout;
+    private Download download;
 
     PackSniffer(GamePortPack host) {
         this.host = host;
@@ -140,57 +150,192 @@ final class PackSniffer extends ChannelInboundHandlerAdapter {
         if (ctx.pipeline().get("timeout") != null) {
             ctx.pipeline().remove("timeout");
         }
-        long start = System.nanoTime();
         if (request == null) {
-            respond(ctx, HttpSniff.head(400, "Bad Request", null, 0, null), null, "?", 400, start, false);
+            respond(ctx, HttpSniff.head(400, "Bad Request", null, 0, null), "?", 400);
             return;
         }
         String method = request.method();
         boolean head = method.equals("HEAD");
         if (!head && !method.equals("GET")) {
-            respond(ctx, HttpSniff.head(405, "Method Not Allowed", null, 0, "Allow: GET, HEAD\r\n"), null, method,
-                    405, start, false);
+            respond(ctx, HttpSniff.head(405, "Method Not Allowed", null, 0, "Allow: GET, HEAD\r\n"), method, 405);
             return;
         }
-        PackFile pack = host.find(request.path());
-        if (pack == null) {
-            respond(ctx, HttpSniff.head(404, "Not Found", null, 0, null), null, method, 404, start, false);
+        DownloadSlots.Pool pool = host.slots().find(request.path());
+        if (pool == null) {
+            respond(ctx, HttpSniff.head(404, "Not Found", null, 0, null), method, 404);
             return;
         }
-        if (!host.tryAcquire()) {
-            respond(ctx, HttpSniff.head(503, "Service Unavailable", null, 0, "Retry-After: 5\r\n"), null, method,
-                    503, start, false);
-            return;
-        }
-        byte[] zip = pack.bytes();
-        byte[] headBytes = HttpSniff.head(200, "OK", "application/zip", zip.length,
+        PackFile pack = pool.pack();
+        byte[] headBytes = HttpSniff.head(200, "OK", "application/zip", pack.size(),
                 "Cache-Control: public, max-age=31536000, immutable\r\n");
-        respond(ctx, headBytes, head ? null : zip, method, 200, start, true, pack.name());
+        if (head) {
+            respond(ctx, headBytes, method, 200);
+            return;
+        }
+        if (!pool.tryAcquire()) {
+            respond(ctx, HttpSniff.head(503, "Service Unavailable", null, 0, "Retry-After: 5\r\n"), method, 503);
+            return;
+        }
+        download = new Download(ctx, pool, headBytes);
+        download.begin();
     }
 
-    private void respond(ChannelHandlerContext ctx, byte[] head, byte[] body, String method, int status, long start,
-                         boolean acquired) {
-        respond(ctx, head, body, method, status, start, acquired, "-");
-    }
-
-    private void respond(ChannelHandlerContext ctx, byte[] head, byte[] body, String method, int status, long start,
-                         boolean acquired, String packName) {
-        ctx.write(Unpooled.wrappedBuffer(head));
-        ByteBuf payload = body == null ? Unpooled.EMPTY_BUFFER : Unpooled.wrappedBuffer(body).asReadOnly();
-        ctx.writeAndFlush(payload).addListener((ChannelFutureListener) f -> {
-            if (acquired) {
-                host.release();
-            }
-            host.served(method, status, packName, body == null ? 0 : body.length,
-                    (System.nanoTime() - start) / 1_000_000);
+    /** A short answer without a body; closes after the write. */
+    private void respond(ChannelHandlerContext ctx, byte[] head, String method, int status) {
+        ctx.writeAndFlush(Unpooled.wrappedBuffer(head)).addListener((ChannelFutureListener) f -> {
+            host.answered(method, status);
             f.channel().close();
         });
+    }
+
+    @Override
+    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+        if (state == State.HTTP) {
+            if (download != null && ctx.channel().isWritable()) {
+                download.pump();
+            }
+            return;
+        }
+        super.channelWritabilityChanged(ctx);
+    }
+
+    /** One GET body on its way out: slices while writable, deadlines from {@link DownloadPolicy}. */
+    private final class Download {
+        private final ChannelHandlerContext ctx;
+        private final DownloadSlots.Pool pool;
+        private final PackFile pack;
+        private final byte[] body;
+        private final byte[] head;
+        private final DownloadPolicy policy;
+        private final long number;
+        private long startNanos;
+        private long progressNanos;
+        private int offset;
+        private long sent;
+        private boolean done;
+        private boolean pumping;
+        private boolean again;
+        private ScheduledFuture<?> check;
+
+        Download(ChannelHandlerContext ctx, DownloadSlots.Pool pool, byte[] head) {
+            this.ctx = ctx;
+            this.pool = pool;
+            this.pack = pool.pack();
+            this.body = pack.bytes();
+            this.head = head;
+            this.policy = host.slots().policy();
+            this.number = host.slots().nextNumber();
+        }
+
+        private long now() {
+            return ctx.executor().ticker().nanoTime();
+        }
+
+        void begin() {
+            startNanos = now();
+            progressNanos = startNanos;
+            host.started(number, pack);
+            ctx.write(Unpooled.wrappedBuffer(head));
+            check = ctx.executor().scheduleAtFixedRate(this::check, policy.checkMillis(), policy.checkMillis(),
+                    TimeUnit.MILLISECONDS);
+            pump();
+        }
+
+        /**
+         * Queues slices while the channel is writable; the rest follows on channelWritabilityChanged. A flush that
+         * drains at once makes the channel writable again inside this call: that only marks another round instead of
+         * recursing.
+         */
+        void pump() {
+            if (done) {
+                return;
+            }
+            if (pumping) {
+                again = true;
+                return;
+            }
+            pumping = true;
+            try {
+                do {
+                    again = false;
+                    while (!done && offset < body.length && ctx.channel().isWritable()) {
+                        int n = Math.min(CHUNK, body.length - offset);
+                        ByteBuf slice = Unpooled.wrappedBuffer(body, offset, n).asReadOnly();
+                        offset += n;
+                        boolean last = offset == body.length;
+                        ctx.write(slice).addListener((ChannelFutureListener) f -> written(f, n, last));
+                    }
+                    if (!done) {
+                        ctx.flush();
+                    }
+                } while (again && !done && offset < body.length);
+            } finally {
+                pumping = false;
+            }
+        }
+
+        private void written(ChannelFuture f, int n, boolean last) {
+            if (done) {
+                return;
+            }
+            if (!f.isSuccess()) {
+                end(null, "write failed: " + f.cause());
+                return;
+            }
+            sent += n;
+            progressNanos = now();
+            if (last) {
+                end(null, null);
+            }
+        }
+
+        private void check() {
+            if (done) {
+                return;
+            }
+            long now = now();
+            DownloadPolicy.Verdict v = policy.verdict(pool.limits(), now - startNanos, now - progressNanos, sent);
+            if (v != DownloadPolicy.Verdict.OK) {
+                host.slots().cut(v);
+                end(v, v.text());
+            }
+        }
+
+        /**
+         * @param verdict the deadline that cut it, or null
+         * @param why     null when complete, else why it ended early
+         */
+        void end(DownloadPolicy.Verdict verdict, String why) {
+            if (done) {
+                return;
+            }
+            done = true;
+            if (check != null) {
+                check.cancel(false);
+            }
+            pool.release();
+            long millis = (now() - startNanos) / 1_000_000;
+            if (why == null) {
+                host.finished(number, pack, sent, millis);
+                ctx.channel().close();
+                return;
+            }
+            host.cut(number, pack, why, sent, millis);
+            if (verdict != null && ctx.channel().isOpen()) {
+                // a reset: the kernel drops what is still queued for a client that does not read
+                ctx.channel().config().setOption(ChannelOption.SO_LINGER, 0);
+            }
+            ctx.channel().close();
+        }
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         cancelTimeout();
         buffer = null;
+        if (download != null) {
+            download.end(null, "closed by the client");
+        }
         super.channelInactive(ctx);
     }
 

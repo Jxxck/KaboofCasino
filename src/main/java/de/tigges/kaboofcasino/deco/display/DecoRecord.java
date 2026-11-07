@@ -15,7 +15,9 @@ import java.util.UUID;
  *   <li>chip case: bit 0 = open;</li>
  *   <li>speaker: bit 0 = on, bits 1-2 = face (0 floor, 1 wall, 2 ceiling);</li>
  *   <li>chandelier: the chain length 1..2;</li>
- *   <li>stairs, slabs and the rest: 0 (the vanilla carrier holds facing, half, shape and slab type).</li>
+ *   <li>slabs: the number of deco slabs in the cell, 1 or 2 (what breaking drops; never more than the carrier holds;
+ *       0 = a 0.5.0 record, read from the carrier once and then stored);</li>
+ *   <li>stairs and the rest: 0 (the vanilla carrier holds facing, half and shape).</li>
  * </ul>
  */
 public record DecoRecord(UUID id, DecoType type, Pos anchor, Facing facing, int state, UUID placer, long placedAt) {

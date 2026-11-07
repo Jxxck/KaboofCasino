@@ -44,8 +44,21 @@ final class DecoFullStates {
         LAYOUT.put("brown_mushroom_block", List.of("classic_dark_oak_pilaster"));
     }
 
-    /** The 19 pilaster connections (north, east, south, west), in table order. */
+    /** The pilaster connections (north, east, south, west) in table order: 19 of the layout, then 4 corners. */
     static final List<int[]> PILASTERS;
+
+    /** The four outer corners at baseboard height, appended after the first 72 states. */
+    static final List<int[]> CORNERS = List.of(new int[] {1, 1, 0, 0}, new int[] {0, 1, 1, 0},
+            new int[] {0, 0, 1, 1}, new int[] {1, 0, 0, 1});
+
+    /** Appended after the first 72 (deco, connections), on the spare states in pool order. Append only. */
+    static final List<Map.Entry<String, int[]>> APPENDIX = List.of(
+            Map.entry("dark_oak_pilaster", CORNERS.get(0)), Map.entry("dark_oak_pilaster", CORNERS.get(1)),
+            Map.entry("dark_oak_pilaster", CORNERS.get(2)), Map.entry("dark_oak_pilaster", CORNERS.get(3)),
+            Map.entry("classic_dark_oak_pilaster", CORNERS.get(0)),
+            Map.entry("classic_dark_oak_pilaster", CORNERS.get(1)),
+            Map.entry("classic_dark_oak_pilaster", CORNERS.get(2)),
+            Map.entry("classic_dark_oak_pilaster", CORNERS.get(3)));
 
     /**
      * One reserved state.
@@ -102,9 +115,12 @@ final class DecoFullStates {
             p.add(new int[] {b, 0, 0, 0});
             p.add(new int[] {0, 0, b, 0});
         }
+        List<int[]> base = List.copyOf(p);
+        p.addAll(CORNERS);
         PILASTERS = List.copyOf(p);
 
         List<Entry> entries = new ArrayList<>();
+        List<Map.Entry<String, Integer>> spare = new ArrayList<>();
         for (Map.Entry<String, List<String>> e : LAYOUT.entrySet()) {
             List<Integer> masks = usableMasks(e.getKey());
             int next = 0;
@@ -114,23 +130,35 @@ final class DecoFullStates {
                         entries.add(new Entry(e.getKey(), masks.get(next++), deco, Map.of("facing", facing)));
                     }
                 } else if (deco.endsWith("_pilaster")) {
-                    for (int[] c : PILASTERS) {
-                        Map<String, String> props = new LinkedHashMap<>();
-                        props.put("east", String.valueOf(c[1]));
-                        props.put("north", String.valueOf(c[0]));
-                        props.put("south", String.valueOf(c[2]));
-                        props.put("west", String.valueOf(c[3]));
-                        entries.add(new Entry(e.getKey(), masks.get(next++), deco, props));
+                    for (int[] c : base) {
+                        entries.add(new Entry(e.getKey(), masks.get(next++), deco, pilasterProps(c)));
                     }
                 } else {
                     entries.add(new Entry(e.getKey(), masks.get(next++), deco, Map.of()));
                 }
             }
+            for (int mask : masks.subList(next, masks.size())) {
+                spare.add(Map.entry(e.getKey(), mask));
+            }
+        }
+        int next = 0;
+        for (Map.Entry<String, int[]> a : APPENDIX) {
+            Map.Entry<String, Integer> slot = spare.get(next++);
+            entries.add(new Entry(slot.getKey(), slot.getValue(), a.getKey(), pilasterProps(a.getValue())));
         }
         ENTRIES = List.copyOf(entries);
     }
 
     private DecoFullStates() {
+    }
+
+    private static Map<String, String> pilasterProps(int[] c) {
+        Map<String, String> props = new LinkedHashMap<>();
+        props.put("east", String.valueOf(c[1]));
+        props.put("north", String.valueOf(c[0]));
+        props.put("south", String.valueOf(c[2]));
+        props.put("west", String.valueOf(c[3]));
+        return props;
     }
 
     static List<Integer> usableMasks(String block) {

@@ -47,6 +47,8 @@ public enum Msg {
     ERROR_INTERNAL("error.internal"),
     ERROR_NO_PERMISSION("error.no-permission"),
     DECO_SWITCH_OFF("deco.switch-off"),
+    DECO_STATUS_ON("deco.status-on"),
+    DECO_STATUS_OFF("deco.status-off"),
     DECO_CHUNK_BORDER("deco.chunk-border"),
     DECO_CHUNK_BORDER_FAR("deco.chunk-border-far"),
     DECO_LOGOUT_SPOT("deco.logout-spot"),
