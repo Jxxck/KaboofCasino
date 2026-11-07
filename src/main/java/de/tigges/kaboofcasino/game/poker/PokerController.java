@@ -46,12 +46,17 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
  *   <li><b>DEAL</b>: the ante of the three bet slots is committed in one tick as PLAYING records whose payout is the
  *       fold result (nothing: the ante is lost, the mod's timeout rule and PLAN decision 2), then the mod's
  *       {@link PokerRound} runs on the table's one-deck shoe (reshuffled every hand) and the round menu opens.</li>
- *   <li><b>CALL</b>: the outcome after turn and river is computed on a copy of the shoe ({@link PokerCall}), the records
- *       get the call stake (2 x the ante, taken in the same write, {@link WagerEngine#revise}) and that payout; then the
- *       live round deals exactly those cards. FOLD changes no record.</li>
- *   <li><b>Quit, kick, stop, crash, death, watchdog</b> settle the records as they stand: a fold before the call, the
- *       fixed outcome after it. Once the owner is gone the live hand folds at once during the decision (the mod waits
- *       for its 600-tick timeout), so the table shows what was paid; after the call nothing is left to decide.</li>
+ *   <li><b>CALL</b>: the outcome after turn and river is computed on a copy of the shoe ({@link PokerCall}), the
+ *       records get the call stake (2 x the ante, taken in the same write, {@link WagerEngine#revise}) and that
+ *       payout; then the live round deals exactly those cards. FOLD changes no record.</li>
+ *   <li><b>Quit or kick before the call</b> (dealing or decision): the records stay open ({@link #holdsForReconnect};
+ *       they pay the fold, so they can never pay too much) and the hand waits for the mod's 600-tick timeout with its
+ *       chunk held loaded. An owner who rejoins in time is re-attached and may call or fold; otherwise the timeout
+ *       folds and the records settle as a fold at his next join. The join's recovery leaves held records alone and
+ *       runs in the join event, before the next table tick sees the owner, so only one of them ever acts.</li>
+ *   <li><b>Death, stop, crash, watchdog</b>, and a quit after the call, settle the records as they stand: a fold
+ *       before the call, the fixed outcome after it. A dead owner's hand folds at once, so the table shows what was
+ *       paid; after the call nothing is left to decide.</li>
  *   <li>The decision: the payout is checked against the records, the records settle 21 ticks later with the first coin,
  *       one coin every 3 ticks, the table is free 15 ticks after the round is over (or on the owner's next click).</li>
  * </ul>
@@ -77,6 +82,11 @@ public final class PokerController extends MachineController {
      * most 3 x 200 coin stacks at 3 ticks): it ends, its records settle as stored, the table is free again.
      */
     static final long MAX_HAND_TICKS = 6_000;
+    /**
+     * The records' end while the decision is open (set when it opens and when the owner comes back): the 600-tick
+     * decision even at 5 TPS; the table owns the records another 60 s beyond it.
+     */
+    static final long DECISION_ENDS_MILLIS = 120_000;
     private static final Particle.DustOptions RED_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xDF3B4B), 1.15f);
     private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xFFD168), 1.25f);
     private static final Particle.DustOptions GREEN_CONFETTI = new Particle.DustOptions(Color.fromRGB(0x36D886),
@@ -118,7 +128,12 @@ public final class PokerController extends MachineController {
         int payoutWait;
         boolean settled;
         int endHold;
+        /** The owner's records are settled (death, a quit after the call, elsewhere): the hand folds at once. */
         boolean ownerGone;
+        /** The owner quit before the call: his records are held for a reconnect, the table chunk is held loaded. */
+        boolean away;
+        /** This hand holds a chunk ticket ({@link MachineService#holdChunk}). */
+        boolean chunkHeld;
 
         Hand(UUID player, String name, int seat, long seed, int bias, long start, List<Seat> seats) {
             this.player = player;
@@ -161,6 +176,7 @@ public final class PokerController extends MachineController {
         public void turnOpened(int deadline, int at) {
             view.turnOpened(deadline, at);
             schedule(at, "poker_turn", 0.5f, 1.5f);
+            extendForDecision(this, "decision open");
         }
 
         @Override
@@ -184,7 +200,8 @@ public final class PokerController extends MachineController {
             payoutWait = PAYOUT_DELAY;
             Log.get().info("poker #{}: hand of {} ends {} (player {}, dealer {}, board {}{}{})",
                     machine.record().number(), name, result, cards(round.player()), cards(round.dealer()),
-                    cards(round.board()), round.called() ? ", called" : "", ownerGone ? ", owner gone" : "");
+                    cards(round.board()), round.called() ? ", called" : "",
+                    ownerGone ? ", owner gone" : away ? ", owner away" : "");
             confirm(this, result, thirds);
             net = net(this);
             World world = world();
@@ -313,7 +330,19 @@ public final class PokerController extends MachineController {
         if (rig != null) {
             rig.despawn();
         }
+        if (hand != null) {
+            // chunk unload or disable: the hand ends with this controller; its held records settle at the next join
+            holdChunk(hand, false);
+        }
         closeMenus();
+    }
+
+    /** Poker before the call keeps its records over the owner's quit and rejoin (the mod keeps the round). */
+    @Override
+    public boolean holdsForReconnect(UUID roundId) {
+        Hand h = hand;
+        return h != null && !h.ownerGone && h.decided == PokerRound.Result.NONE && !h.round.called()
+                && ownsRound(roundId);
     }
 
     @Override
@@ -358,6 +387,7 @@ public final class PokerController extends MachineController {
         }
         if (h != null) {
             h.round.abort();
+            holdChunk(h, false);
         }
         hand = null;
         claimant = null;
@@ -433,6 +463,14 @@ public final class PokerController extends MachineController {
             ctx.messages().get().actionBar(player, Msg.POKER_CANNOT_CALL);
             return;
         }
+        if (r == WagerEngine.Revision.GONE) {
+            // the records were settled elsewhere (watchdog, an admin): they paid the fold, so the hand folds
+            ctx.messages().get().actionBar(player, Msg.POKER_HAND_SETTLED);
+            Log.get().warn("poker #{}: {} called, but the hand's records were already settled; it folds",
+                    machine.record().number(), h.name);
+            h.ownerGone = true;
+            return;
+        }
         if (r == WagerEngine.Revision.DONE) {
             h.seats.clear();
             h.seats.addAll(called);
@@ -476,9 +514,14 @@ public final class PokerController extends MachineController {
      */
     private WagerEngine.Revision revise(Player player, Hand h, List<Seat> seats,
                                         Function<Seat, List<ItemAmount>> pay, String why, List<ItemAmount> extra) {
+        return revise(player, h, seats, pay, why, extra, ctx.clock().getAsLong() + RECORD_ENDS_MILLIS);
+    }
+
+    private WagerEngine.Revision revise(Player player, Hand h, List<Seat> seats,
+                                        Function<Seat, List<ItemAmount>> pay, String why, List<ItemAmount> extra,
+                                        long ends) {
         try {
             PlayerAccount account = new PlayerAccount(player);
-            long ends = ctx.clock().getAsLong() + RECORD_ENDS_MILLIS;
             List<RoundRecord> revised = new ArrayList<>();
             for (Seat s : seats) {
                 RoundRecord old = account.ledger().round(s.round()).orElse(null);
@@ -498,6 +541,45 @@ public final class PokerController extends MachineController {
             Log.critical("LEDGER_UNREADABLE", "poker {} for {} refused: {}", why, player.getName(), e.getMessage());
             return WagerEngine.Revision.GONE;
         }
+    }
+
+    /**
+     * The decision opens or the owner is back before the call: the records' end moves to now + 120 s (still the fold),
+     * so neither the watchdog nor the ownership releases them during the decision, even at low TPS. With the owner
+     * away only the table's own end moves (his file is written at his rejoin). Records gone: the hand folds.
+     */
+    private void extendForDecision(Hand h, String why) {
+        long ends = ctx.clock().getAsLong() + DECISION_ENDS_MILLIS;
+        Player p = Bukkit.getPlayer(h.player);
+        if (h.ownerGone || h.round == null || h.round.called()) {
+            return;
+        }
+        if (h.away || p == null || !p.isOnline() || p.isDead()) {
+            h.endsMillis = Math.max(h.endsMillis, ends);
+            return;
+        }
+        if (revise(p, h, h.seats, s -> List.of(), why + ", then fold", List.of(), ends)
+                == WagerEngine.Revision.GONE) {
+            h.ownerGone = true;
+            Log.get().info("poker #{}: the records of {} were already settled ({}); the hand folds",
+                    machine.record().number(), h.name, why);
+        }
+    }
+
+    /** Holds or releases the table's chunk while the hand waits for its owner (one counted ticket per chunk). */
+    private void holdChunk(Hand h, boolean hold) {
+        World w = world();
+        if (w == null || hold == h.chunkHeld) {
+            return;
+        }
+        int cx = machine.anchor().chunkX();
+        int cz = machine.anchor().chunkZ();
+        if (hold) {
+            ctx.machines().holdChunk(w, cx, cz, ctx.plugin());
+        } else {
+            ctx.machines().releaseChunk(w, cx, cz, ctx.plugin());
+        }
+        h.chunkHeld = hold;
     }
 
     /** At the decision the records must hold this result; the live round deals the predicted cards, so they do. */
@@ -603,7 +685,7 @@ public final class PokerController extends MachineController {
             if (!h.settled) {
                 h.settled = true;
                 for (Seat s : h.seats) {
-                    settleRound(h.player, h.name, s.round(), SettleReason.NORMAL);
+                    settleRound(h.player, h.name, s.round(), SettleReason.TIMEOUT);
                 }
             }
             h.round.abort();
@@ -611,14 +693,7 @@ public final class PokerController extends MachineController {
             finish();
             return;
         }
-        Player owner = Bukkit.getPlayer(h.player);
-        if (!h.ownerGone && (owner == null || !owner.isOnline() || owner.isDead())) {
-            // quit/kick/death settled his records (a fold, or the called outcome); the table shows the same hand
-            h.ownerGone = true;
-            Log.get().info("poker #{}: {} left the hand{}", machine.record().number(), h.name,
-                    h.decided != PokerRound.Result.NONE ? " after its result" : h.round.called()
-                            ? " after the call" : ", it folds");
-        }
+        followOwner(h);
         if (h.ownerGone && h.round.canFold()) {
             h.round.fold();
         }
@@ -655,12 +730,53 @@ public final class PokerController extends MachineController {
         }
     }
 
+    /**
+     * Where the owner is. Dead: his death drained the records (a fold, or the called outcome), the hand folds at once.
+     * Offline after the call or the result: the quit settled what is stored. Offline before the call: the quit kept
+     * the records ({@link #holdsForReconnect}), the hand waits for the timeout with its chunk held. Back online before
+     * the result: re-attached (records' end renewed); if his records are gone meanwhile, the hand folds.
+     */
+    private void followOwner(Hand h) {
+        if (h.ownerGone) {
+            return;
+        }
+        Player owner = Bukkit.getPlayer(h.player);
+        boolean online = owner != null && owner.isOnline();
+        int number = machine.record().number();
+        if (online && owner.isDead()) {
+            h.ownerGone = true;
+            Log.get().info("poker #{}: {} died in the hand{}", number, h.name, h.decided != PokerRound.Result.NONE
+                    ? " after its result" : h.round.called() ? " after the call" : ", it folds");
+        } else if (!online && (h.round.called() || h.decided != PokerRound.Result.NONE)) {
+            h.ownerGone = true;
+            Log.get().info("poker #{}: {} left the hand {}", number, h.name, h.round.called() && !h.away
+                    ? "after the call (its outcome was settled at the quit)" : "after its result");
+        } else if (!online && !h.away) {
+            h.away = true;
+            holdChunk(h, true);
+            Log.get().info("poker #{}: {} left the hand before the call; it waits for a reconnect until the timeout "
+                    + "(records kept, chunk held)", number, h.name);
+        } else if (online && h.away) {
+            h.away = false;
+            holdChunk(h, false);
+            if (h.decided != PokerRound.Result.NONE || h.round.called()) {
+                // decided while he was away: the join settled the fold
+                h.ownerGone = true;
+                Log.get().info("poker #{}: {} is back after the hand's result", number, h.name);
+            } else {
+                Log.get().info("poker #{}: {} is back in the hand", number, h.name);
+                extendForDecision(h, "rejoined");
+            }
+        }
+    }
+
     /** {@code finishRound}: the table is free; the owner's open round menu closes. */
     private void finish() {
         Hand h = hand;
         hand = null;
         claimant = null;
         if (h != null) {
+            holdChunk(h, false);
             Player p = Bukkit.getPlayer(h.player);
             if (p != null && MenuService.openMenu(p) instanceof PokerRoundMenu menu && menu.controller() == this) {
                 p.closeInventory(InventoryCloseEvent.Reason.PLUGIN);

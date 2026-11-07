@@ -9,10 +9,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import java.util.ArrayList;
 import java.util.List;
+import org.bukkit.event.inventory.ClickType;
 import org.junit.jupiter.api.Test;
 
 /** The round view's client logic ({@code BlackjackScreen}) on snapshots: no server, no items. */
 class BlackjackRoundMenuTest {
+
+    /** {@code BlackjackScreen.keyPressed}: 1 = KARTE, 2 = HALTEN, 3 = DOPPELN; F and the rest do nothing. */
+    @Test
+    void keyboardShortcuts() {
+        assertEquals(BlackjackRoundMenu.Action.HIT, BlackjackRoundMenu.keyAction(ClickType.NUMBER_KEY, 0));
+        assertEquals(BlackjackRoundMenu.Action.STAND, BlackjackRoundMenu.keyAction(ClickType.NUMBER_KEY, 1));
+        assertEquals(BlackjackRoundMenu.Action.DOUBLE, BlackjackRoundMenu.keyAction(ClickType.NUMBER_KEY, 2));
+        for (int key = 3; key < 9; key++) {
+            assertNull(BlackjackRoundMenu.keyAction(ClickType.NUMBER_KEY, key));
+        }
+        assertNull(BlackjackRoundMenu.keyAction(ClickType.SWAP_OFFHAND, -1));
+    }
 
     private static final String M = BlackjackRoundMenu.MODEL;
 

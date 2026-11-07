@@ -68,6 +68,8 @@ public final class MachineService {
     private final LongSupplier clock;
     private final Map<UUID, Machine> byId = new HashMap<>();
     private final Map<Pos, Machine> byCarrier = new HashMap<>();
+    /** Chunk holds per world:chunkX:chunkZ ({@link #holdChunk}). */
+    private final Map<String, Integer> chunkHolds = new HashMap<>();
     private final Deque<UUID> pendingSpawns = new ArrayDeque<>();
     private Function<Machine, MachineGame> games;
 
@@ -123,6 +125,16 @@ public final class MachineService {
 
     public Collection<Machine> all() {
         return List.copyOf(byId.values());
+    }
+
+    /** True if a loaded machine keeps this round open across its owner's quit and rejoin (quit and join skip it). */
+    public boolean holdsForReconnect(UUID roundId) {
+        for (Machine m : byId.values()) {
+            if (m.game().holdsForReconnect(roundId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** True if a loaded machine will settle this round itself (watchdog). */
@@ -578,6 +590,26 @@ public final class MachineService {
             r.run();
         } catch (RuntimeException e) {
             Log.incident(what + " of " + m.type().id() + " " + m.id(), e);
+        }
+    }
+
+    /**
+     * Keeps a chunk loaded for a machine (a poker hand waiting for its owner's reconnect): one plugin chunk ticket per
+     * chunk, counted, so several holds in one chunk release it only with the last. Thread: MAIN.
+     */
+    public void holdChunk(World world, int chunkX, int chunkZ, org.bukkit.plugin.Plugin plugin) {
+        String key = world.getKey().asString() + ":" + chunkX + ":" + chunkZ;
+        if (chunkHolds.merge(key, 1, Integer::sum) == 1) {
+            world.addPluginChunkTicket(chunkX, chunkZ, plugin);
+        }
+    }
+
+    /** Releases one {@link #holdChunk}; the ticket goes with the last hold of that chunk. */
+    public void releaseChunk(World world, int chunkX, int chunkZ, org.bukkit.plugin.Plugin plugin) {
+        String key = world.getKey().asString() + ":" + chunkX + ":" + chunkZ;
+        Integer left = chunkHolds.computeIfPresent(key, (k, n) -> n > 1 ? n - 1 : null);
+        if (left == null) {
+            world.removePluginChunkTicket(chunkX, chunkZ, plugin);
         }
     }
 

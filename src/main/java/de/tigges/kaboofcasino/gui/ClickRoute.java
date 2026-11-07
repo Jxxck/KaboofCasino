@@ -10,9 +10,20 @@ final class ClickRoute {
         NOTHING, BUTTON, COMMIT, SELECTION, BUSY, TOO_EARLY
     }
 
-    /** One click; {@code ticksSinceOpen} is negative if the menu was never opened through {@link MenuService}. */
+    /**
+     * One click; {@code ticksSinceOpen} is negative if the menu was never opened through {@link MenuService}.
+     * {@code shortcut}: a key (number key or the offhand swap) over a top slot that the menu mapped to a button
+     * ({@link Menu#keyButton}); {@code button}/{@code commitButton} then describe that button.
+     */
     record Click(ClickType type, InventoryAction action, int rawSlot, int topSize, int inventoryIndex, boolean button,
-                 boolean commitButton, boolean usable, boolean busy, long ticksSinceOpen, int guardTicks) {
+                 boolean commitButton, boolean usable, boolean busy, long ticksSinceOpen, int guardTicks,
+                 boolean shortcut) {
+
+        Click(ClickType type, InventoryAction action, int rawSlot, int topSize, int inventoryIndex, boolean button,
+              boolean commitButton, boolean usable, boolean busy, long ticksSinceOpen, int guardTicks) {
+            this(type, action, rawSlot, topSize, inventoryIndex, button, commitButton, usable, busy, ticksSinceOpen,
+                    guardTicks, false);
+        }
     }
 
     private ClickRoute() {
@@ -27,7 +38,7 @@ final class ClickRoute {
                 return Outcome.NOTHING;
             }
             if (c.commitButton()) {
-                if (!ClickRules.triggersCommit(c.type())) {
+                if (!c.shortcut() && !ClickRules.triggersCommit(c.type())) {
                     return Outcome.NOTHING;
                 }
                 if (c.busy()) {
@@ -36,7 +47,7 @@ final class ClickRoute {
                 return c.ticksSinceOpen() < 0 || c.ticksSinceOpen() < c.guardTicks() ? Outcome.TOO_EARLY
                         : Outcome.COMMIT;
             }
-            if (!ClickRules.triggersButton(c.type())) {
+            if (!c.shortcut() && !ClickRules.triggersButton(c.type())) {
                 return Outcome.NOTHING;
             }
             return c.busy() ? Outcome.BUSY : Outcome.BUTTON;

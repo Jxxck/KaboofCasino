@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -58,10 +59,21 @@ public final class MenuListener implements Listener {
         int raw = event.getRawSlot();
         int topSize = event.getView().getTopInventory().getSize();
         Button button = raw >= 0 && raw < topSize ? menu.button(raw) : null;
+        boolean shortcut = false;
+        if (raw >= 0 && raw < topSize
+                && (event.getClick() == ClickType.NUMBER_KEY || event.getClick() == ClickType.SWAP_OFFHAND)) {
+            // keyboard shortcuts of the round menus (PokerScreen/BlackjackScreen.keyPressed); the swap stays cancelled
+            button = menu.keyButton(event.getClick(), event.getHotbarButton());
+            shortcut = button != null && button.action() != null;
+            if (!shortcut) {
+                button = null;
+            }
+        }
         long tick = currentTick.getAsInt();
         ClickRoute.Click click = new ClickRoute.Click(event.getClick(), event.getAction(), raw, topSize,
                 event.getSlot(), button != null, button != null && button.commit(), Usability.usable(player),
-                menu.isBusy(), menu.openedAtTick() < 0 ? -1 : tick - menu.openedAtTick(), guardTicks.getAsInt());
+                menu.isBusy(), menu.openedAtTick() < 0 ? -1 : tick - menu.openedAtTick(), guardTicks.getAsInt(),
+                shortcut);
         switch (ClickRoute.route(click)) {
             case NOTHING, TOO_EARLY, BUSY -> {
                 // stays cancelled

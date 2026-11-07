@@ -9,10 +9,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import java.util.ArrayList;
 import java.util.List;
+import org.bukkit.event.inventory.ClickType;
 import org.junit.jupiter.api.Test;
 
 /** The round view's client logic ({@code PokerScreen}) on snapshots: no server, no items. */
 class PokerRoundMenuTest {
+
+    /** {@code PokerScreen.keyPressed}: 1 = MITGEHEN, 2 and F = AUSSTEIGEN; nothing else. */
+    @Test
+    void keyboardShortcuts() {
+        assertEquals(PokerRoundMenu.Action.CALL, PokerRoundMenu.keyAction(ClickType.NUMBER_KEY, 0));
+        assertEquals(PokerRoundMenu.Action.FOLD, PokerRoundMenu.keyAction(ClickType.NUMBER_KEY, 1));
+        assertEquals(PokerRoundMenu.Action.FOLD, PokerRoundMenu.keyAction(ClickType.SWAP_OFFHAND, -1));
+        for (int key = 2; key < 9; key++) {
+            assertNull(PokerRoundMenu.keyAction(ClickType.NUMBER_KEY, key));
+        }
+        assertNull(PokerRoundMenu.keyAction(ClickType.DROP, 0));
+        assertNull(PokerRoundMenu.keyAction(ClickType.LEFT, 0));
+    }
 
     private static final String M = PokerRoundMenu.MODEL;
     private static final int H = PokerRoundMenu.HIDDEN;

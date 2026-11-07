@@ -26,6 +26,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -432,6 +433,34 @@ public final class PokerRoundMenu extends GameMenu {
                 set(slot, Button.display(icon(c)));
             }
         }
+    }
+
+    /**
+     * {@code PokerScreen.keyPressed} (S or 1 = MITGEHEN, F or 2 = AUSSTEIGEN, only while that button is active): in a
+     * chest the number keys 1 and 2 and the offhand key F over any top slot; S has no inventory binding.
+     */
+    @Override
+    public Button keyButton(ClickType click, int hotbarButton) {
+        Action a = keyAction(click, hotbarButton);
+        return a == null ? null : activeButton(a);
+    }
+
+    static Action keyAction(ClickType click, int hotbarButton) {
+        if (click == ClickType.NUMBER_KEY) {
+            return hotbarButton == 0 ? Action.CALL : hotbarButton == 1 ? Action.FOLD : null;
+        }
+        return click == ClickType.SWAP_OFFHAND ? Action.FOLD : null;
+    }
+
+    /** The registered button of {@code action}, if it is shown and clickable. */
+    private Button activeButton(Action action) {
+        for (int slot = 0; slot < shown.length; slot++) {
+            Cell c = shown[slot];
+            if (c != null && c.action() == action && c.enabled()) {
+                return button(slot);
+            }
+        }
+        return null;
     }
 
     /** {@code PokerScreen.press}: one press per 6 ticks, the vanilla button click sound. */

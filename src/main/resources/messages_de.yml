@@ -36,6 +36,8 @@ poker:
   no-bet: "<yellow>Setze einen Einsatz, bevor du spielst."
   cannot-call: "<yellow>Du hast nicht genug Gegenstände zum Mitgehen (zweimal den Einsatz)."
   timeout: "<yellow>Die Zeit ist um: Du steigst aus."
+  # plugin text: CALL found the hand's records already settled (they paid the fold), so the hand folds
+  hand-settled: "<yellow>Diese Hand ist schon abgerechnet (ausgestiegen): Mitgehen geht nicht mehr."
 
 machine:
   in-use: "<yellow><name> spielt gerade an diesem Automaten."
@@ -164,11 +166,11 @@ gui:
     dealer: "CROUPIER"
     you: "DU"
     hit: "<gold><b>KARTE"
-    hit-lore: "<gray>Eine Karte ziehen"
+    hit-lore: "<gray>Eine Karte ziehen\n<dark_gray>(Taste 1)"
     stand: "<gold><b>HALTEN"
-    stand-lore: "<gray>Bei dieser Summe bleiben"
+    stand-lore: "<gray>Bei dieser Summe bleiben\n<dark_gray>(Taste 2)"
     double: "<gold><b>DOPPELN"
-    double-lore: "<gray>Einsatz verdoppeln, 1 Karte"
+    double-lore: "<gray>Einsatz verdoppeln, 1 Karte\n<dark_gray>(Taste 3)"
   poker:
     # gui.roulettecasino.poker.title / ante_pays / hand_9..5 / pay_straight_less / call / call_note / qualify_note /
     # qualify_else / deal / fold; the payout panel's EINSATZ, Gewinne and CROUPIER are gui.blackjack.stake,
@@ -188,9 +190,9 @@ gui:
     qualify-else: "sonst bezahlt"
     deal: "<gold><b>AUSTEILEN"
     call: "<gold><b>MITGEHEN"
-    call-lore: "<gray>Zweimal den Grundeinsatz setzen\n<gray>und die letzten zwei Karten sehen"
+    call-lore: "<gray>Zweimal den Grundeinsatz setzen\n<gray>und die letzten zwei Karten sehen\n<dark_gray>(Taste 1)"
     fold: "<gold><b>AUSSTEIGEN"
-    fold-lore: "<gray>Die Hand aufgeben:\n<gray>Der Grundeinsatz ist verloren"
+    fold-lore: "<gray>Die Hand aufgeben:\n<gray>Der Grundeinsatz ist verloren\n<dark_gray>(F oder 2)"
   bets:
     # gui.roulettecasino.bets.title
     title: "<gold>Mögliche Einsätze"

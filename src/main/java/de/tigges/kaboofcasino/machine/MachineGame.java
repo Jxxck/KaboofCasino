@@ -31,6 +31,14 @@ public interface MachineGame {
     /** True while this machine will settle the round itself (the ledger watchdog skips it). */
     boolean ownsRound(UUID roundId);
 
+    /**
+     * True while a live hand keeps this round open for its owner across a quit and a rejoin: quit and join recovery
+     * then leave the record alone (poker before the call, whose record pays the fold anyway). Default: never.
+     */
+    default boolean holdsForReconnect(UUID roundId) {
+        return false;
+    }
+
     /** Respawns rig entities that disappeared (/kill, other plugins). */
     void checkRig();
 }

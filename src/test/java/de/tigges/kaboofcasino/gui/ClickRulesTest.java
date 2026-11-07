@@ -28,6 +28,29 @@ class ClickRulesTest {
     }
 
     @Test
+    void keyboardShortcutsGoThroughTheCommitPath() {
+        // a number key or F over a top slot that the menu mapped to a commit button: guard, busy, commit
+        assertEquals(ClickRoute.Outcome.COMMIT, ClickRoute.route(new ClickRoute.Click(ClickType.NUMBER_KEY,
+                InventoryAction.HOTBAR_SWAP, 4, 54, 4, true, true, true, false, 10, 4, true)));
+        assertEquals(ClickRoute.Outcome.COMMIT, ClickRoute.route(new ClickRoute.Click(ClickType.SWAP_OFFHAND,
+                InventoryAction.HOTBAR_SWAP, 30, 54, 30, true, true, true, false, 10, 4, true)));
+        assertEquals(ClickRoute.Outcome.TOO_EARLY, ClickRoute.route(new ClickRoute.Click(ClickType.NUMBER_KEY,
+                InventoryAction.HOTBAR_SWAP, 4, 54, 4, true, true, true, false, 2, 4, true)));
+        assertEquals(ClickRoute.Outcome.BUSY, ClickRoute.route(new ClickRoute.Click(ClickType.NUMBER_KEY,
+                InventoryAction.HOTBAR_SWAP, 4, 54, 4, true, true, true, true, 10, 4, true)));
+        assertEquals(ClickRoute.Outcome.NOTHING, ClickRoute.route(new ClickRoute.Click(ClickType.NUMBER_KEY,
+                InventoryAction.HOTBAR_SWAP, 4, 54, 4, true, true, false, false, 10, 4, true)), "unusable");
+        // without a mapping a key does nothing, also over a button
+        assertEquals(ClickRoute.Outcome.NOTHING, ClickRoute.route(new ClickRoute.Click(ClickType.NUMBER_KEY,
+                InventoryAction.HOTBAR_SWAP, 46, 54, 46, true, true, true, false, 10, 4, false)));
+        for (ClickType type : new ClickType[] {ClickType.NUMBER_KEY, ClickType.SWAP_OFFHAND}) {
+            for (InventoryAction action : InventoryAction.values()) {
+                assertFalse(ClickRules.allowVanillaMove(type, action, 4, 54), "the swap stays cancelled");
+            }
+        }
+    }
+
+    @Test
     void routing() {
         assertEquals(ClickRoute.Outcome.COMMIT, route(ClickType.LEFT, 49, 49, true, true, true, false, 10));
         assertEquals(ClickRoute.Outcome.TOO_EARLY, route(ClickType.LEFT, 49, 49, true, true, true, false, 2));

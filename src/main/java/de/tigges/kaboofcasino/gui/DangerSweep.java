@@ -138,7 +138,9 @@ public final class DangerSweep {
             if (idle > 0 && menu.closesWhenIdle() && menu.openedAtTick() >= 0
                     && tick - menu.openedAtTick() >= idle * 20L) {
                 player.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
-                messages.get().actionBar(player, Msg.MACHINE_IDLE_CLOSED);
+                if (menu.announcesIdleClose()) {
+                    messages.get().actionBar(player, Msg.MACHINE_IDLE_CLOSED);
+                }
                 continue;
             }
             if (moved > DRIFT && menu.openedAtTick() >= 0 && tick - menu.openedAtTick() > DRIFT_GRACE_TICKS) {

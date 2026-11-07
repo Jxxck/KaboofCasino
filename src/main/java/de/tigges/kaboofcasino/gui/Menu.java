@@ -73,7 +73,16 @@ public abstract class Menu implements InventoryHolder {
         getInventory().clear();
     }
 
-    final Button button(int rawSlot) {
+    /**
+     * A keyboard shortcut over any top slot ({@code NUMBER_KEY} with its hotbar button 0..8, or {@code SWAP_OFFHAND},
+     * the F key): the button it presses, or null (default: none). The vanilla swap stays cancelled either way; the
+     * button runs through the same busy, open-guard and commit path as a click on it.
+     */
+    public Button keyButton(ClickType click, int hotbarButton) {
+        return null;
+    }
+
+    protected final Button button(int rawSlot) {
         return buttons.get(rawSlot);
     }
 
@@ -93,6 +102,15 @@ public abstract class Menu implements InventoryHolder {
     /** True for menus that close after {@code gui.idle-close-seconds} (machine menus release their machine). */
     public boolean closesWhenIdle() {
         return false;
+    }
+
+    /**
+     * True if the idle close says so on the action bar ({@code machine.idle-closed}). The mod's blackjack and poker
+     * close their bet menu silently after 2400 ticks ({@code betIdle}); the other mod games never close it, so the
+     * plugin's own idle close there tells the player why.
+     */
+    public boolean announcesIdleClose() {
+        return true;
     }
 
     public final boolean isBusy() {

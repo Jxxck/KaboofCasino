@@ -117,4 +117,10 @@ public final class PokerBetMenu extends StakeMenu {
     public PokerController controller() {
         return controller;
     }
+
+    /** {@code PokerTableBlockEntity.serverTick}: the bet menu closes after 2400 idle ticks without a word. */
+    @Override
+    public boolean announcesIdleClose() {
+        return false;
+    }
 }

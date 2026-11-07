@@ -24,6 +24,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -379,6 +380,39 @@ public final class BlackjackRoundMenu extends GameMenu {
                 set(slot, Button.display(icon(c)));
             }
         }
+    }
+
+    /**
+     * {@code BlackjackScreen.keyPressed} (H/T/1 = KARTE, S/R/2 = HALTEN, D/3 = DOPPELN, only while that button is
+     * active): in a chest the number keys 1, 2 and 3 over any top slot; the letters have no inventory binding.
+     */
+    @Override
+    public Button keyButton(ClickType click, int hotbarButton) {
+        Action a = keyAction(click, hotbarButton);
+        return a == null ? null : activeButton(a);
+    }
+
+    static Action keyAction(ClickType click, int hotbarButton) {
+        if (click != ClickType.NUMBER_KEY) {
+            return null;
+        }
+        return switch (hotbarButton) {
+            case 0 -> Action.HIT;
+            case 1 -> Action.STAND;
+            case 2 -> Action.DOUBLE;
+            default -> null;
+        };
+    }
+
+    /** The registered button of {@code action}, if it is shown and clickable. */
+    private Button activeButton(Action action) {
+        for (int slot = 0; slot < shown.length; slot++) {
+            Cell c = shown[slot];
+            if (c != null && c.action() == action && c.enabled()) {
+                return button(slot);
+            }
+        }
+        return null;
     }
 
     /** {@code BlackjackScreen.press}: one press per 6 ticks, the vanilla button click sound. */

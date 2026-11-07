@@ -237,8 +237,19 @@ public final class WagerEngine {
 
     /** Settles every open round (quit, stop, join recovery). Returns the settled records. */
     public List<RoundRecord> settleAll(Account account, SettleReason reason) {
+        return settleAll(account, reason, id -> false);
+    }
+
+    /**
+     * Settles every open round except those {@code keep} names (a live poker hand waiting for its owner, quit and
+     * join recovery). Returns the settled records.
+     */
+    public List<RoundRecord> settleAll(Account account, SettleReason reason, Predicate<UUID> keep) {
         List<RoundRecord> settled = new ArrayList<>();
         for (RoundRecord round : account.ledger().rounds()) {
+            if (keep.test(round.id())) {
+                continue;
+            }
             RoundRecord r = settle(account, round.id(), reason);
             if (r != null) {
                 settled.add(r);

@@ -20,6 +20,7 @@ public enum Msg {
     POKER_BUSY("poker.busy"),
     POKER_NO_BET("poker.no-bet"),
     POKER_CANNOT_CALL("poker.cannot-call"),
+    POKER_HAND_SETTLED("poker.hand-settled"),
     POKER_TIMEOUT("poker.timeout"),
     MACHINE_IN_USE("machine.in-use"),
     MACHINE_NOT_YOURS("machine.not-yours"),

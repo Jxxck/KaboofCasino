@@ -219,6 +219,27 @@ class WagerEngineTest {
     }
 
     @Test
+    void heldRoundsSurviveQuitAndJoinAndSettleOnceAfterwards() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 20);
+        commit(a, DIAMOND, 5, 10);
+        UUID held = a.ledger().rounds().getFirst().id();
+        commit(a, DIAMOND, 5, 0);
+        // quit: the held round (a live poker hand before the call) stays in the saved file, the other settles
+        List<RoundRecord> settled = engine.settleAll(a, SettleReason.QUIT, held::equals);
+        assertEquals(1, settled.size());
+        assertEquals(List.of(held), a.ledger().rounds().stream().map(RoundRecord::id).toList());
+        FakeAccount.Saved quitSave = a.save();
+        // rejoin while the hand still holds it: nothing settles, nothing is paid
+        a.restore(quitSave);
+        assertTrue(engine.settleAll(a, SettleReason.JOIN_RECOVERY, held::equals).isEmpty());
+        assertEquals(10, a.count(DIAMOND));
+        // the hand ended meanwhile: the next join settles its stored payout once
+        assertEquals(1, engine.settleAll(a, SettleReason.JOIN_RECOVERY, id -> false).size());
+        assertEquals(20, a.count(DIAMOND));
+        assertTrue(engine.settleAll(a, SettleReason.JOIN_RECOVERY).isEmpty());
+    }
+
+    @Test
     void crashBeforeTheNextSaveRollsBackStakeAndRecordTogether() {
         FakeAccount a = new FakeAccount().with(DIAMOND, 10);
         FakeAccount.Saved before = a.save();

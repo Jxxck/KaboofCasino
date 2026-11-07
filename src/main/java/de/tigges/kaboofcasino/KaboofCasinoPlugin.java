@@ -140,7 +140,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         LogoutSpots logouts = new LogoutSpots(db);
         logouts.load();
         machines = new MachineService(() -> config, () -> messages, index, System::currentTimeMillis, logouts);
-        ledger = new LedgerListener(engine, () -> messages, machines::ownsRound);
+        ledger = new LedgerListener(engine, () -> messages, machines::ownsRound, machines::holdsForReconnect);
         PackSessions sessions = new PackSessions();
         sessions.required(config.pack().enabled());
         CasinoContext ctx = new CasinoContext(this, () -> config, () -> messages, engine, new CasinoRandom(), layout,

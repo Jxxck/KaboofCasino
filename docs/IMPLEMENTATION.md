@@ -303,7 +303,8 @@ Slot specifics:
     effect;
   - the menu no longer valid: machine gone, spinning, eye farther than interaction range + 4.5 from the machine's
     block box (as the mod's `isWithinBlockInteractionRange`);
-  - idle: no spin for `gui.idle-close-seconds` (120, 0 = off) closes the slot menu and frees the machine.
+  - idle: no spin for `gui.idle-close-seconds` (120, 0 = off) closes the slot menu and frees the machine (with the
+    `machine.idle-closed` note; silently for the blackjack and poker bet menus, as the mod's `betIdle`).
   The commit checks safety again. A danger close never decides a round.
 
 ## 7. Pack tool (`pack-tool/`)
@@ -618,7 +619,10 @@ that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound 
   danger rule.
 - The bias ("which side the cards favour", the Croupier's Hand setting) is `blackjack.bias` (default 0); exchange
   rules and per-table settings are not built.
-- The camera turn toward the table (the mod's client turns it over 0.6 s) is impossible on a vanilla client.
+- The camera turn toward the table (the mod's client turns it over 0.6 s): possible via rotation teleports, omitted
+  (through the tunnel they risk jitter for little gain).
+- Keyboard: 1 = KARTE, 2 = HALTEN, 3 = DOPPELN over any slot of the round menu (see step 6); the bet menu closes
+  silently after 120 s without a deal, like the mod's `betIdle`.
 - Look (`BlackjackRig`, `BlackjackDealerRig`, `BlackjackCardRig`; pack `BlackjackPack`, `BlackjackDealerModel`,
   `BlackjackCardModels`): the table is the mod's eight block models `blackjack_0..7` as item displays at the cell
   centres (view range 2.0); the dealer is eight displays (torso, head, upper arms, forearms, legs) generated from
@@ -654,9 +658,10 @@ that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound 
   40, KARTE / HALTEN / DOPPELN 52 x 17 over 45-47 / 48-50 / 51-53 (DOPPELN greyed when the hand cannot double or the
   items are missing). The mod's timing: cards appear 22 ticks after the deal, the hole card's face 8 ticks after the
   reveal, buttons locked 6 ticks after a press. It is a chest in the middle of the screen, not a side panel, and the
-  inventory stays visible (inert); keyboard shortcuts do not exist in a chest, so the tooltips have only the first
-  line of `*_tip`. The controller refreshes the open round menu every tick (only changed slots are sent) and closes
-  it when the hand is over; a right-click by the owner reopens it during the hand.
+  inventory stays visible (inert); of the mod's keys only the number keys reach the server from a chest, so the
+  tooltips' key hint says "(Taste 1/2/3)" instead of `*_tip`'s "(H, T oder 1)" etc. The controller refreshes the
+  open round menu every tick (only changed slots are sent) and closes it when the hand is over; a right-click by
+  the owner reopens it during the hand.
 - Recipe: the mod's (`WWW/GBG/PRP` with the Croupier's Badge), unlocked by holding a badge. Badges come from hiring a
   croupier (step 8); until then tables come from `/casino give blackjack_table` (the badge is giveable too).
 - Placement (permadeath deviation, like the roulette): `blackjack.needs-support: true` (default) wants at least one of
@@ -698,16 +703,45 @@ the roll of `CasinoExchange.payout` comes from the round's seed and the bet slot
   round's own draw and bias (`PokerCall`, prediction = table checked by `PokerCallTest` for 40 000 hands at random
   decision times, with and without bias); the records get 3 x the ante as stake, the call stake is taken and the
   outcome becomes the payout in **one** ledger write (`WagerEngine.revise`, all slots of the hand together); only
-  then the live round deals. So quit, kick, stop, crash, death and the watchdog settle a fold before the call and the
-  final outcome after it, without game logic. The live hand folds at once when its owner is gone during the decision
-  (the mod waits for its 30 s timeout, with the same result), so the table shows what was paid; after the call
-  nothing is left to decide and the table plays the hand out. At the decision the records are rewritten with the
-  table's result (same value) and settle 22 ticks later with the first payout coin, one coin every 3 ticks.
+  then the live round deals. So stop, crash, death and the watchdog settle a fold before the call and the final
+  outcome after it, without game logic; a dead owner's hand folds at once, so the table shows what was paid. When the
+  decision opens (and when the owner comes back) the records' end moves to now + 120 s, so neither the watchdog nor
+  the table's ownership (end + 60 s) releases them during the 600-tick decision, even at 5 TPS. At the decision the
+  records are rewritten with the table's result (same value) and settle 22 ticks later with the first payout coin,
+  one coin every 3 ticks.
+- **Reconnect** (the mod keeps the round; a tunnel drop disconnects everyone at once): a quit or kick **before the
+  call** (dealing or decision) settles nothing of that hand. Its records pay the fold, so leaving them open can never
+  pay too much; they stay in the player file saved at the quit (`MachineGame.holdsForReconnect`, honoured by the quit
+  and the join recovery of `LedgerListener`). The hand runs on to the mod's 600-tick timeout with its anchor chunk
+  held loaded (a counted plugin chunk ticket, `MachineService.holdChunk`, released when the hand ends or the owner is
+  back). An owner who rejoins in time is re-attached and calls or folds as usual. Otherwise the timeout folds and the
+  records settle as a fold at his next join (stop or crash meanwhile: the same, the file holds the fold). Order: the
+  join recovery runs inside the join event and decides on the table's state at that moment (held only while the hand
+  is undecided and uncalled); the table sees the owner only at its next tick, so exactly one of them acts. A quit
+  **after the call** settles the stored outcome at once, as before; death folds at once. A table removed (admin)
+  while its owner is away cannot rewrite his file: his held records then settle as a fold at his next join, not as
+  the mod's refund.
+- Blackjack keeps "owner gone -> stand at once" on quit: standing never forfeits the stake, so it needs no reconnect
+  grace.
 - After a restart or chunk unload the mod refunds an undecided wager (`recoverInterrupted`); here the stored fold or
   called outcome is paid (PLAN decision 2). A table removed while loaded (admin) refunds an undecided hand in full,
   including a paid call, as the mod's `onTableBroken` does.
 - A CALL in danger is refused and closes the menu (the hand runs on and times out to a fold, as the mod's timer
-  would); FOLD only gives up the ante and stays allowed. The mod has no danger rule.
+  would); FOLD only gives up the ante and stays allowed. The mod has no danger rule. A CALL whose records were
+  settled elsewhere meanwhile (`revise` GONE: watchdog, admin) says "Diese Hand ist schon abgerechnet (ausgestiegen):
+  Mitgehen geht nicht mehr." and the hand folds, which is what those records paid.
+- Keyboard: `PokerScreen.keyPressed` maps S/1 to MITGEHEN and F/2 to AUSSTEIGEN while the button is active. In a
+  chest the number keys and F reach the server as `NUMBER_KEY` / `SWAP_OFFHAND` clicks over a slot: 1 = MITGEHEN,
+  2 and F = AUSSTEIGEN over any top slot (`Menu.keyButton`), through the same busy, open-guard, press-lock and danger
+  path as a click; the vanilla swap stays cancelled. S has no inventory binding. Blackjack likewise: 1 = KARTE,
+  2 = HALTEN, 3 = DOPPELN (the mod's H/T, S/R and D have no inventory binding; F is no blackjack key).
+- The bet menu closes after 120 s without a deal (`gui.idle-close-seconds`, the mod's 2400-tick `betIdle`), silently
+  like the mod (blackjack too). Slot machine, wheel, Plinko and roulette never close in the mod; the plugin's idle
+  close there keeps its "Menü geschlossen" note.
+- Not built: the camera turn toward the table (possible via rotation teleports, omitted: through the tunnel they
+  risk jitter for little gain) and the panel's felt frame. The bet view draws three texts at full size where the mod
+  shrinks them ("DER EINSATZ ZAHLT", "Ab Paar Vieren", "sonst bezahlt"); a smaller font row would need scaled glyph
+  advances in the text builder, so the boxes were widened instead.
 - The call ignores `bets.max-stake` and the owed list like the mod (it is part of the hand).
 - Bias ("which side the cards favour") is `poker.bias` (default 0), exchange rules and per-table settings are not
   built. `poker.needs-support: true` (default) wants one of the twelve cells on a sturdy block (the mod: always).
@@ -735,7 +769,7 @@ the roll of `CasinoExchange.payout` comes from the round's seed and the bet slot
   kind at the result (signed, up to 6), timer bar 39 (red at 38 steps or fewer), MITGEHEN over 45-48 (greyed unless
   the decision is open and 2 x the ante of every item kind is in the storage slots) and AUSSTEIGEN over 50-53. The
   mod's client timing: cards appear 22 ticks after the deal, a dealer card's face 8 ticks after the reveal, buttons
-  locked 6 ticks after a press; keyboard shortcuts do not exist in a chest. The controller refreshes the open round
+  locked 6 ticks after a press; keys 1 / 2 / F as described above (tooltip hints "(Taste 1)", "(F oder 2)"). The controller refreshes the open round
   menu every tick (only changed slots are sent) and closes it when the hand is over; the owner's right-click reopens
   it during the hand. Deviations of the art: buttons 68 px each with a 22 px gap (to match the click areas), longer
   German texts drawn unscaled, NET columns 54 / 36 px apart.
@@ -840,8 +874,10 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
   pack grows to ~4.7 MB; the music pack (~22 MB) is offered after it, optional; clients that accepted the casino pack
   usually accept it silently (a second resource reload at login).
 - Step 6 ships as `KaboofCasino-0.6.0.jar`: remove `KaboofCasino-0.5.0.jar`. The live `config.yml` gets `poker:`
-  (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `item.poker-table`, `poker.*` and `gui.poker.*`
-  keys; no database migration, no new ledger version (poker hands use the PLAYING records of 0.4.0). The casino pack
+  (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `item.poker-table`, `poker.*` (including
+  `poker.hand-settled`) and `gui.poker.*` keys. Delete the three lines `gui.blackjack.hit-lore`, `stand-lore` and
+  `double-lore` from the live `messages_de.yml` before the start so the new texts with the key hints "(Taste 1/2/3)"
+  are merged in (existing keys are never overwritten). No database migration, no new ledger version (poker hands use the PLAYING records of 0.4.0). The casino pack
   grows to ~5.0 MB, so the 300 s hard cap now asks for 16.3 KiB/s on average, slightly more than the 16 KiB/s
   minimum (unchanged values; `DownloadDeadlineTest`'s steady-download bound now follows the pack size). Tables come from `/casino give poker_table` until the croupier hands
   out badges (step 8). A three-slot poker hand holds three PLAYING records, so the live `rounds.max-open: 4` allows

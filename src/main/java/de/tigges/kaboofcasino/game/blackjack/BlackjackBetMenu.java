@@ -104,4 +104,10 @@ public final class BlackjackBetMenu extends StakeMenu {
     public BlackjackController controller() {
         return controller;
     }
+
+    /** {@code BlackjackTableBlockEntity.serverTick}: the bet menu closes after 2400 idle ticks without a word. */
+    @Override
+    public boolean announcesIdleClose() {
+        return false;
+    }
 }

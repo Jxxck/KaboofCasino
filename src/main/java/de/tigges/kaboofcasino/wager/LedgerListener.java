@@ -29,12 +29,16 @@ import org.bukkit.inventory.ItemStack;
 /**
  * The lifecycle hooks of the bet engine (server.md 1.3):
  * <ul>
- *   <li><b>Quit</b> (also kick, timeout): every open round settles now, before the quit save (F7). A dead player is
- *       skipped: his death already drained the ledger.</li>
+ *   <li><b>Quit</b> (also kick, timeout): every open round settles now, before the quit save (F7), except rounds a
+ *       live machine holds for the owner's reconnect ({@code holdsForReconnect}: poker before the call, whose record
+ *       pays the fold anyway; it stays in the saved file and the table times it out). A dead player is skipped: his
+ *       death already drained the ledger.</li>
  *   <li><b>Death</b>, LOW (before DeathBan's HIGH grave): rounds and owed go into the drops; with keepInventory into
  *       the inventory/owed. MONITOR: if the event ended cancelled, the items go back and leave the drops.</li>
- *   <li><b>Join</b> / respawn after a dead join: records still in the file are from a crash -> settled
- *       (JOIN_RECOVERY), then owed items are delivered.</li>
+ *   <li><b>Join</b> / respawn after a dead join: records still in the file are from a crash, a stop or a held poker
+ *       hand that ended meanwhile -> settled (JOIN_RECOVERY), then owed items are delivered. Rounds a live hand still
+ *       holds are left to it: the join event and the machine tick both run on the main thread, so the machine sees
+ *       the owner back only after this decision, and a hand that decided before the join is settled here.</li>
  *   <li><b>Timer</b>: owed delivery and the watchdog for records no machine settles in time.</li>
  *   <li><b>Disable</b>: everyone online settles (STOP); Paper saves the players afterwards (F8).</li>
  * </ul>
@@ -48,15 +52,18 @@ public final class LedgerListener implements Listener {
     private final WagerEngine engine;
     private final Supplier<Messages> messages;
     private final Predicate<UUID> liveRound;
+    private final Predicate<UUID> held;
     /** What went into the drops at LOW per player, taken back out if the death ends cancelled. */
     private final Map<UUID, DeathDrops.Applied<ItemStack>> drained = new HashMap<>();
     /** Players whose ledger could not be read (CRITICAL logged once; casino blocked for them). */
     private final Set<UUID> corrupt = new HashSet<>();
 
-    public LedgerListener(WagerEngine engine, Supplier<Messages> messages, Predicate<UUID> liveRound) {
+    public LedgerListener(WagerEngine engine, Supplier<Messages> messages, Predicate<UUID> liveRound,
+                          Predicate<UUID> held) {
         this.engine = engine;
         this.messages = messages;
         this.liveRound = liveRound;
+        this.held = held;
     }
 
     /** True if the ledger of this player is unreadable (all casino actions refused). */
@@ -96,10 +103,11 @@ public final class LedgerListener implements Listener {
             return;
         }
         guarded(player, "quit", a -> {
-            List<RoundRecord> settled = engine.settleAll(a, SettleReason.QUIT);
-            if (!settled.isEmpty()) {
-                Log.get().info("{} quit with {} open round(s): settled before the save", player.getName(),
-                        settled.size());
+            List<RoundRecord> settled = engine.settleAll(a, SettleReason.QUIT, held);
+            int kept = a.ledger().rounds().size();
+            if (!settled.isEmpty() || kept > 0) {
+                Log.get().info("{} quit with {} open round(s): {} settled before the save, {} kept for a reconnect",
+                        player.getName(), settled.size() + kept, settled.size(), kept);
             }
         });
     }
@@ -203,10 +211,15 @@ public final class LedgerListener implements Listener {
             return;
         }
         guarded(player, "join", a -> {
-            List<RoundRecord> settled = engine.settleAll(a, SettleReason.JOIN_RECOVERY);
+            List<RoundRecord> settled = engine.settleAll(a, SettleReason.JOIN_RECOVERY, held);
             if (!settled.isEmpty()) {
-                Log.get().warn("{} joined with {} round(s) from before a crash: settled {}", player.getName(),
-                        settled.size(), settled.stream().map(RoundRecord::id).toList());
+                Log.get().warn("{} joined with {} round(s) from before a crash, a stop or a held hand that ended: "
+                        + "settled {}", player.getName(), settled.size(),
+                        settled.stream().map(RoundRecord::id).toList());
+            }
+            int kept = a.ledger().rounds().size();
+            if (kept > 0) {
+                Log.get().info("{} rejoined: {} round(s) of a live hand kept for it", player.getName(), kept);
             }
             remindOwed(player, a);
         });
