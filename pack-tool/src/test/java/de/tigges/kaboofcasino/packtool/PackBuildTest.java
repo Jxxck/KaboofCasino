@@ -99,7 +99,8 @@ class PackBuildTest {
                 "assets/kaboofcasino/items/gui/spin_on.json")) {
             assertTrue(entries.containsKey(path), path);
         }
-        assertTrue(entries.keySet().stream().noneMatch(p -> p.contains("/blockstates/")));
+        assertTrue(entries.keySet().stream().filter(p -> p.contains("/blockstates/"))
+                .allMatch(DecoFullPack.BLOCKSTATE_FILES::contains), "only the three mushroom blockstates");
         assertTrue(entries.keySet().stream().noneMatch(p -> p.contains("sounds/music")), "no music in step 1");
         assertTrue(!entries.containsKey("assets/kaboofcasino/font/t_101.json"), "only the rows the GUIs use");
         for (String path : List.of("assets/roulettecasino/items/block/fortune_wheel_8.json",

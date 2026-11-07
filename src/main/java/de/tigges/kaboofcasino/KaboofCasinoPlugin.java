@@ -67,6 +67,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private PackHttpServer http;
     private GamePortPack gamePort;
     private MachineService machines;
+    private de.tigges.kaboofcasino.music.MusicService music;
+    private de.tigges.kaboofcasino.deco.full.FullDecoService fullDeco;
+    private de.tigges.kaboofcasino.deco.display.DisplayDecoService displayDeco;
     private LedgerListener ledger;
     private MenuService menus;
 
@@ -93,6 +96,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             Log.get().warn("{} warning(s) in config.yml/messages_de.yml (see above)", warnings);
         }
         PackFile pack = PackFile.load(getClassLoader());
+        PackFile musicPack = PackFile.loadMusic(getClassLoader());
         GuiLayout layout;
         try (InputStream in = getResource("pack/gui-layout.json")) {
             if (in == null) {
@@ -152,11 +156,17 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         for (Listener l : List.of(menus, new MenuListener(menus, Bukkit::getCurrentTick,
                         () -> config.gui().clickGuardTicks(), () -> messages), safety, ledger,
-                new PackListener(() -> config, () -> messages, pack, sessions),
+                new PackListener(() -> config, () -> messages, pack, musicPack, sessions),
                 new MachineListener(machines, menus, () -> messages), breaks, new ProtectionListener(machines),
                 new ChunkListener(machines), new ItemVetoListener(), new SafetyListener(machines, this))) {
             getServer().getPluginManager().registerEvents(l, this);
         }
+        music = new de.tigges.kaboofcasino.music.MusicService(ctx);
+        fullDeco = new de.tigges.kaboofcasino.deco.full.FullDecoService(ctx);
+        displayDeco = new de.tigges.kaboofcasino.deco.display.DisplayDecoService(ctx, safety, sweep, music);
+        music.enable();
+        fullDeco.enable();
+        displayDeco.enable();
         Recipes.load(getClassLoader());
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload);
@@ -164,10 +174,10 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                 event.registrar().register("casino", "KaboofCasino (MineVegas Casino)", List.of(), command));
 
         if (config.pack().enabled() && config.pack().onGamePort()) {
-            gamePort = new GamePortPack(pack, getSLF4JLogger());
+            gamePort = new GamePortPack(List.of(pack, musicPack), getSLF4JLogger());
             gamePort.install();
         } else if (config.pack().enabled()) {
-            http = new PackHttpServer(pack);
+            http = new PackHttpServer(List.of(pack, musicPack));
             try {
                 http.start(config.pack().bind(), config.pack().port());
             } catch (IOException e) {
@@ -180,11 +190,14 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         Log.get().info("KaboofCasino pack {} ({} bytes), URL http://{}:{}{} ({}), enforce={}", pack.sha1(),
                 pack.size(), config.pack().urlHost(), config.pack().publicPort(), pack.path(), config.pack().serve(),
                 config.pack().enforce());
+        Log.get().info("KaboofCasino music pack {} ({} bytes), offered: {}", musicPack.sha1(), musicPack.size(),
+                config.pack().enabled() && config.music().enabled());
 
         machines.scanLoaded();
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             long tick = Bukkit.getCurrentTick();
             machines.tick(tick);
+            displayDeco.tick(tick);
             breaks.tick();
             if (tick % config.safety().sweepTicks() == 0) {
                 sweep.sweep();
@@ -247,6 +260,16 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             if (machines != null) {
                 machines.disable();
             }
+            if (displayDeco != null) {
+                displayDeco.disable();
+            }
+            if (fullDeco != null) {
+                fullDeco.disable();
+            }
+            if (music != null) {
+                music.disable();
+            }
+            de.tigges.kaboofcasino.machine.ItemCatalog.clear();
             Recipes.unregister();
         } catch (RuntimeException e) {
             Log.incident("disable", e);

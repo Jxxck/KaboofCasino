@@ -8,29 +8,43 @@ import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-/** The built pack (embedded in the test classpath under pack/) as path -> bytes. */
+/** The built packs (embedded in the test classpath under pack/) as path -> bytes. */
 public final class PackFiles {
 
     private static Map<String, byte[]> files;
+    private static Map<String, byte[]> music;
 
     private PackFiles() {
     }
 
+    /** The casino pack. */
     public static synchronized Map<String, byte[]> all() {
         if (files == null) {
-            Map<String, byte[]> out = new TreeMap<>();
-            try (InputStream in = PackFiles.class.getClassLoader().getResourceAsStream("pack/KaboofCasino-pack.zip");
-                 ZipInputStream zip = new ZipInputStream(in)) {
-                ZipEntry e;
-                while ((e = zip.getNextEntry()) != null) {
-                    out.put(e.getName(), zip.readAllBytes());
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-            files = out;
+            files = read(PackFile.ZIP);
         }
         return files;
+    }
+
+    /** The optional music pack. */
+    public static synchronized Map<String, byte[]> music() {
+        if (music == null) {
+            music = read(PackFile.MUSIC_ZIP);
+        }
+        return music;
+    }
+
+    private static Map<String, byte[]> read(String resource) {
+        Map<String, byte[]> out = new TreeMap<>();
+        try (InputStream in = PackFiles.class.getClassLoader().getResourceAsStream(resource);
+             ZipInputStream zip = new ZipInputStream(in)) {
+            ZipEntry e;
+            while ((e = zip.getNextEntry()) != null) {
+                out.put(e.getName(), zip.readAllBytes());
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return out;
     }
 
     /** True if the item model key {@code ns:path} has an item definition in the pack. */

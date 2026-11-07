@@ -1,0 +1,175 @@
+package de.tigges.kaboofcasino.deco.display;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import de.tigges.kaboofcasino.machine.Facing;
+import de.tigges.kaboofcasino.util.Pos;
+import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
+import org.bukkit.block.BlockFace;
+import org.junit.jupiter.api.Test;
+
+/** Cells, click boxes, chunk fit, the speaker/sconce shapes of the mod, and the candle rate. */
+class DecoGeometryTest {
+
+    private static final Pos A = new Pos("minecraft:overworld", 100, 64, 200);
+
+    private static DecoRecord record(DecoType t, Facing f, int state) {
+        return new DecoRecord(UUID.randomUUID(), t, A, f, state, new UUID(0, 0), 0);
+    }
+
+    /** {@code DecorShapes.turn} of the mod, one step: (x, z) -> (16 - z, x). */
+    @Test
+    void turnIsTheModsDecorShapesTurn() {
+        double[] b = {1, 2, 3, 4, 5, 6};
+        assertArrayEquals(new double[] {10, 2, 1, 13, 5, 4}, DecoGeometry.turn(b, 1), 1e-9);
+        assertArrayEquals(b, DecoGeometry.turn(b, 4), 1e-9);
+        assertArrayEquals(new double[] {16 - 3, 7, 1}, DecoGeometry.turnPoint(new double[] {1, 7, 3}, 1), 1e-9);
+    }
+
+    @Test
+    void largeSignHasSixCellsToTheCounterClockwiseSide() {
+        for (Facing f : Facing.values()) {
+            List<Pos> cells = DecoGeometry.cells(record(DecoType.CASINO_SIGN, f, 0));
+            assertEquals(6, new HashSet<>(cells).size());
+            assertEquals(A, cells.getFirst());
+            int[] ccw = DecoGeometry.ccw(f);
+            // Direction.getCounterClockWise: south -> east, east -> north, north -> west, west -> south
+            BlockFace expected = switch (f) {
+                case SOUTH -> BlockFace.EAST;
+                case EAST -> BlockFace.NORTH;
+                case NORTH -> BlockFace.WEST;
+                case WEST -> BlockFace.SOUTH;
+            };
+            assertEquals(expected.getModX(), ccw[0]);
+            assertEquals(expected.getModZ(), ccw[1]);
+            assertEquals(A.offset(2 * ccw[0], 1, 2 * ccw[1]), cells.get(5));
+        }
+    }
+
+    @Test
+    void chandelierCellsBodyAndChain() {
+        List<Pos> one = DecoGeometry.cells(record(DecoType.CASINO_CHANDELIER, Facing.SOUTH, 1));
+        assertEquals(10, one.size());
+        assertTrue(one.contains(A.offset(-1, 0, -1)) && one.contains(A.offset(1, 0, 1)) && one.contains(A.offset(0, 1,
+                0)));
+        List<Pos> two = DecoGeometry.cells(record(DecoType.CASINO_CHANDELIER, Facing.SOUTH, 2));
+        assertEquals(11, two.size());
+        assertTrue(two.contains(A.offset(0, 2, 0)));
+        assertTrue(DecoGeometry.chandelierChain(record(DecoType.CASINO_CHANDELIER, Facing.SOUTH, 2), A.offset(0, 2,
+                0)));
+        assertTrue(!DecoGeometry.chandelierChain(record(DecoType.CASINO_CHANDELIER, Facing.SOUTH, 2), A.offset(1, 0,
+                1)));
+    }
+
+    @Test
+    void chunkFitShiftsTheSmallestDistance() {
+        // a 3-wide sign starting at x = 14 of a chunk reaches x = 16: one block to -x fits
+        Pos edge = new Pos("w", 14, 64, 5);
+        List<Pos> cells = DecoGeometry.cells(DecoType.CASINO_SIGN, edge, Facing.SOUTH, 0);
+        int[] shift = DecoGeometry.chunkFit(cells, List.of(DecoGeometry.ccw(Facing.SOUTH)));
+        assertArrayEquals(new int[] {-1, 0}, shift);
+        assertNull(DecoGeometry.chunkFit(DecoGeometry.cells(DecoType.CASINO_SIGN, new Pos("w", 3, 64, 5),
+                Facing.SOUTH, 0), List.of(DecoGeometry.ccw(Facing.SOUTH))));
+        // the chandelier body around x = 0 (chunk edge at x = 0 / -1): one block to +x
+        List<Pos> body = DecoGeometry.cells(DecoType.CASINO_CHANDELIER, new Pos("w", 0, 64, 8), Facing.SOUTH, 1);
+        assertArrayEquals(new int[] {1, 0}, DecoGeometry.chunkFit(body, List.of(new int[] {1, 0}, new int[] {0, 1})));
+    }
+
+    /** Click boxes lie on the mod's outline: wall pieces against the wall behind them, the speaker by its face. */
+    @Test
+    void clickBoxesFollowTheOutline() {
+        for (Facing f : Facing.values()) {
+            int[] s = f.step();
+            DecoGeometry.Box sign = DecoGeometry.clickBoxes(record(DecoType.SMALL_CASINO_SIGN, f, 0)).getFirst();
+            // the plate centre is 0.825 px in front of the wall, which lies at -facing
+            double wallX = 0.5 - s[0] * 0.5;
+            double wallZ = 0.5 - s[1] * 0.5;
+            assertEquals(s[0] == 0 ? 0.5 : wallX + s[0] * DecoGeometry.SIGN_DEPTH / 32.0, sign.cx(), 1e-9, f.name());
+            assertEquals(s[1] == 0 ? 0.5 : wallZ + s[1] * DecoGeometry.SIGN_DEPTH / 32.0, sign.cz(), 1e-9, f.name());
+            assertEquals(15.0 / 16.0, sign.width(), 1e-9);
+            List<DecoGeometry.Box> large = DecoGeometry.clickBoxes(record(DecoType.CASINO_SIGN, f, 0));
+            assertEquals(3, large.size());
+            for (DecoGeometry.Box b : large) {
+                assertTrue(b.height() > 1.9 && b.height() < 2.0);
+            }
+        }
+        DecoGeometry.Box floor = DecoGeometry.clickBoxes(record(DecoType.CASINO_SPEAKER, Facing.SOUTH,
+                DecoRecord.speakerState(false, DecoRecord.FACE_FLOOR))).getFirst();
+        assertEquals(0.0, floor.y0(), 1e-9);
+        assertEquals(14.0 / 16.0, floor.height(), 1e-9);
+        DecoGeometry.Box ceiling = DecoGeometry.clickBoxes(record(DecoType.CASINO_SPEAKER, Facing.SOUTH,
+                DecoRecord.speakerState(true, DecoRecord.FACE_CEILING))).getFirst();
+        assertEquals(2.0 / 16.0, ceiling.y0(), 1e-9);
+        assertEquals(1.0, ceiling.y0() + ceiling.height(), 1e-9);
+        List<DecoGeometry.Box> chandelier = DecoGeometry.clickBoxes(record(DecoType.CASINO_CHANDELIER, Facing.SOUTH,
+                2));
+        assertEquals(2, chandelier.size());
+        assertEquals(0.5, chandelier.getFirst().cx(), 1e-9);
+        assertEquals(-11.2 / 16, chandelier.getFirst().y0(), 1e-9);
+        assertEquals(2.0, chandelier.get(1).height(), 1e-9);
+        // barrier carriers have no Interaction
+        assertTrue(DecoGeometry.clickBoxes(record(DecoType.CASINO_CHAIR, Facing.SOUTH, 0)).isEmpty());
+    }
+
+    @Test
+    void candleRateIsTheClientsAnimateTickDistribution() {
+        double atPlayer = 667.0 * (Math.pow(16.0 / 256, 3) + Math.pow(32.0 / 1024, 3));
+        assertEquals(atPlayer, DecoFlames.rate(0, 0, 0), 1e-12);
+        assertEquals(0.0, DecoFlames.rate(32, 0, 0), 1e-12);
+        assertEquals(667.0 * (16.0 / 1024) * Math.pow(32.0 / 1024, 2), DecoFlames.rate(16, 0, 0), 1e-12);
+        assertTrue(DecoFlames.rate(3, 1, 2) < atPlayer);
+        assertTrue(atPlayer < 0.2, "at most one roll per tick");
+    }
+
+    /** {@code BlockPos.asLong} (the speaker notes' stagger): x << 38, z << 12, y in the low 12 bits. */
+    @Test
+    void blockPosAsLong() {
+        assertEquals((1L << 38) | 2L | (3L << 12), DecoFlames.asLong(1, 2, 3));
+        assertEquals(0x3FFFFFFL << 38, DecoFlames.asLong(-1, 0, 0));
+        assertEquals(1023L, DecoFlames.asLong(0, 1023, 0));
+        assertEquals(0xFFFL, DecoFlames.asLong(0, -1, 0));
+    }
+
+    @Test
+    void variantsAreTheBlockRenderersChoice() {
+        assertEquals(0L, DecoVariants.seed(0, 0, 0));
+        int[] seen = new int[4];
+        for (int x = 0; x < 40; x++) {
+            for (int z = 0; z < 40; z++) {
+                int v = DecoVariants.simple(x, 64, z, 4);
+                seen[v]++;
+                assertEquals(v, DecoVariants.simple(x, 64, z, 4));
+            }
+        }
+        for (int n : seen) {
+            assertTrue(n > 300, java.util.Arrays.toString(seen));
+        }
+        assertEquals(new java.util.Random(DecoVariants.seed(5, 6, 7)).nextInt(4), DecoVariants.simple(5, 6, 7, 4));
+        assertEquals("", DecoVariants.suffix(0));
+        assertEquals("_v3", DecoVariants.suffix(3));
+    }
+
+    @Test
+    void lookDirectionsLikeVanilla() {
+        // looking straight north and level: north, then (yaw 180 -> xPos false: west), up/down ...
+        BlockFace[] north = LookDirections.orderedByNearest(180f, 0f);
+        assertEquals(BlockFace.NORTH, north[0]);
+        assertEquals(BlockFace.SOUTH, north[5]);
+        BlockFace[] down = LookDirections.orderedByNearest(0f, 80f);
+        assertEquals(BlockFace.DOWN, down[0]);
+        assertEquals(BlockFace.UP, down[5]);
+        BlockFace[] east = LookDirections.orderedByNearest(-90f, 10f);
+        assertEquals(BlockFace.EAST, east[0]);
+        // clicking the top of a block (face UP) while looking north: DOWN (into the clicked block) comes first
+        BlockFace[] placing = LookDirections.placing(180f, 0f, BlockFace.UP, false);
+        assertEquals(BlockFace.DOWN, placing[0]);
+        assertEquals(BlockFace.NORTH, placing[1]);
+        assertEquals(6, new HashSet<>(List.of(placing)).size());
+        assertArrayEquals(north, LookDirections.placing(180f, 0f, BlockFace.UP, true));
+    }
+}

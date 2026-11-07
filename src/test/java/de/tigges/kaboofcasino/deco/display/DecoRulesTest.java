@@ -1,0 +1,152 @@
+package de.tigges.kaboofcasino.deco.display;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import de.tigges.kaboofcasino.machine.Facing;
+import de.tigges.kaboofcasino.util.Pos;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import org.bukkit.Material;
+import org.bukkit.block.BlockFace;
+import org.junit.jupiter.api.Test;
+
+/**
+ * The type table against the mod's registrations (games.md 15, 17, 22): carriers, light, hardness, connections,
+ * waterlogging, the support the mod's shapes give, and the light levels per cell and state.
+ */
+class DecoRulesTest {
+
+    private static final Pos A = new Pos("minecraft:overworld", 0, 64, 0);
+
+    @Test
+    void idsAreUniqueAndComplete() {
+        Set<String> ids = new HashSet<>();
+        for (DecoType t : DecoType.values()) {
+            assertTrue(ids.add(t.id()), t.id());
+            assertEquals(t, DecoType.byId(t.id()).orElseThrow());
+        }
+        // 38 non-full-cube casinodeco blocks + chair + stool + speaker
+        assertEquals(38, ids.stream().filter(i -> i.startsWith("casinodeco:")).count());
+        assertEquals(14, ids.stream().filter(i -> i.endsWith("_stairs") || i.endsWith("_slab")).count());
+    }
+
+    @Test
+    void lightAndHardnessAreTheMods() {
+        assertEquals(11, DecoType.CASINO_SIGN.light());
+        assertEquals(7, DecoType.SMALL_CASINO_SIGN.light());
+        assertEquals(14, DecoType.CASINO_CHANDELIER.light());
+        assertEquals(14, DecoType.CHANDELIER_WALL_SCONCE.light());
+        assertEquals(2, DecoType.CASINO_SPEAKER.light());
+        assertEquals(2.5, DecoType.CASINO_SOFA.hardness());
+        assertEquals(2.5, DecoType.CASINO_CHAIR.hardness());
+        assertEquals(0.6, DecoType.GLASS_TABLE.hardness());
+        assertEquals(1.0, DecoType.CASINO_CHANDELIER.hardness());
+        assertEquals(2.0, DecoType.WALNUT_BAR.hardness());
+        assertEquals(0.3, DecoType.SHOT_GLASSES.hardness());
+        assertEquals(0.2, DecoType.CASINO_CHIP_PILE.hardness());
+        assertEquals(0.8, DecoType.CHIP_CASE.hardness());
+        assertEquals(Material.POLISHED_ANDESITE, DecoType.IVORY_MARBLE_BAR.material());
+    }
+
+    @Test
+    void carriersAndWaterlogging() {
+        for (DecoType t : DecoType.values()) {
+            if (t.light() > 0) {
+                assertEquals(DecoType.Carrier.LIGHT, t.carrier(), t.id() + " emits light");
+            }
+            if (t.seat()) {
+                assertEquals(DecoType.Carrier.BARRIER, t.carrier(), t.id());
+            }
+            if (t.vanillaCarrier()) {
+                assertTrue(t.id().endsWith(t.carrier() == DecoType.Carrier.STAIRS ? "_stairs" : "_slab"), t.id());
+                assertTrue(t.vanilla().name().endsWith(t.carrier() == DecoType.Carrier.STAIRS ? "_STAIRS" : "_SLAB"));
+                // never a burning or furnace-fuel carrier: nether woods and stone only
+                assertTrue(t.vanilla().name().matches("(CRIMSON|WARPED|POLISHED_[A-Z_]+)_(STAIRS|SLAB)"), t.id());
+            }
+        }
+        // SimpleWaterloggedBlock in the mod: the sconce and the three stacked decor blocks (and stairs/slabs)
+        Set<DecoType> wet = new HashSet<>();
+        for (DecoType t : DecoType.values()) {
+            if (t.waterloggable() && !t.vanillaCarrier()) {
+                wet.add(t);
+            }
+        }
+        assertEquals(Set.of(DecoType.CHANDELIER_WALL_SCONCE, DecoType.CASINO_BOTTLES, DecoType.CHAMPAGNE_COUPES,
+                DecoType.SHOT_GLASSES), wet);
+    }
+
+    @Test
+    void connections() {
+        assertTrue(DisplayDecoService.joins(DecoType.WALNUT_BAR, DecoType.BLACK_MARBLE_BAR));
+        assertTrue(DisplayDecoService.joins(DecoType.WOOD_TABLE, DecoType.WOOD_TABLE));
+        assertFalse(DisplayDecoService.joins(DecoType.WOOD_TABLE, DecoType.GLASS_TABLE));
+        assertFalse(DisplayDecoService.joins(DecoType.WOOD_COFFEE_TABLE, DecoType.WOOD_TABLE));
+        assertTrue(DisplayDecoService.joins(DecoType.VELVET_ROPE_POST, DecoType.VELVET_ROPE_POST));
+        assertFalse(DisplayDecoService.joins(DecoType.CASINO_CHAIR, DecoType.CASINO_CHAIR));
+    }
+
+    /**
+     * What a decoration cell supports above or beside it is the mod's shape, not the barrier: bars are full cubes,
+     * the tall tables' top plate (14-16 px) is a full top, the rope post's 6 px post carries the centre
+     * ({@code canSupportCenter}: 7..9 px column), the low tables (0-8 px), seats and small decor carry nothing.
+     */
+    @Test
+    void supportFromTheModsShapes() {
+        assertTrue(DisplayDecoService.decoSturdy(DecoType.WALNUT_BAR, BlockFace.UP, false));
+        assertTrue(DisplayDecoService.decoSturdy(DecoType.IVORY_MARBLE_BAR, BlockFace.NORTH, false));
+        assertTrue(DisplayDecoService.decoSturdy(DecoType.WOOD_TABLE, BlockFace.UP, true));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.WOOD_TABLE, BlockFace.NORTH, false));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.WOOD_COFFEE_TABLE, BlockFace.UP, true));
+        assertTrue(DisplayDecoService.decoSturdy(DecoType.VELVET_ROPE_POST, BlockFace.UP, true));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.VELVET_ROPE_POST, BlockFace.UP, false));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.CASINO_CHAIR, BlockFace.UP, true));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.CASINO_SOFA, BlockFace.UP, true));
+    }
+
+    @Test
+    void lightLevelsPerCellAndState() {
+        DecoRecord chandelier = new DecoRecord(UUID.randomUUID(), DecoType.CASINO_CHANDELIER, A, Facing.SOUTH, 2,
+                new UUID(0, 0), 0);
+        assertEquals(14, DisplayDecoService.lightLevel(chandelier, A.offset(1, 0, -1), false));
+        assertEquals(0, DisplayDecoService.lightLevel(chandelier, A.offset(0, 2, 0), false));
+        DecoRecord sconce = new DecoRecord(UUID.randomUUID(), DecoType.CHANDELIER_WALL_SCONCE, A, Facing.NORTH, 0,
+                new UUID(0, 0), 0);
+        assertEquals(14, DisplayDecoService.lightLevel(sconce, A, false));
+        assertEquals(0, DisplayDecoService.lightLevel(sconce, A, true)); // lightLevel: waterlogged ? 0 : 14
+        DecoRecord speaker = new DecoRecord(UUID.randomUUID(), DecoType.CASINO_SPEAKER, A, Facing.EAST,
+                DecoRecord.speakerState(false, DecoRecord.FACE_WALL), new UUID(0, 0), 0);
+        assertEquals(0, DisplayDecoService.lightLevel(speaker, A, false));
+        assertEquals(2, DisplayDecoService.lightLevel(speaker.withState(DecoRecord.speakerState(true,
+                DecoRecord.FACE_WALL)), A, false));
+        DecoRecord plaque = new DecoRecord(UUID.randomUUID(), DecoType.VIP_ONLY_PLAQUE, A, Facing.EAST, 0,
+                new UUID(0, 0), 0);
+        assertEquals(0, DisplayDecoService.lightLevel(plaque, A, false));
+    }
+
+    @Test
+    void stateAccessors() {
+        assertEquals(DecoRecord.FACE_CEILING, record(DecoRecord.speakerState(true, DecoRecord.FACE_CEILING)).face());
+        assertTrue(record(DecoRecord.speakerState(true, DecoRecord.FACE_CEILING)).on());
+        assertEquals(9, record(DecoRecord.sofaState(5, 9)).sofaBack());
+        assertEquals(5, record(DecoRecord.sofaState(5, 9)).sofaJoins());
+        assertEquals(4, record(7).count()); // clamped
+        assertEquals(1, record(0).chain());
+    }
+
+    private static DecoRecord record(int state) {
+        return new DecoRecord(UUID.randomUUID(), DecoType.CASINO_SOFA, A, Facing.SOUTH, state, new UUID(0, 0), 0);
+    }
+
+    /** German fallback names, used when a client lacks the pack's language file. */
+    @Test
+    void namesAndKeys() {
+        assertEquals("block.roulettecasino.casino_chair", DecoType.CASINO_CHAIR.translationKey());
+        assertEquals("block.casinosound.casino_speaker", DecoType.CASINO_SPEAKER.translationKey());
+        assertEquals("Casino-Lautsprecher", DecoType.CASINO_SPEAKER.german());
+        assertEquals("rechts", DecoPlacer.direction(BlockFace.NORTH, new int[] {1, 0}));
+        assertEquals("links", DecoPlacer.direction(BlockFace.NORTH, new int[] {-1, 0}));
+    }
+}

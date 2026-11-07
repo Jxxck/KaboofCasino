@@ -73,7 +73,8 @@ public final class ConfigLoader {
                 new CasinoConfig.Blackjack(r.integer("blackjack.bias", d.blackjack().bias(), -100, 100),
                         r.bool("blackjack.needs-support", d.blackjack().needsSupport())),
                 new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
-                        100)));
+                        100)),
+                new CasinoConfig.Music(r.bool("music.enabled", d.music().enabled())));
     }
 
     private static CasinoConfig.Slot game(Reader r, String section, CasinoConfig.Slot d) {

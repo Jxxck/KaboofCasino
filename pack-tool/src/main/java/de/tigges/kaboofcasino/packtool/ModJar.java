@@ -44,8 +44,7 @@ final class ModJar {
                 ZipEntry entry = all.nextElement();
                 String name = entry.getName();
                 if (entry.isDirectory() || !(name.startsWith("assets/") || name.startsWith("LICENSE")
-                        || name.equals("MUSIC-CREDITS.md") || name.startsWith("data/roulettecasino/recipe/")
-                        || name.startsWith("data/roulettecasino/advancement/recipes/"))) {
+                        || name.equals("MUSIC-CREDITS.md") || modData(name))) {
                     continue;
                 }
                 try (InputStream in = zip.getInputStream(entry)) {
@@ -98,5 +97,15 @@ final class ModJar {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-1 is missing in this JVM", e);
         }
+    }
+
+    /** The mod's recipes and recipe advancements of its three namespaces (the rest of data/ is not read). */
+    static boolean modData(String name) {
+        for (String ns : new String[] {"roulettecasino", "casinodeco", "casinosound"}) {
+            if (name.startsWith("data/" + ns + "/recipe/") || name.startsWith("data/" + ns + "/advancement/recipes/")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

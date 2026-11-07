@@ -5,7 +5,9 @@ import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.machine.CasinoItem;
 import de.tigges.kaboofcasino.machine.CasinoItems;
+import de.tigges.kaboofcasino.machine.ItemCatalog;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.machine.Recipes;
 import de.tigges.kaboofcasino.storage.RoundLog;
 import de.tigges.kaboofcasino.util.ItemNames;
 import de.tigges.kaboofcasino.util.Pos;
@@ -122,14 +124,24 @@ public final class CasinoCommand implements BasicCommand {
         }));
     }
 
+    /** {@code /casino give <item> [player] [amount]}: a machine id ({@code slot_machine}) or any mod id. */
     private void give(CommandSender sender, String[] args) {
         Messages m = ctx.messages().get();
         if (args.length < 2) {
             m.send(sender, Msg.COMMAND_USAGE);
             return;
         }
-        Optional<CasinoItem> item = CasinoItem.byId(args[1].toLowerCase(Locale.ROOT));
-        if (item.isEmpty()) {
+        String id = resolve(args[1].toLowerCase(Locale.ROOT));
+        int amount = 1;
+        if (args.length >= 4) {
+            try {
+                amount = Math.max(1, Math.min(64, Integer.parseInt(args[3])));
+            } catch (NumberFormatException e) {
+                amount = 1;
+            }
+        }
+        Optional<ItemStack> stack = id == null ? Optional.empty() : Recipes.casinoStack(id, m, amount);
+        if (stack.isEmpty()) {
             m.send(sender, Msg.COMMAND_GIVE_UNKNOWN, Messages.text("name", args[1]), Messages.text("list",
                     String.join(", ", ids())));
             return;
@@ -139,11 +151,29 @@ public final class CasinoCommand implements BasicCommand {
             m.send(sender, Msg.COMMAND_PLAYER_UNKNOWN, Messages.text("name", args.length >= 3 ? args[2] : "?"));
             return;
         }
-        ItemStack stack = CasinoItems.create(item.get(), m, 1);
-        target.getInventory().addItem(stack).values().forEach(rest -> target.getWorld().dropItemNaturally(
+        ItemStack given = stack.get();
+        target.getInventory().addItem(given.clone()).values().forEach(rest -> target.getWorld().dropItemNaturally(
                 target.getLocation(), rest));
         m.send(sender, Msg.COMMAND_GIVE_DONE, Messages.text("player", target.getName()),
-                Messages.component("item", m.render(item.get().nameMsg())));
+                Messages.component("item", given.effectiveName()));
+    }
+
+    /** A full mod id, a machine id, or a unique registered item name without its namespace; null if unknown. */
+    static String resolve(String arg) {
+        java.util.List<String> all = ItemCatalog.ids();
+        if (all.contains(arg)) {
+            return arg;
+        }
+        String found = null;
+        for (String id : all) {
+            if (id.substring(id.indexOf(':') + 1).equals(arg)) {
+                if (found != null) {
+                    return null;
+                }
+                found = id;
+            }
+        }
+        return found;
     }
 
     private void remove(CommandSender sender) {
@@ -161,8 +191,14 @@ public final class CasinoCommand implements BasicCommand {
         m.send(p, Msg.MACHINE_REMOVED);
     }
 
+    /** Short names where unique (machines: {@code slot_machine}), else the full mod id. */
     private static List<String> ids() {
-        return Arrays.stream(CasinoItem.values()).map(CasinoItem::id).toList();
+        List<String> out = new java.util.ArrayList<>();
+        for (String id : ItemCatalog.ids()) {
+            String shortName = id.substring(id.indexOf(':') + 1);
+            out.add(id.equals(resolve(shortName)) ? shortName : id);
+        }
+        return out;
     }
 
     @Override

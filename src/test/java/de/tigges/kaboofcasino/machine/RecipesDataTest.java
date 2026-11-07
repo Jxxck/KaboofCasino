@@ -20,7 +20,8 @@ class RecipesDataTest {
     @Test
     void theShippedRecipesAreTheMods() {
         Map<String, Recipes.Def> d = defs();
-        assertEquals(Set6.IDS, d.keySet());
+        assertEquals(Set6.MACHINES, d.keySet().stream().filter(k -> !k.contains("/"))
+                .collect(Collectors.toSet()));
         Recipes.Def wheel = d.get("fortune_wheel");
         assertEquals(List.of("RVW", "GMG", "PSP"), wheel.pattern());
         assertEquals("roulettecasino:roulette_mechanism", wheel.key().get('M'));
@@ -45,35 +46,30 @@ class RecipesDataTest {
     @Test
     void unlocksFollowTheModsAdvancementChain() {
         Map<String, Recipes.Def> d = defs();
-        assertEquals("minecraft:diamond", d.get("slot_machine_reel").unlock());
-        assertEquals("roulettecasino:slot_machine_reel", d.get("slot_machine_mechanism").unlock());
-        assertEquals("roulettecasino:slot_machine_mechanism", d.get("slot_machine").unlock());
-        assertEquals("minecraft:gold_ingot", d.get("roulette_mechanism").unlock());
-        assertEquals("roulettecasino:roulette_mechanism", d.get("fortune_wheel").unlock());
-        assertEquals("minecraft:dropper", d.get("plinko").unlock());
-        assertEquals("roulettecasino:roulette_mechanism", d.get("roulette_table").unlock());
+        assertEquals(List.of("minecraft:diamond"), d.get("slot_machine_reel").unlocks());
+        assertEquals(List.of("roulettecasino:slot_machine_reel"), d.get("slot_machine_mechanism").unlocks());
+        assertEquals(List.of("roulettecasino:slot_machine_mechanism"), d.get("slot_machine").unlocks());
+        assertEquals(List.of("minecraft:gold_ingot"), d.get("roulette_mechanism").unlocks());
+        assertEquals(List.of("roulettecasino:roulette_mechanism"), d.get("fortune_wheel").unlocks());
+        assertEquals(List.of("minecraft:dropper"), d.get("plinko").unlocks());
+        assertEquals(List.of("roulettecasino:roulette_mechanism"), d.get("roulette_table").unlocks());
         // the croupier's badge (the mod hires a croupier for it; here /casino give until the croupier exists)
-        assertEquals("roulettecasino:croupier_badge", d.get("blackjack_table").unlock());
+        assertEquals(List.of("roulettecasino:croupier_badge"), d.get("blackjack_table").unlocks());
         assertEquals(List.of("RVN", "GMG", "PSP"), d.get("roulette_table").pattern());
     }
 
     @Test
-    void paperRulesAndCasinoItemsResolve() {
+    void casinoIdsResolveToMachineItemsOrTheModsDecoNamespaces() {
         Map<String, Recipes.Def> d = defs();
-        assertEquals(Optional.of(new Recipes.PaperRule(null)), d.get("slot_machine_reel").paperRule());
-        assertEquals(Optional.of(new Recipes.PaperRule(CasinoItem.SLOT_MACHINE_REEL)),
-                d.get("slot_machine_mechanism").paperRule());
-        assertEquals(Optional.of(new Recipes.PaperRule(CasinoItem.ROULETTE_MECHANISM)),
-                d.get("fortune_wheel").paperRule());
-        assertEquals(Optional.empty(), d.get("plinko").paperRule());
-        assertEquals(Optional.empty(), d.get("roulette_mechanism").paperRule());
         for (Recipes.Def def : d.values()) {
-            if (def.result().startsWith("roulettecasino:")) {
-                assertTrue(CasinoItem.byId(def.result().substring(15)).isPresent(), def.result());
-            }
-            for (String ingredient : def.key().values()) {
-                if (ingredient.startsWith("roulettecasino:")) {
-                    assertTrue(CasinoItem.byId(ingredient.substring(15)).isPresent(), ingredient);
+            for (String id : java.util.stream.Stream.concat(java.util.stream.Stream.of(def.result()),
+                    def.allIngredients().stream()).toList()) {
+                if (id.startsWith("roulettecasino:")) {
+                    assertTrue(CasinoItem.byId(id.substring(15)).isPresent()
+                            || id.equals("roulettecasino:casino_chair") || id.equals("roulettecasino:casino_stool"),
+                            id);
+                } else if (!id.startsWith("minecraft:") && !id.startsWith("#")) {
+                    assertTrue(id.startsWith("casinodeco:") || id.startsWith("casinosound:"), id);
                 }
             }
         }
@@ -81,9 +77,30 @@ class RecipesDataTest {
         assertEquals(MachineType.PLINKO, CasinoItem.PLINKO.machine().orElseThrow());
     }
 
+    @Test
+    void decoSeatAndSpeakerRecipesAreAllTheMods() {
+        Map<String, Recipes.Def> d = defs();
+        assertEquals(65, d.keySet().stream().filter(k -> k.startsWith("casinodeco/")).count());
+        assertTrue(d.containsKey("casinosound/casino_speaker"));
+        assertTrue(d.containsKey("casino_chair") && d.containsKey("casino_stool"));
+        Recipes.Def checkers = d.get("casinodeco/ivory_black_checkers");
+        assertEquals(List.of("IBI", "BNB", "IBI"), checkers.pattern());
+        assertEquals("casinodeco:ivory_marble", checkers.key().get('I'));
+        assertEquals(List.of("casinodeco:obsidian_marble"), checkers.unlocks());
+        Recipes.Def bottles = d.get("casinodeco/casino_bottles");
+        assertTrue(bottles.shapeless());
+        assertEquals(List.of("minecraft:glass_bottle", "minecraft:paper"), bottles.ingredients());
+        // stairs and slabs unlock with their velvet/marble (criterion named has_polished_andesite in the mod)
+        assertEquals(List.of("casinodeco:ruby_velvet"), d.get("casinodeco/ruby_velvet_stairs").unlocks());
+        assertEquals("casinodeco:casino_sofa", d.get("casinodeco/casino_sofa").result());
+        assertEquals(List.of("casinodeco:champagne_coupes", "casinodeco:shot_glasses"),
+                d.get("casinodeco/serving_tray").unlocks());
+    }
+
     /** The shipped set. */
     private static final class Set6 {
-        static final java.util.Set<String> IDS = java.util.Set.of("slot_machine_reel", "slot_machine_mechanism",
-                "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table", "blackjack_table");
+        static final java.util.Set<String> MACHINES = java.util.Set.of("slot_machine_reel", "slot_machine_mechanism",
+                "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table", "blackjack_table",
+                "casino_chair", "casino_stool");
     }
 }

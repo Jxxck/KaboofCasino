@@ -72,6 +72,10 @@ public final class MachineService {
     private Function<Machine, MachineGame> games;
 
     private final LogoutSpots logouts;
+    /** Cells of the display decoration a machine must not take (its light carriers are replaceable). */
+    private java.util.function.Predicate<Pos> foreignCarriers = p -> false;
+    /** A second rescue (players inside decoration barriers), asked when no machine carrier holds the player. */
+    private java.util.function.BiPredicate<Player, String> extraRescue = (p, cause) -> false;
 
     public MachineService(Supplier<CasinoConfig> config, Supplier<Messages> messages, MachineIndex index,
                           LongSupplier clock, LogoutSpots logouts) {
@@ -84,6 +88,16 @@ public final class MachineService {
 
     public LogoutSpots logouts() {
         return logouts;
+    }
+
+    /** Wiring (display decoration): cells a machine may not be placed into. */
+    public void foreignCarriers(java.util.function.Predicate<Pos> cells) {
+        this.foreignCarriers = cells;
+    }
+
+    /** Wiring (display decoration): the rescue of players inside decoration carriers. */
+    public void extraRescue(java.util.function.BiPredicate<Player, String> rescue) {
+        this.extraRescue = rescue;
     }
 
     /** Wiring: creates the game of a machine (by its type). */
@@ -152,7 +166,7 @@ public final class MachineService {
             if (config.get().machines().refuseLogoutSpots() && logouts.blocks(p)) {
                 return Placement.of(PlaceResult.LOGOUT_SPOT);
             }
-            if (!b.isReplaceable() || isCarrier(p) || liquid(b)
+            if (!b.isReplaceable() || isCarrier(p) || foreignCarriers.test(p) || liquid(b)
                     || !world.getWorldBorder().isInside(new Location(world, p.x() + 0.5, p.y(), p.z() + 0.5))) {
                 return Placement.of(PlaceResult.NO_SPACE);
             }
@@ -321,7 +335,7 @@ public final class MachineService {
         World world = player.getWorld();
         Machine m = carrierIn(player.getBoundingBox(), world.getKey().asString());
         if (m == null) {
-            return false;
+            return extraRescue.test(player, cause);
         }
         Location at = player.getLocation();
         int[] spot = Rescue.nearest(at.getBlockX(), at.getBlockY(), at.getBlockZ(), m.facing().step(),

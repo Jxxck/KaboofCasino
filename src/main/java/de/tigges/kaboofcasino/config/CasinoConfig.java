@@ -14,9 +14,11 @@ import java.util.Objects;
  * @param safety   permadeath guards (PLAN decision 3)
  * @param gui      menu behaviour
  * @param slot     slot machine settings
+ * @param music    the speakers' lounge music and its optional pack (render.md 6)
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
-                           Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Lights lights) {
+                           Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Lights lights,
+                           Music music) {
 
     /**
      * @param enabled        send the pack at all
@@ -112,6 +114,15 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     public record Blackjack(int bias, boolean needsSupport) {
     }
 
+    /**
+     * {@code music:}.
+     *
+     * @param enabled offer the optional music pack at login and play the mod's lounge music near switched-on
+     *                speakers (false: no music pack, no music, no note particles; the speakers keep their station)
+     */
+    public record Music(boolean enabled) {
+    }
+
     public static final List<String> DEFAULT_BET_ITEMS = List.of(
             "minecraft:coal", "minecraft:coal_block",
             "minecraft:copper_ingot", "minecraft:copper_block",
@@ -136,5 +147,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Slot(-1, 4, 16, true),
             new Slot(-1, 0, 16, true),
             new Blackjack(0, true),
-            new Lights(4));
+            new Lights(4),
+            new Music(true));
 }

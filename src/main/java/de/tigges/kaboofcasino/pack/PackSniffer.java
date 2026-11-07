@@ -16,9 +16,9 @@ import java.util.concurrent.TimeUnit;
  * <ul>
  *   <li>Minecraft (handshake VarInt, legacy ping 0xFE, anything else): remove this handler and replay the buffered
  *       bytes untouched to the next handler.</li>
- *   <li>HTTP: answer only {@code GET|HEAD /pack/<sha1>.zip} (200, application/zip, Content-Length, Connection: close),
- *       404 for other paths, 405 for other methods, 503 when {@link GamePortPack#MAX_DOWNLOADS} are running; close
- *       after the write. The game pipeline behind never sees a byte; only its read-timeout handler is removed so a
+ *   <li>HTTP: answer only {@code GET|HEAD /pack/<sha1>.zip} of a served pack (the casino pack or the music pack;
+ *       200, application/zip, Content-Length, Connection: close), 404 for other paths, 405 for other methods, 503 when
+ *       {@link GamePortPack#MAX_DOWNLOADS} are running; close after the write. The game pipeline behind never sees a byte; only its read-timeout handler is removed so a
  *       slow download is not cut after 30 s.</li>
  *   <li>Nothing within {@link GamePortPack#SNIFF_TIMEOUT_MILLIS}: pass through (vanilla's timeout takes over); a
  *       started but unfinished HTTP request is answered if its request line is complete, else closed.</li>
@@ -152,8 +152,8 @@ final class PackSniffer extends ChannelInboundHandlerAdapter {
                     405, start, false);
             return;
         }
-        PackFile pack = host.pack();
-        if (!request.path().equals(pack.path())) {
+        PackFile pack = host.find(request.path());
+        if (pack == null) {
             respond(ctx, HttpSniff.head(404, "Not Found", null, 0, null), null, method, 404, start, false);
             return;
         }
@@ -165,18 +165,24 @@ final class PackSniffer extends ChannelInboundHandlerAdapter {
         byte[] zip = pack.bytes();
         byte[] headBytes = HttpSniff.head(200, "OK", "application/zip", zip.length,
                 "Cache-Control: public, max-age=31536000, immutable\r\n");
-        respond(ctx, headBytes, head ? null : zip, method, 200, start, true);
+        respond(ctx, headBytes, head ? null : zip, method, 200, start, true, pack.name());
     }
 
     private void respond(ChannelHandlerContext ctx, byte[] head, byte[] body, String method, int status, long start,
                          boolean acquired) {
+        respond(ctx, head, body, method, status, start, acquired, "-");
+    }
+
+    private void respond(ChannelHandlerContext ctx, byte[] head, byte[] body, String method, int status, long start,
+                         boolean acquired, String packName) {
         ctx.write(Unpooled.wrappedBuffer(head));
         ByteBuf payload = body == null ? Unpooled.EMPTY_BUFFER : Unpooled.wrappedBuffer(body).asReadOnly();
         ctx.writeAndFlush(payload).addListener((ChannelFutureListener) f -> {
             if (acquired) {
                 host.release();
             }
-            host.served(method, status, body == null ? 0 : body.length, (System.nanoTime() - start) / 1_000_000);
+            host.served(method, status, packName, body == null ? 0 : body.length,
+                    (System.nanoTime() - start) / 1_000_000);
             f.channel().close();
         });
     }

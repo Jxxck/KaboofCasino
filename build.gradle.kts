@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.tigges"
-version = "0.4.0"
+version = "0.5.0"
 
 repositories {
     mavenCentral()
@@ -80,6 +80,8 @@ tasks.withType<JavaCompile>().configureEach {
 // ---- resource pack -------------------------------------------------------------------------------------------------
 // The pack is built deterministically from the MineVegas jar (read as a zip, never executed) plus pack-src/, then
 // embedded into the plugin jar under pack/. Same inputs -> same bytes -> same SHA-1, so clients keep their cached copy.
+// The same task writes the optional music pack (KaboofCasino-music.zip + .sha1, the mod's six lounge tracks, ~22 MB)
+// next to it; it is embedded the same way (pack/KaboofCasino-music.zip) and offered as a second, non-required pack.
 val modJar = layout.projectDirectory.file(providers.gradleProperty("casino.modJar"))
 val modJarSha1 = providers.gradleProperty("casino.modJarSha1")
 val packSrc = layout.projectDirectory.dir("pack-src")
@@ -87,7 +89,8 @@ val packOut = layout.buildDirectory.dir("pack")
 
 val buildPack = tasks.register<JavaExec>("buildPack") {
     group = "build"
-    description = "Builds the KaboofCasino resource pack into build/pack (zip, .sha1, gui-layout.json)."
+    description = "Builds the KaboofCasino resource pack and the optional music pack into build/pack (zips, .sha1, " +
+        "gui-layout.json)."
     classpath = packTool
     mainClass = "de.tigges.kaboofcasino.packtool.PackTool"
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }

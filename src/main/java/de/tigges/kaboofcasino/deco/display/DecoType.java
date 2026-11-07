@@ -1,0 +1,301 @@
+package de.tigges.kaboofcasino.deco.display;
+
+import java.util.Optional;
+import org.bukkit.Material;
+
+/**
+ * The display-entity decoration of MineVegas Casino (games.md 15, 17, 22): every non-full-cube block of
+ * {@code casinodeco}, the casino chair and stool of {@code roulettecasino} and the speaker of {@code casinosound}.
+ * Per type: the mod id, the carrier (render.md 4.4 option A), how it is placed (the mod's {@code getStateForPlacement}
+ * and {@code canSurvive}), the material whose tool speed, break rules and sounds the mod copies, the hardness, the light
+ * the block emits, what it connects to, and the German item name (fallback of the {@code block.<ns>.<id>} key the pack's
+ * language files translate). Pure data.
+ */
+public enum DecoType {
+    // ---- seats ----------------------------------------------------------------------------------------------------
+    CASINO_SOFA("casinodeco:casino_sofa", Carrier.BARRIER, Place.SOFA, Material.OAK_PLANKS, Material.OAK_PLANKS, 2.5,
+            0, Connect.SOFA, "Casino-Sofa"),
+    CASINO_CHAIR("roulettecasino:casino_chair", Carrier.BARRIER, Place.SEAT, Material.OAK_PLANKS, Material.OAK_PLANKS,
+            2.5, 0, Connect.NONE, "Casino-Stuhl"),
+    CASINO_STOOL("roulettecasino:casino_stool", Carrier.BARRIER, Place.SEAT, Material.OAK_PLANKS, Material.OAK_PLANKS,
+            2.5, 0, Connect.NONE, "Casino-Hocker"),
+    // ---- signs ----------------------------------------------------------------------------------------------------
+    CASINO_SIGN("casinodeco:casino_sign", Carrier.LIGHT, Place.LARGE_SIGN, Material.OAK_PLANKS, Material.OAK_PLANKS,
+            1.5, 11, Connect.NONE, "Großes Casino-Schild"),
+    SMALL_CASINO_SIGN("casinodeco:small_casino_sign", Carrier.LIGHT, Place.SIGN, Material.OAK_PLANKS,
+            Material.OAK_PLANKS, 1.5, 7, Connect.NONE, "Kleines Casino-Schild"),
+    // ---- tables ---------------------------------------------------------------------------------------------------
+    WOOD_COFFEE_TABLE("casinodeco:wood_coffee_table", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.OAK_PLANKS,
+            Material.OAK_PLANKS, 1.5, 0, Connect.SAME, "Couchtisch aus Holz"),
+    GLASS_COFFEE_TABLE("casinodeco:glass_coffee_table", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.GLASS,
+            Material.GLASS, 0.6, 0, Connect.SAME, "Couchtisch aus Glas"),
+    WOOD_TABLE("casinodeco:wood_table", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.OAK_PLANKS, Material.OAK_PLANKS,
+            1.5, 0, Connect.SAME, "Holztisch"),
+    GLASS_TABLE("casinodeco:glass_table", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.GLASS, Material.GLASS, 0.6, 0,
+            Connect.SAME, "Glastisch"),
+    // ---- chandelier, rope post ------------------------------------------------------------------------------------
+    CASINO_CHANDELIER("casinodeco:casino_chandelier", Carrier.LIGHT, Place.CHANDELIER, Material.OAK_PLANKS,
+            Material.LANTERN, 1.0, 14, Connect.NONE, "Casino-Kronleuchter"),
+    VELVET_ROPE_POST("casinodeco:velvet_rope_post", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.OAK_PLANKS,
+            Material.IRON_BLOCK, 1.5, 0, Connect.SAME, "Absperrpfosten mit Samtkordel"),
+    // ---- stairs and slabs (vanilla carriers) ----------------------------------------------------------------------
+    RUBY_VELVET_STAIRS("casinodeco:ruby_velvet_stairs", Material.CRIMSON_STAIRS, "ruby_velvet",
+            "Treppe — Bordeauxroter Samtteppich"),
+    RUBY_VELVET_SLAB("casinodeco:ruby_velvet_slab", Material.CRIMSON_SLAB, "ruby_velvet",
+            "Stufe — Bordeauxroter Samtteppich"),
+    EMERALD_VELVET_STAIRS("casinodeco:emerald_velvet_stairs", Material.WARPED_STAIRS, "emerald_velvet",
+            "Treppe — Smaragdgrüner Samtteppich"),
+    EMERALD_VELVET_SLAB("casinodeco:emerald_velvet_slab", Material.WARPED_SLAB, "emerald_velvet",
+            "Stufe — Smaragdgrüner Samtteppich"),
+    SAPPHIRE_VELVET_STAIRS("casinodeco:sapphire_velvet_stairs", Material.WARPED_STAIRS, "sapphire_velvet",
+            "Treppe — Nachtblauer Samtteppich"),
+    SAPPHIRE_VELVET_SLAB("casinodeco:sapphire_velvet_slab", Material.WARPED_SLAB, "sapphire_velvet",
+            "Stufe — Nachtblauer Samtteppich"),
+    IVORY_BLACK_CHECKERS_STAIRS("casinodeco:ivory_black_checkers_stairs", Material.POLISHED_ANDESITE_STAIRS,
+            "ivory_black_checkers", "Treppe — Schachbrett aus Elfenbein und Schwarz"),
+    IVORY_BLACK_CHECKERS_SLAB("casinodeco:ivory_black_checkers_slab", Material.POLISHED_ANDESITE_SLAB,
+            "ivory_black_checkers", "Stufe — Schachbrett aus Elfenbein und Schwarz"),
+    IVORY_MARBLE_STAIRS("casinodeco:ivory_marble_stairs", Material.POLISHED_DIORITE_STAIRS, "ivory_marble",
+            "Treppe — Geäderter Elfenbeinmarmor"),
+    IVORY_MARBLE_SLAB("casinodeco:ivory_marble_slab", Material.POLISHED_DIORITE_SLAB, "ivory_marble",
+            "Stufe — Geäderter Elfenbeinmarmor"),
+    OBSIDIAN_MARBLE_STAIRS("casinodeco:obsidian_marble_stairs", Material.POLISHED_BLACKSTONE_STAIRS,
+            "obsidian_marble", "Treppe — Geäderter schwarzer Marmor"),
+    OBSIDIAN_MARBLE_SLAB("casinodeco:obsidian_marble_slab", Material.POLISHED_BLACKSTONE_SLAB, "obsidian_marble",
+            "Stufe — Geäderter schwarzer Marmor"),
+    GOLD_VEINED_BLACK_MARBLE_STAIRS("casinodeco:gold_veined_black_marble_stairs",
+            Material.POLISHED_BLACKSTONE_BRICK_STAIRS, "gold_veined_black_marble",
+            "Treppe — Schwarzer Marmor mit Goldadern"),
+    GOLD_VEINED_BLACK_MARBLE_SLAB("casinodeco:gold_veined_black_marble_slab", Material.POLISHED_BLACKSTONE_BRICK_SLAB,
+            "gold_veined_black_marble", "Stufe — Schwarzer Marmor mit Goldadern"),
+    // ---- bars -----------------------------------------------------------------------------------------------------
+    WALNUT_BAR("casinodeco:walnut_bar", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.DARK_OAK_PLANKS,
+            Material.DARK_OAK_PLANKS, 2.0, 0, Connect.BAR, "Theke aus Nussbaum und Messing"),
+    IVORY_MARBLE_BAR("casinodeco:ivory_marble_bar", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.POLISHED_ANDESITE,
+            Material.POLISHED_ANDESITE, 1.5, 0, Connect.BAR, "Theke aus Elfenbeinmarmor und Nussbaum"),
+    BLACK_MARBLE_BAR("casinodeco:black_marble_bar", Carrier.BARRIER, Place.FLOOR_PLAIN, Material.POLISHED_ANDESITE,
+            Material.POLISHED_ANDESITE, 1.5, 0, Connect.BAR, "Theke aus schwarzem Marmor und Messing"),
+    // ---- bar and table decor --------------------------------------------------------------------------------------
+    CHANDELIER_WALL_SCONCE("casinodeco:chandelier_wall_sconce", Carrier.LIGHT, Place.WALL, Material.OAK_PLANKS,
+            Material.LANTERN, 1.0, 14, Connect.NONE, "Kerzenwandleuchter"),
+    CASINO_BOTTLES("casinodeco:casino_bottles", Carrier.BARRIER, Place.STACKED, Material.GLASS, Material.GLASS, 0.3, 0,
+            Connect.NONE, "Barflaschen"),
+    CHAMPAGNE_COUPES("casinodeco:champagne_coupes", Carrier.BARRIER, Place.STACKED, Material.GLASS, Material.GLASS,
+            0.3, 0, Connect.NONE, "Champagnerschalen"),
+    SHOT_GLASSES("casinodeco:shot_glasses", Carrier.BARRIER, Place.STACKED, Material.GLASS, Material.GLASS, 0.3, 0,
+            Connect.NONE, "Whiskygläser"),
+    CASINO_CHIP_PILE("casinodeco:casino_chip_pile", Carrier.BARRIER, Place.FLOOR, Material.FLOWER_POT, Material.STONE,
+            0.2, 0, Connect.NONE, "Jetonstapel"),
+    CHIP_CASE("casinodeco:chip_case", Carrier.BARRIER, Place.FLOOR, Material.CHEST, Material.OAK_PLANKS, 0.8, 0,
+            Connect.NONE, "Jetonkoffer"),
+    RECEPTION_PLAQUE("casinodeco:reception_plaque", Carrier.BARRIER, Place.FLOOR, Material.DARK_OAK_PLANKS,
+            Material.IRON_BLOCK, 0.8, 0, Connect.NONE, "Empfangsschild"),
+    CASH_REGISTER("casinodeco:cash_register", Carrier.BARRIER, Place.FLOOR, Material.DARK_OAK_PLANKS,
+            Material.OAK_PLANKS, 0.8, 0, Connect.NONE, "Registrierkasse"),
+    SERVING_TRAY("casinodeco:serving_tray", Carrier.BARRIER, Place.FLOOR, Material.CHEST, Material.IRON_BLOCK, 0.8, 0,
+            Connect.NONE, "Serviertablett"),
+    VIP_ONLY_PLAQUE("casinodeco:vip_only_plaque", Carrier.LIGHT, Place.WALL, Material.DARK_OAK_PLANKS,
+            Material.IRON_BLOCK, 0.8, 0, Connect.NONE, "Schild für VIPs"),
+    BOTTLE_DISPLAY_SHELF("casinodeco:bottle_display_shelf", Carrier.LIGHT, Place.WALL, Material.CHEST,
+            Material.OAK_PLANKS, 0.8, 0, Connect.NONE, "Flaschenregal"),
+    GLASS_DISPLAY_SHELF("casinodeco:glass_display_shelf", Carrier.LIGHT, Place.WALL, Material.CHEST,
+            Material.OAK_PLANKS, 0.8, 0, Connect.NONE, "Gläserregal"),
+    // ---- speaker --------------------------------------------------------------------------------------------------
+    CASINO_SPEAKER("casinosound:casino_speaker", Carrier.LIGHT, Place.SPEAKER, Material.OAK_PLANKS,
+            Material.OAK_PLANKS, 2.5, 2, Connect.NONE, "Casino-Lautsprecher");
+
+    /** What stands in the world under the display. */
+    public enum Carrier {
+        /** Invisible full cube with collision and clicks; placed and broken by the plugin (render.md 2.1). */
+        BARRIER,
+        /** Invisible light block (the mod's light level, 0 for the dark ones) plus an Interaction entity for clicks. */
+        LIGHT,
+        /** A vanilla stair block placed by vanilla from the deco item; the display follows its state. */
+        STAIRS,
+        /** A vanilla slab block placed by vanilla (doubles like the mod's slab). */
+        SLAB
+    }
+
+    /** The mod's placement rule. */
+    public enum Place {
+        /** Vanilla stair/slab placement (the mod's blocks are vanilla {@code StairBlock}/{@code SlabBlock}). */
+        VANILLA,
+        /** Centre support below, no facing (tables, bars, rope post). */
+        FLOOR_PLAIN,
+        /** Centre support below, facing = opposite of the player's horizontal direction ({@code CasinoDecorBlock}). */
+        FLOOR,
+        /** {@link #FLOOR} plus stacking 1..4 with the same item, waterloggable ({@code CasinoStackedDecorBlock}). */
+        STACKED,
+        /** {@link #FLOOR} plus a block above without collision ({@code CasinoSeatBlock}). */
+        SEAT,
+        /** Block above without collision, centre support below, facing ({@code CasinoSofaBlock}). */
+        SOFA,
+        /** The nearest horizontal looking direction whose wall is sturdy ({@code onWall} decor, the sconce). */
+        WALL,
+        /** The clicked horizontal face, sturdy wall behind ({@code CasinoSignBlock}). */
+        SIGN,
+        /** {@link #SIGN} for all 6 parts of the 3 x 2 sign ({@code LargeCasinoSignBlock}). */
+        LARGE_SIGN,
+        /** Floor, wall or ceiling ({@code FaceAttachedHorizontalDirectionalBlock}). */
+        SPEAKER,
+        /** Hanging 3 x 3 body under 1-2 chain blocks ({@code CasinoChandelierBlock}). */
+        CHANDELIER
+    }
+
+    /** What a block's connections ({@code north/east/south/west}, sofa {@code joins}) follow. */
+    public enum Connect {
+        NONE,
+        /** The same block ({@code CasinoTableBlock}, {@code VelvetRopePostBlock}: {@code neighbor.is(this)}). */
+        SAME,
+        /** Any bar ({@code CasinoBarBlock.joins}: {@code instanceof CasinoBarBlock}). */
+        BAR,
+        /** {@code SofaLayout} over the connected sofas. */
+        SOFA
+    }
+
+    private final String id;
+    private final Carrier carrier;
+    private final Place place;
+    private final Material material;
+    private final Material sound;
+    private final double hardness;
+    private final int light;
+    private final Connect connect;
+    private final String german;
+    private final Material vanilla;
+    private final String family;
+
+    DecoType(String id, Carrier carrier, Place place, Material material, Material sound, double hardness, int light,
+             Connect connect, String german) {
+        this.id = id;
+        this.carrier = carrier;
+        this.place = place;
+        this.material = material;
+        this.sound = sound;
+        this.hardness = hardness;
+        this.light = light;
+        this.connect = connect;
+        this.german = german;
+        this.vanilla = null;
+        this.family = null;
+    }
+
+    /** Stairs and slabs: the vanilla carrier block and the texture family ({@code CasinoFloorShapes}). */
+    DecoType(String id, Material vanilla, String family, String german) {
+        this.id = id;
+        this.carrier = vanilla.name().endsWith("_STAIRS") ? Carrier.STAIRS : Carrier.SLAB;
+        this.place = Place.VANILLA;
+        this.material = vanilla;
+        this.sound = vanilla;
+        this.hardness = 0;
+        this.light = 0;
+        this.connect = Connect.NONE;
+        this.german = german;
+        this.vanilla = vanilla;
+        this.family = family;
+    }
+
+    /** The full mod id, e.g. {@code casinodeco:casino_sofa}. */
+    public String id() {
+        return id;
+    }
+
+    /** The id's path, e.g. {@code casino_sofa}. */
+    public String path() {
+        return id.substring(id.indexOf(':') + 1);
+    }
+
+    /** The translation key of the block name ({@code block.casinodeco.casino_sofa}). */
+    public String translationKey() {
+        return "block." + id.substring(0, id.indexOf(':')) + "." + path();
+    }
+
+    public Carrier carrier() {
+        return carrier;
+    }
+
+    public Place place() {
+        return place;
+    }
+
+    /** The block the mod copies for tool speed, harvest rule and (vanilla carriers) the carrier itself. */
+    public Material material() {
+        return material;
+    }
+
+    /** The block whose sound group the mod uses ({@code SoundType}). */
+    public Material sound() {
+        return sound;
+    }
+
+    /** Destroy time of the mod's block (unused for vanilla carriers, the client breaks those itself). */
+    public double hardness() {
+        return hardness;
+    }
+
+    /** Light level of the block (switched blocks: when on; the chandelier: its body). */
+    public int light() {
+        return light;
+    }
+
+    public Connect connect() {
+        return connect;
+    }
+
+    public String german() {
+        return german;
+    }
+
+    /** The vanilla carrier block of stairs/slabs (null for the other carriers). */
+    public Material vanilla() {
+        return vanilla;
+    }
+
+    /** The texture family of stairs/slabs ({@code ivory_marble}); null for the rest. */
+    public String family() {
+        return family;
+    }
+
+    /** Families whose models come in four random variants (the mod's marble blockstates). */
+    public boolean variants() {
+        return family != null && family.contains("marble") || this == IVORY_MARBLE_BAR || this == BLACK_MARBLE_BAR;
+    }
+
+    public boolean vanillaCarrier() {
+        return carrier == Carrier.STAIRS || carrier == Carrier.SLAB;
+    }
+
+    /** True if the type is placed and broken by the plugin (barrier or light carriers). */
+    public boolean pluginCarrier() {
+        return !vanillaCarrier();
+    }
+
+    /** True for chair, stool and sofa. */
+    public boolean seat() {
+        return place == Place.SEAT || place == Place.SOFA;
+    }
+
+    /** The mod lets water into it ({@code SimpleWaterloggedBlock}): the sconce and the stacked decor. */
+    public boolean waterloggable() {
+        return place == Place.STACKED || this == CHANDELIER_WALL_SCONCE || vanillaCarrier();
+    }
+
+    /** Range of the display entities: {@code view_range} x 64 blocks (x the client's entity distance setting). */
+    public float viewRange() {
+        return switch (this) {
+            case CASINO_SIGN, CASINO_CHANDELIER -> 2.0f;
+            case CASINO_BOTTLES, CHAMPAGNE_COUPES, SHOT_GLASSES, CASINO_CHIP_PILE, RECEPTION_PLAQUE, CASH_REGISTER,
+                 SERVING_TRAY, VIP_ONLY_PLAQUE -> 0.75f;
+            default -> 1.25f;
+        };
+    }
+
+    public static Optional<DecoType> byId(String id) {
+        for (DecoType t : values()) {
+            if (t.id.equals(id)) {
+                return Optional.of(t);
+            }
+        }
+        return Optional.empty();
+    }
+}

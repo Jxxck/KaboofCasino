@@ -6,24 +6,34 @@ import de.tigges.kaboofcasino.util.Log;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Serves the pack on {@code GET|HEAD /pack/<sha1>.zip} (render.md 8.5): a JDK {@code HttpServer} on its own 4 daemon
- * threads (never MAIN), the zip from memory. Everything else is 404/405 without a body. All players arrive from
- * 10.44.0.20 (the tunnel), so the log line names the client's {@code X-Minecraft-Username} header instead of the IP.
+ * Serves the packs on {@code GET|HEAD /pack/<sha1>.zip} (render.md 8.5): a JDK {@code HttpServer} on its own 4 daemon
+ * threads (never MAIN), the zips from memory (the casino pack and the optional music pack, each under its own hash).
+ * Everything else is 404/405 without a body. All players arrive from 10.44.0.20 (the tunnel), so the log line names
+ * the client's {@code X-Minecraft-Username} header instead of the IP.
  */
 public final class PackHttpServer {
 
-    private final PackFile pack;
+    private final List<PackFile> packs;
     private HttpServer server;
     private ExecutorService pool;
     private final AtomicInteger served = new AtomicInteger();
 
     public PackHttpServer(PackFile pack) {
-        this.pack = pack;
+        this(List.of(pack));
+    }
+
+    /** @param packs every pack that is served (distinct SHA-1, so distinct paths) */
+    public PackHttpServer(List<PackFile> packs) {
+        if (packs.isEmpty()) {
+            throw new IllegalArgumentException("no pack to serve");
+        }
+        this.packs = List.copyOf(packs);
     }
 
     /**
@@ -47,14 +57,31 @@ public final class PackHttpServer {
         server.setExecutor(pool);
         server.createContext("/", this::handle);
         server.start();
-        Log.get().info("Resource pack server on {}:{} serves {} ({} bytes)", bind, port, pack.path(), pack.size());
+        for (PackFile p : packs) {
+            Log.get().info("Resource pack server on {}:{} serves the {} pack at {} ({} bytes)", bind, port(), p.name(),
+                    p.path(), p.size());
+        }
+    }
+
+    /** The bound port (differs from the configured one only for port 0, tests). */
+    int port() {
+        return server == null ? -1 : server.getAddress().getPort();
+    }
+
+    private PackFile find(String path) {
+        for (PackFile p : packs) {
+            if (p.path().equals(path)) {
+                return p;
+            }
+        }
+        return null;
     }
 
     private void handle(HttpExchange ex) throws IOException {
         try (ex) {
             String method = ex.getRequestMethod();
-            String path = ex.getRequestURI().getPath();
-            if (!path.equals(pack.path())) {
+            PackFile pack = find(ex.getRequestURI().getPath());
+            if (pack == null) {
                 ex.sendResponseHeaders(404, -1);
                 return;
             }
@@ -77,8 +104,8 @@ public final class PackHttpServer {
                 out.write(zip);
             }
             String user = ex.getRequestHeaders().getFirst("X-Minecraft-Username");
-            Log.get().info("Resource pack sent to {} ({} bytes, #{})", user == null ? "an unknown client" : user,
-                    zip.length, served.incrementAndGet());
+            Log.get().info("Resource pack ({}) sent to {} ({} bytes, #{})", pack.name(),
+                    user == null ? "an unknown client" : user, zip.length, served.incrementAndGet());
         } catch (IOException e) {
             Log.get().debug("pack download aborted: {}", e.toString());
         }

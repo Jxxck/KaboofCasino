@@ -22,8 +22,10 @@ import io.papermc.paper.event.player.PlayerPurchaseEvent;
 /**
  * Casino items are paper underneath (server.md 3.1); none of paper's vanilla uses may work with them:
  * <ul>
- *   <li>crafting (grid and crafter): a casino item in a non-casino recipe -> no result; casino recipes check every
- *       paper's tag ({@link Recipes#papersValid});</li>
+ *   <li>crafting (grid and crafter): a casino item in a non-casino recipe -> no result; a grid of a casino recipe
+ *       or with casino items gives the result of the casino recipe it holds slot by slot ({@link Recipes#craft}:
+ *       casino ingredients by item id, vanilla ones never a casino item), whichever same-material recipe Bukkit
+ *       picked;</li>
  *   <li>villager trades (librarians and cartographers buy paper): a casino item in the merchant slots cancels the
  *       purchase;</li>
  *   <li>the cartography table (map extension with paper): taking the result is cancelled.</li>
@@ -36,31 +38,41 @@ public final class ItemVetoListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPrepareCraft(PrepareItemCraftEvent event) {
         CraftingInventory inv = event.getInventory();
-        if (!allowed(event.getRecipe(), inv.getMatrix())) {
-            inv.setResult(null);
+        Optional<ItemStack> result = result(event.getRecipe(), inv.getMatrix());
+        if (result != null) {
+            inv.setResult(result.orElse(null));
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onCrafter(CrafterCraftEvent event) {
-        if (event.getBlock().getState(false) instanceof Crafter crafter
-                && !allowed(event.getRecipe(), crafter.getInventory().getContents())) {
-            event.setCancelled(true);
+        if (event.getBlock().getState(false) instanceof Crafter crafter) {
+            Optional<ItemStack> result = result(event.getRecipe(), crafter.getInventory().getContents());
+            if (result != null) {
+                if (result.isEmpty()) {
+                    event.setCancelled(true);
+                } else {
+                    event.setResult(result.get());
+                }
+            }
         }
     }
 
-    static boolean allowed(Recipe recipe, ItemStack[] matrix) {
-        Optional<Recipes.PaperRule> rule = recipe instanceof Keyed keyed ? Recipes.paperRule(keyed.getKey())
-                : Optional.empty();
-        if (rule.isPresent()) {
-            return Recipes.papersValid(rule.get(), matrix);
-        }
+    /**
+     * The result a grid must give: {@code null} = leave vanilla's (no casino recipe, no casino item); otherwise the
+     * casino recipe the grid holds slot by slot ({@link Recipes#craft}), or empty = nothing (a casino item in a
+     * vanilla recipe, or casino items that fit no casino recipe).
+     */
+    static Optional<ItemStack> result(Recipe recipe, ItemStack[] matrix) {
+        boolean ours = recipe instanceof Keyed keyed && Recipes.ours(keyed.getKey());
+        boolean casino = false;
         for (ItemStack stack : matrix) {
-            if (CasinoItems.isCasinoItem(stack)) {
-                return false;
-            }
+            casino |= CasinoItems.isCasinoItem(stack);
         }
-        return true;
+        if (!ours && !casino) {
+            return null;
+        }
+        return Recipes.craft(matrix);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

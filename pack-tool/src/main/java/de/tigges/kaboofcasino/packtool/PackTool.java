@@ -17,8 +17,10 @@ import java.util.Map;
  * PackTool --mod-jar &lt;jar&gt; --mod-sha1 &lt;hex&gt; --src &lt;pack-src&gt; --out &lt;dir&gt;
  * </pre>
  * Writes {@code KaboofCasino-pack.zip}, {@code KaboofCasino-pack.zip.sha1} and {@code gui-layout.json} into the
- * output directory. Same inputs give byte-identical output (sorted entries, fixed timestamps, deterministic PNG and
- * JSON writers), so the SHA-1 only changes when the content does and clients keep their cached copy.
+ * output directory, plus the optional music pack {@code KaboofCasino-music.zip} + {@code .sha1} ({@link MusicPack};
+ * a separate zip with its own hash, nothing of it is in the casino pack). Same inputs give byte-identical output
+ * (sorted entries, fixed timestamps, deterministic PNG and JSON writers), so the SHA-1 only changes when the content
+ * does and clients keep their cached copy.
  */
 public final class PackTool {
 
@@ -42,17 +44,22 @@ public final class PackTool {
         Path src = Path.of(required(opts, "--src"));
         Path out = Path.of(required(opts, "--out"));
         Result result = build(jar, required(opts, "--mod-sha1"), src);
+        MusicPack.Result music = MusicPack.build(ModJar.open(jar, required(opts, "--mod-sha1")));
         try {
             Files.createDirectories(out);
             Files.write(out.resolve(ZIP), result.zip());
             Files.writeString(out.resolve(ZIP + ".sha1"), result.sha1() + "\n", StandardCharsets.UTF_8);
             Files.write(out.resolve(LAYOUT), result.layout());
             Files.write(out.resolve(ModRecipes.FILE), result.recipes());
+            Files.write(out.resolve(MusicPack.ZIP), music.zip());
+            Files.writeString(out.resolve(MusicPack.ZIP + ".sha1"), music.sha1() + "\n", StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("cannot write to " + out, e);
         }
         System.out.println("KaboofCasino pack: " + result.files() + " files, " + result.zip().length + " bytes, sha1 "
                 + result.sha1() + (result.padded().isEmpty() ? "" : ", padded " + result.padded()));
+        System.out.println("KaboofCasino music pack: " + music.files() + " files, " + music.zip().length
+                + " bytes, sha1 " + music.sha1());
     }
 
     private static String required(Map<String, String> opts, String key) {
@@ -99,6 +106,8 @@ public final class PackTool {
         RouletteGui.add(jar, tree, font, text);
         BlackjackPack.add(jar, tree, packSrc);
         BlackjackGui.add(jar, tree, font, text);
+        DecoFullPack.add(jar, tree, packSrc);
+        DecoDisplayPack.add(jar, tree, packSrc);
         SlotMachineGui.button(tree, text, "collect_low", "ABHOLEN", true, 14, 4.5, 11.5);
         stakeMarker(tree);
         List<String> events = new java.util.ArrayList<>(SlotMachinePack.SOUND_EVENTS);
@@ -106,13 +115,22 @@ public final class PackTool {
         events.addAll(PlinkoPack.SOUND_EVENTS);
         events.addAll(RoulettePack.SOUND_EVENTS);
         events.addAll(BlackjackPack.SOUND_EVENTS);
+        events.addAll(DecoDisplayPack.SOUND_EVENTS);
         Sounds.write(jar, tree, events);
         List<String> prefixes = new java.util.ArrayList<>(SlotMachinePack.LANG_PREFIXES);
         prefixes.addAll(WheelPack.LANG_PREFIXES);
         prefixes.addAll(PlinkoPack.LANG_PREFIXES);
         prefixes.addAll(RoulettePack.LANG_PREFIXES);
         prefixes.addAll(BlackjackPack.LANG_PREFIXES);
+        prefixes.addAll(DecoFullPack.LANG_PREFIXES);
+        prefixes.addAll(DecoDisplayPack.LANG_PREFIXES);
         Lang.filter(jar, tree, "roulettecasino", prefixes);
+        // the deco and speaker texts live in the mod's other two namespaces
+        for (String ns : List.of("casinodeco", "casinosound")) {
+            if (prefixes.stream().anyMatch(p -> p.contains("." + ns + "."))) {
+                Lang.filter(jar, tree, ns, prefixes);
+            }
+        }
         tree.put("assets/kaboofcasino/items/gui/blank.json",
                 Json.bytes(Json.object("model", Json.object("type", new com.google.gson.JsonPrimitive(
                         "minecraft:empty")))));

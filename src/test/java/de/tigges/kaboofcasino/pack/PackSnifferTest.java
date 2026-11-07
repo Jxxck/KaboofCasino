@@ -16,18 +16,23 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-/** The game-port HTTP sniffer on an EmbeddedChannel: what is served, what is replayed to Minecraft untouched. */
+/**
+ * The game-port HTTP sniffer on an EmbeddedChannel: what is served (the casino pack and the optional music pack, each
+ * under its own hash), what is replayed to Minecraft untouched.
+ */
 class PackSnifferTest {
 
     private static PackFile pack;
+    private static PackFile music;
 
     @BeforeAll
     static void load() {
         pack = PackFile.load(PackSnifferTest.class.getClassLoader());
+        music = PackFile.loadMusic(PackSnifferTest.class.getClassLoader());
     }
 
     private static GamePortPack host() {
-        return new GamePortPack(pack, LoggerFactory.getLogger("test"));
+        return new GamePortPack(java.util.List.of(pack, music), LoggerFactory.getLogger("test"));
     }
 
     private static EmbeddedChannel channel(GamePortPack host) {
@@ -97,6 +102,36 @@ class PackSnifferTest {
         assertEquals(pack.sha1(), PackFile.sha1(body));
         assertFalse(ch.isOpen(), "closed after the write");
         assertEquals(0, inbound(ch).length, "the game pipeline saw nothing");
+    }
+
+    @Test
+    void getServesTheMusicPackUnderItsOwnHash() {
+        EmbeddedChannel ch = channel(host());
+        ch.writeInbound(bytes("GET " + music.path() + " HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"));
+        byte[] response = outbound(ch);
+        String head = head(response);
+        assertTrue(head.startsWith("HTTP/1.1 200 OK\r\n"), head);
+        assertTrue(head.contains("Content-Length: " + music.size() + "\r\n"));
+        byte[] body = java.util.Arrays.copyOfRange(response, head.length(), response.length);
+        assertEquals(music.sha1(), PackFile.sha1(body));
+        assertFalse(ch.isOpen());
+        assertEquals(0, inbound(ch).length);
+
+        EmbeddedChannel h = channel(host());
+        h.writeInbound(bytes("HEAD " + music.path() + " HTTP/1.1\r\n\r\n"));
+        byte[] r = outbound(h);
+        assertTrue(head(r).contains("Content-Length: " + music.size()));
+        assertEquals(head(r).length(), r.length, "HEAD: no body");
+    }
+
+    @Test
+    void aCasinoOnlyHostDoesNotServeTheMusic() {
+        EmbeddedChannel ch = channel(new GamePortPack(pack, LoggerFactory.getLogger("test")));
+        ch.writeInbound(bytes("GET " + music.path() + " HTTP/1.1\r\n\r\n"));
+        assertTrue(new String(outbound(ch), StandardCharsets.ISO_8859_1).startsWith("HTTP/1.1 404"));
+        assertEquals(pack, host().find(pack.path()));
+        assertEquals(music, host().find(music.path()));
+        assertNull(host().find("/pack/" + pack.sha1()));
     }
 
     @Test

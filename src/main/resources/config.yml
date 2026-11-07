@@ -128,3 +128,12 @@ plinko:
   # 63 Lampen pro Update: seltener als 4 Ticks lohnt den Verkehr nicht.
   idle-light-ticks: 4
   idle-light-range: 16
+
+music:
+  # Lounge-Musik des Mods an eingeschalteten Casino-Lautsprechern: 6 Stücke von Kevin MacLeod (CC BY 4.0), im Umkreis
+  # von 48 Blöcken um den nächsten Lautsprecher, bis 12 Blöcke volle Lautstärke (Regler "Jukebox/Notenblöcke").
+  # Sie steckt in einem zweiten, freiwilligen Ressourcenpaket (rund 22 MB), das erst nach dem Casino-Paket angeboten
+  # wird. Ablehnen, Fehler oder keine Antwort kicken nie, auch nicht mit pack.enforce: true.
+  # false: kein Musikpaket, keine Musik, keine Noten-Partikel (die Lautsprecher leuchten weiter).
+  # Für das Paket gilt eine Änderung ab dem nächsten Login, für die Musik sofort nach /casino reload.
+  enabled: true

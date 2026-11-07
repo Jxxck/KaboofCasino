@@ -1,4 +1,4 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 5: blackjack)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
 GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1,
@@ -52,6 +52,10 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `game.plinko` | `PlinkoGame`, `PlinkoDrop`, `PlinkoLights` (verbatim ports), `PlinkoController`, `PlinkoRig`, `PlinkoMenu` |
 | `game.roulette` | `RouletteSpin` (verbatim port), `RouletteGame` (colours, payouts, forced pools), `RouletteController`, `RouletteRig`, `RouletteMenu` (9 slots, one colour), `RoulettePanel` |
 | `game.blackjack` | verbatim ports (`BlackjackRound`, `BlackjackShoe` + `copy()`, `BlackjackCards`, `BlackjackBias`, `BlackjackLayout`, `BlackjackCardMotion`, `BlackjackCardGeometry`, `BlackjackTableState`, `BlackjackFootprint`, `Dealer*`), `ShoeRandom`, `BlackjackStand` (stand result on a shoe copy), `BlackjackPayout`, `BlackjackController` (hand, PLAYING records, timeout/quit/death stand), `BlackjackRig` + `BlackjackDealerRig` + `BlackjackCardRig`, `BlackjackPanel`, `BlackjackBetMenu`, `BlackjackRoundMenu`, `BlackjackSnapshot` |
+| `deco.full` | the 27 full-cube deco blocks on 72 reserved `down=true` mushroom states (`FullDecoStates`, persistent table `tools/census/chosen-states.txt`), vanilla mushroom block items with `block_state`/`item_model`, drops, explosions, pistons, pilaster connections (`PilasterChoice`), the Paper-switch guard |
+| `deco.display` | the 41 display-entity deco types (`DecoType`): chunk-PDC records (`kaboofcasino:deco`), carriers (barrier / light + interaction / vanilla stairs and slabs), rigs, placement and support rules, connections (tables, bars, rope posts, the sofa's verbatim `SofaLayout`), protection, candle flames |
+| `seat` | sitting on chairs, stools and sofas: a non-persistent item-display vehicle, the mod's dismount search, forced stand-up on danger/combat/damage/quit/death/teleport, rescue of players found inside deco barriers |
+| `music` | `MusicTimeline` (verbatim), the station per world (world PDC), playback per player who loaded the music pack, note particles; second pack delivery in `pack/` |
 | `storage` | SQLite: `Database` (1 connection, 1 thread, migrations), `RoundLog` (RoundSink + stats), `MachineIndex` |
 | `command` | `/casino` (Brigadier `BasicCommand`) |
 | `pack-tool/` | builds the pack (see 6) |
@@ -473,6 +477,61 @@ Look:
 - The colour of a pocket is the mod's parity rule (0 green, odd red, even black), and the converted rotor shows
   exactly that; the ball comes to rest over pocket `3 x frame` (`RouletteGeometryTest`).
 
+### Step 4 (seats, deco, music)
+
+- **Full-cube deco** (27 blocks: 9 fabric floors, 5 stone floors, 11 dark-oak panels, 2 pilasters) are reserved
+  vanilla mushroom-block states (render.md 4, PLAN decision 7; `block-updates.disable-mushroom-block-updates: true`
+  in `paper-global.yml` is required, placing deco is refused while it is off). Of the 96 `down=true` states 11 come
+  from world generation (the swamp abandoned camp template `campsite_swamp_2`) and 3 are the all-true defaults, so 82
+  are usable; 72 are used (`FullDecoStates`, `tools/census/chosen-states.txt`; never reorder, new blocks take spare
+  states). The census of the live world (2026-11-07 02:01 UTC, after the radius-5000 pre-generation: 581 401 + 44 857
+  + 144 832 chunks) found 0 blocks in any chosen state and no `down=true` state at all; rerun
+  `tools/census/mushroom_census.py` before deploying. Deviations: the vanilla mushroom block's feel (hardness 0.2,
+  wood sound, axe, not flammable, explodes easily, stone floors drop without a pickaxe), pilasters show 19 of their 256
+  connection states (straight walls, ends and T-junctions exact, outer corners show the band stub on one face),
+  star facing does not turn with structure rotation, pilasters update one tick later and only on events the plugin
+  sees. Natural and player-placed vanilla mushroom blocks keep their states with the switch on (tested).
+- **Display deco** (41 types incl. chair, stool, sofa and the speaker): one record per block in the chunk PDC,
+  displays rebuilt at chunk load, a round-robin verifier. Carriers: barrier (full collision, broken with the machine
+  break timer; the item goes into the breaker's inventory), light blocks with the mod's light level plus an interaction
+  box (one left click breaks), or vanilla stairs/slabs placed by vanilla from the deco item (crimson/warped under
+  velvet, polished andesite/diorite/blackstone under checkers and marble; the display sits over them at 1.002).
+  Deviations: carriers are full cubes or nothing (rope post 1 block high, sign plates without collision), barrier and
+  light deco ignore explosions and fire, pistons never move or pop deco (refused), light-carrier deco breaks at the
+  first hit, stairs/slabs feel like their carrier, a large sign or chandelier must fit in one chunk.
+- **Seats**: right click (not sneaking, not riding, not in danger or combat: "Nicht jetzt – du bist in Gefahr."),
+  one rider per seat, the mod's seat heights and yaw, cushion sounds; every dismount is steered to the mod's 12 spots
+  with a vanilla-style safety check, then `Rescue.nearest`, then the top of the seat. Stand-up on damage, a targeting
+  mob, any danger the sweep finds ("Gefahr – du stehst auf."), seat removal, quit/kick (before the save: the file
+  holds the safe spot and no vehicle), death, teleport, plugin disable.
+- **Speaker and music**: the speaker toggles with the lever click (light 2 on), and calls the music service. The
+  lounge music (Kevin MacLeod, CC BY 4.0, credits in `/casino credits` and in the music pack) plays to players who
+  loaded the optional music pack: the current track of the shared timeline from its start when entering 48 blocks
+  (a vanilla client cannot seek), at the mod's volume curve fixed at the start, the next track of the order after it,
+  stopped on leaving, the speaker going off, world change or death; vanilla music stopped every 10 s in range. Note
+  particles like the mod (the music's, off with `music.enabled: false`).
+
+**Music pack delivery:**
+
+The optional second pack `KaboofCasino-music.zip` (the mod's six lounge tracks, Kevin MacLeod, CC BY 4.0, ~22 MB;
+`MusicPack` in the pack tool, built by `buildPack` next to the casino pack and embedded as `pack/KaboofCasino-music.zip`
++ `.sha1`) has its own fixed id (`kaboofcasino-music`) and its own SHA-1; the casino pack contains no music. Both are
+served by the same delivery (game port or own HTTP server) under `/pack/<sha1>.zip`. `PackListener` sends it with
+`required(false)` only after the casino pack is SUCCESSFULLY_LOADED (never together: the client merges open prompts
+into one dialog and a failed download discards every pack that is not active yet). Decline, failure or no answer
+never disconnect, also with `pack.enforce: true`; without an answer within `pack.timeout-seconds` the pack is popped
+again so the client cannot reload its resources later in the world. `PackSessions.hasMusic` gates every music call.
+`config.yml` `music.enabled` switches pack offer, music and note particles off. A vanilla client that accepted the
+casino pack's prompt has its server entry on "Enabled", so the music pack is then accepted silently: in practice
+players get it whenever they accept the casino pack (a second resource reload during the configuration phase).
+
+- **Crafting**: every casinodeco recipe, the chair, stool and speaker recipes come from the mod's JSON
+  (`ModRecipes`), shaped and shapeless, unlocked by the advancement's item (also lists of items). Many casino items
+  share a material (all mushroom-stem deco, paper), so Bukkit's material match may pick the wrong one of several
+  same-pattern recipes; the crafting listener sets the result of the recipe the grid holds slot by slot
+  (`Recipes.craft`, `RecipeMatch`) and empties it for anything else (tested: six ruby velvet give four ruby velvet
+  stairs, six plain stems give nothing).
+
 ### Step 5 (blackjack)
 
 Rules, timing, texts and sounds are the mod's: the pure classes are verbatim ports (`BlackjackRound`, `BlackjackShoe`,
@@ -573,7 +632,14 @@ exact outcome counts of `tools/rtp/BlackjackRtp.java`'s replay, rigged shoes for
 `WagerEngineReviseTest`, `BlackjackPlacementTest` (the mod's part order, chunk fit), `BlackjackGeometryTest` /
 `BlackjackModelsTest` (dealer and card transforms against an independent ModelPart/PoseStack evaluation, culling
 box), `BlackjackPackKeysTest`, `BlackjackPanelTest`, `BlackjackRoundMenuTest`, `BlackjackGuiTest` and
-`BlackjackGuiPreviewTest` (`build/reports/gui/blackjack-*-preview-<W>x<H>.png`). Blackjack on the test instance
+`BlackjackGuiPreviewTest` (`build/reports/gui/blackjack-*-preview-<W>x<H>.png`). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
+evaluated with the client's condition semantics), the display-deco tests (`DecoBlockstateTest`: every state of the mod's
+blockstates picks the same model and turn; `DecoGeometryTest`, `DecoTransformTest`, `DecoRulesTest`, `SofaLayoutTest`,
+`DecoPackKeysTest`, `DecoDisplayPackTest`: 280 baked stair states against vanilla's shapes), `SeatMathTest`, the
+music tests (timeline golden values, playback rules, nearest speaker, station codec, both packs' delivery and the
+optional offer never kicking), `RecipeMatchTest` and the census tool's own test
+(`python3 -I -B tools/census/test_mushroom_census.py`). The bot (`testing/casinobot.sh <Name> <casino mode> [music
+mode]`) answers the music pack separately and logs stop-sound packets. Blackjack on the test instance
 (table placed at 29 -58 6 from 29.5 -57 8.5; bet slots 29/31/33, AUSTEILEN 49, KARTE 46, HALTEN 49, DOPPELN 52;
 `blackjack.bias: 100` + `/casino reload` makes winning hands likely for the death/owed cases):
 
@@ -614,6 +680,12 @@ testing/craft-test.sh                                                    # craft
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
+- Step 4 ships as `KaboofCasino-0.5.0.jar` (26.7 MB: it embeds both packs): remove `KaboofCasino-0.4.0.jar`. Before the
+  start: set `block-updates.disable-mushroom-block-updates: true` in `config/paper-global.yml` (Jack's OK), rerun the
+  census (`python3 -I -B tools/census/mushroom_census.py`, read-only), and delete the old `command.credits` line from
+  the live `messages_de.yml` so the new credits text is merged in. `config.yml` gets `music.enabled: true`. The casino
+  pack grows to ~4.7 MB; the music pack (~22 MB) is offered after it, optional; clients that accepted the casino pack
+  usually accept it silently (a second resource reload at login).
 - Step 5 ships as `KaboofCasino-0.4.0.jar`: remove `KaboofCasino-0.3.0.jar`. The live `config.yml` gets `blackjack:`
   (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `blackjack.*`, `gui.blackjack.*` and
   `machine.chunk-border-far` keys; no database migration. Ledgers become version 2 only while a blackjack hand is

@@ -141,7 +141,8 @@ public class QuestBot {
   static final Map<Integer, Integer> DATA_PACKETS = new ConcurrentHashMap<>();
   /** PACK_MODE: accept (download + SHA-1 check, then DOWNLOADED/SUCCESSFULLY_LOADED), decline, fail (FAILED_DOWNLOAD), ignore. */
   static void packPush(Session ss, org.geysermc.mcprotocollib.protocol.packet.common.clientbound.ClientboundResourcePackPushPacket rp) {
-    String mode = System.getProperty("packmode", "accept");
+    // per-pack override: -Dpackmode.<pack uuid>=accept|decline|fail|ignore (e.g. the optional music pack)
+    String mode = System.getProperty("packmode." + rp.getId(), System.getProperty("packmode", "accept"));
     log("PACK-PUSH id=" + rp.getId() + " url=" + rp.getUrl() + " hash=" + rp.getHash() + " required=" + rp.isRequired() + " prompt=" + plain(rp.getPrompt()) + " mode=" + mode);
     var R = org.geysermc.mcprotocollib.protocol.data.game.ResourcePackStatus.class;
     java.util.function.Consumer<org.geysermc.mcprotocollib.protocol.data.game.ResourcePackStatus> reply = st -> {
@@ -514,6 +515,7 @@ public class QuestBot {
           Vector3d at = t.isStepped() ? t.getSteps().getLast().position() : t.getEndPosition();
           moved(t.getId(), at.getX(), at.getY(), at.getZ(), true);
         } else if (p instanceof ClientboundSoundPacket a) { log("SOUND " + a.getSound().getName() + " cat=" + a.getCategory() + " at " + fmt(a.getX(), a.getY(), a.getZ()));
+        } else if (p instanceof org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundStopSoundPacket st) { log("STOP-SOUND " + st.getSound() + " cat=" + st.getCategory());
         } else if (p instanceof ClientboundSoundEntityPacket a) { log("SOUND-ENTITY " + a.getSound().getName() + " entity=" + a.getEntityId());
         } else if (p instanceof ClientboundLevelParticlesPacket a) { log("PARTICLE " + a.getParticle().getType() + " n=" + a.getAmount() + " at " + fmt(a.getX(), a.getY(), a.getZ()));
         } else if (p instanceof ClientboundBlockUpdatePacket b) { log("BLOCK " + b.getEntry().getPosition() + " -> " + b.getEntry().getBlock());
