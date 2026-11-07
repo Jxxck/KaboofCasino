@@ -39,6 +39,20 @@ poker:
   # plugin text: CALL found the hand's records already settled (they paid the fold), so the hand folds
   hand-settled: "<yellow>Diese Hand ist schon abgerechnet (ausgestiegen): Mitgehen geht nicht mehr."
 
+derby:
+  # message.roulettecasino.derby.busy / received / personal_win / personal_push / personal_loss / no_bet
+  busy: "<yellow>Das Rennen läuft."
+  received: "<green><count> Gegenstände erhalten"
+  personal-win: "<gold>Deine Ente hat gewonnen!"
+  personal-push: "<yellow>Dein Einsatz wird zurückgegeben."
+  personal-loss: "<red>Deine Ente hat verloren."
+  no-bet: "<yellow>Setze einen Einsatz, bevor das Rennen startet."
+  # plugin texts: the group race is full (64 players, the mod's MAX_PLAYERS), its countdown is over, or the
+  # machine's win chance forbids groups (gui.roulettecasino.derby.group_unavailable)
+  group-full: "<yellow>Das Gruppenrennen ist voll (64 Spieler)."
+  group-closed: "<yellow>Die Anmeldung ist geschlossen: Das Rennen startet gleich."
+  group-unavailable: "<yellow>Diese Einstellungen erlauben keine Gruppenrennen."
+
 machine:
   in-use: "<yellow><name> spielt gerade an diesem Automaten."
   not-yours: "<red>Diesen Automaten kann nur <name> oder ein Admin abbauen."
@@ -193,6 +207,31 @@ gui:
     call-lore: "<gray>Zweimal den Grundeinsatz setzen\n<gray>und die letzten zwei Karten sehen\n<dark_gray>(Taste 1)"
     fold: "<gold><b>AUSSTEIGEN"
     fold-lore: "<gray>Die Hand aufgeben:\n<gray>Der Grundeinsatz ist verloren\n<dark_gray>(F oder 2)"
+  derby:
+    # gui.roulettecasino.derby.header_top / header_bottom, solo, group, confirm, withdraw, claim, help_title, page
+    # arrows, duck_0..3 (in the hint colours of DuckDerbyScreen), confirmed; the lores are plugin texts (the mod
+    # has none). The pictures in the menu (hint line, counts, buttons, help panel) come from the pack.
+    title: "DUCK DERBY"
+    solo: "<gold>Solo spielen"
+    solo-lore: "<gray>Das Rennen startet sofort,\n<gray>nur mit deinem Einsatz."
+    group: "<gold>Gruppe (10s)"
+    group-lore: "<gray>Startet ein Gruppenrennen: Andere Spieler\n<gray>haben 10 Sekunden zum Setzen."
+    confirm: "<gold>Bestätigen"
+    confirm-lore: "<gray>Mit deinem Einsatz beim\n<gray>Gruppenrennen mitmachen."
+    withdraw: "<gold>Zurückziehen"
+    withdraw-lore: "<gray>Den Einsatz zurücknehmen und\n<gray>das Gruppenrennen verlassen."
+    claim: "<gold>Gewinn abholen"
+    claim-lore: "<gray>Holt deine offenen Gewinne ab,\n<gray>dann geht es weiter."
+    help: "<gold>Spielanleitung"
+    help-lore: "<gray>Klick: Anleitung zeigen"
+    help-close: "<gold>Zurück"
+    page: "<gold>Seite <page> / <pages>"
+    page-lore: "<gray>Linksklick: nächste Seite\n<gray>Rechtsklick: vorige Seite"
+    duck-0: "<#FFD048>GELB"
+    duck-1: "<#FF7070>ROT"
+    duck-2: "<#FFF2D6>WEISS"
+    duck-3: "<#AAB6CC>SCHWARZ"
+    confirmed: "<gray>Einsatz bestätigt"
   bets:
     # gui.roulettecasino.bets.title
     title: "<gold>Mögliche Einsätze"
@@ -212,6 +251,13 @@ item:
   croupier-badge: "Croupier-Abzeichen"
   # block.roulettecasino.poker_table
   poker-table: "Pokertisch"
+  # block.roulettecasino.duck_derby, item.roulettecasino.duck_derby_mechanism, derby_duck_*
+  duck-derby: "Entenrennen"
+  duck-derby-mechanism: "Entenrennen-Mechanismus"
+  derby-duck-yellow: "Gelbe Rennente"
+  derby-duck-red: "Rote Rennente"
+  derby-duck-white: "Weiße Rennente"
+  derby-duck-black: "Schwarze Rennente"
 
 panel:
   # gui.roulettecasino.slot.panel_title, result_lose, result_push, result_win, result_jackpot

@@ -108,6 +108,8 @@ public final class PackTool {
         BlackjackGui.add(jar, tree, font, text);
         PokerPack.add(jar, tree, packSrc);
         PokerGui.add(jar, tree, font, text);
+        DerbyPack.add(jar, tree, packSrc);
+        DerbyGui.add(jar, tree, font, text);
         DecoFullPack.add(jar, tree, packSrc);
         DecoDisplayPack.add(jar, tree, packSrc);
         SlotMachineGui.button(tree, text, "collect_low", "ABHOLEN", true, 14, 4.5, 11.5);
@@ -118,6 +120,7 @@ public final class PackTool {
         events.addAll(RoulettePack.SOUND_EVENTS);
         events.addAll(BlackjackPack.SOUND_EVENTS);
         events.addAll(PokerPack.SOUND_EVENTS);
+        events.addAll(DerbyPack.SOUND_EVENTS);
         events.addAll(DecoDisplayPack.SOUND_EVENTS);
         Sounds.write(jar, tree, events);
         List<String> prefixes = new java.util.ArrayList<>(SlotMachinePack.LANG_PREFIXES);
@@ -126,6 +129,7 @@ public final class PackTool {
         prefixes.addAll(RoulettePack.LANG_PREFIXES);
         prefixes.addAll(BlackjackPack.LANG_PREFIXES);
         prefixes.addAll(PokerPack.LANG_PREFIXES);
+        prefixes.addAll(DerbyPack.LANG_PREFIXES);
         prefixes.addAll(DecoFullPack.LANG_PREFIXES);
         prefixes.addAll(DecoDisplayPack.LANG_PREFIXES);
         Lang.filter(jar, tree, "roulettecasino", prefixes);

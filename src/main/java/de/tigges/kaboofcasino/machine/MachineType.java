@@ -33,7 +33,13 @@ public enum MachineType {
      * (p % 4 - 1, 0, p / 4 - 1), anchor = the placed cell = part 5; row -1 is the dealer's edge, rows 0 and +1 the
      * players' side. The mod needs no support below.
      */
-    POKER_TABLE("poker_table", poker(), 0, false, false);
+    POKER_TABLE("poker_table", poker(), 0, false, false),
+    /**
+     * 3 wide x 4 deep x 1 duck derby (games.md 7, {@code DuckDerbyBlock.partPos}): part p at (p % 3 - 1, 0, p / 3 - 3),
+     * anchor = the placed cell = part 10 (front centre); rows -3..-1 run away from the player toward the sign. The mod
+     * needs no support below.
+     */
+    DUCK_DERBY("duck_derby", derby(), 0, false, false);
 
     private final String id;
     private final int[][] footprint;
@@ -60,6 +66,14 @@ public enum MachineType {
     }
 
     /** Parts 0..11 of the poker table, in the mod's part order. */
+    private static int[][] derby() {
+        int[][] out = new int[12][];
+        for (int part = 0; part < 12; part++) {
+            out[part] = new int[] {part % 3 - 1, 0, part / 3 - 3};
+        }
+        return out;
+    }
+
     private static int[][] poker() {
         int[][] out = new int[12][];
         for (int part = 0; part < 12; part++) {

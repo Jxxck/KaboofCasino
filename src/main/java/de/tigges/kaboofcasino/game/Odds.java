@@ -82,6 +82,24 @@ public final class Odds {
         return outcomes[roll(nextInt, outcomes.length)];
     }
 
+    /**
+     * {@code CasinoOdds.derby} (solo races with a forced chance only): {@code nextInt(100) < percent} lets the player's
+     * {@code lane} win, otherwise {@code nextInt(3)} picks one of the other three lanes uniformly.
+     */
+    public static int derby(int lane, int percent, IntUnaryOperator nextInt) {
+        if (lane < 0 || lane >= 4) {
+            throw new IllegalArgumentException("Invalid derby lane: " + lane);
+        }
+        if (percent < 0 || percent > 100) {
+            throw new IllegalArgumentException("percent outside 0..100: " + percent);
+        }
+        if (roll(nextInt, 100) < percent) {
+            return lane;
+        }
+        int other = roll(nextInt, 3);
+        return other < lane ? other : other + 1;
+    }
+
     private static int roll(IntUnaryOperator nextInt, int bound) {
         int r = nextInt.applyAsInt(bound);
         if (r < 0 || r >= bound) {

@@ -1,4 +1,4 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker; step 7: duck derby)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
 GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
@@ -53,6 +53,7 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `game.roulette` | `RouletteSpin` (verbatim port), `RouletteGame` (colours, payouts, forced pools), `RouletteController`, `RouletteRig`, `RouletteMenu` (9 slots, one colour), `RoulettePanel` |
 | `game.blackjack` | verbatim ports (`BlackjackRound`, `BlackjackShoe` + `copy()`, `BlackjackCards`, `BlackjackBias`, `BlackjackLayout`, `BlackjackCardMotion`, `BlackjackCardGeometry`, `BlackjackTableState`, `BlackjackFootprint`, `Dealer*`), `ShoeRandom`, `BlackjackStand` (stand result on a shoe copy), `BlackjackPayout`, `BlackjackController` (hand, PLAYING records, timeout/quit/death stand), `BlackjackRig` + `BlackjackDealerRig` + `BlackjackCardRig`, `BlackjackPanel`, `BlackjackBetMenu`, `BlackjackRoundMenu`, `BlackjackSnapshot` |
 | `game.poker` | verbatim ports (`PokerRound`, `PokerHands`, `PokerBias`, `PokerLayout`, `PokerTableState`, `PokerTableGeometry`; the shoe, cards, dealer and card motion are blackjack's), `PokerCall` (the called outcome on a shoe copy), `PokerPayout`, `PokerController` (hand, PLAYING records, timeout/quit/death fold), `PokerRig`, `PokerPanel`, `PokerBetMenu`, `PokerRoundMenu`, `PokerSnapshot` |
+| `game.derby` | verbatim ports (`DuckDerbyRace`, `DuckDerbyLayout`, `DuckDerbyGeometry`, `DuckDerbySignLights`, `DuckDerbyFootprint`, `DerbyPanelPresentation`), `DerbyRules` (winner draw, plan retry, runner-up, payouts), `DerbyController` (solo and group races, records, effects), `DerbyRig`, `DerbyBetMenu`, `DerbyView`, `DerbySnapshot`, `DerbyMember` |
 | `deco.full` | the 27 full-cube deco blocks on 72 reserved `down=true` mushroom states (`FullDecoStates`, persistent table `tools/census/chosen-states.txt`), vanilla mushroom block items with `block_state`/`item_model`, drops, explosions, pistons, pilaster connections (`PilasterChoice`), the Paper-switch guard |
 | `deco.display` | the 41 display-entity deco types (`DecoType`): chunk-PDC records (`kaboofcasino:deco`), carriers (barrier / light + interaction / vanilla stairs and slabs), rigs, placement and support rules, connections (tables, bars, rope posts, the sofa's verbatim `SofaLayout`), protection, candle flames |
 | `seat` | sitting on chairs, stools and sofas: a non-persistent item-display vehicle, the mod's dismount search, forced stand-up on danger/combat/damage/quit/death/teleport, rescue of players found inside deco barriers |
@@ -337,7 +338,8 @@ provider definitions from the 26.3 client jar, see its README).
    animate → `settleRound(NORMAL)` per record at the mod's payout tick, exactly like the wheel. Card games
    (blackjack, poker): `RoundState.PLAYING` records whose payout is the timeout rule's result (stand/fold)
    computed on a copy of the shoe before every decision, rewritten with `WagerEngine.revise` (a mid-round stake goes
-   into the same call); see `BlackjackController`/`BlackjackStand` and `PokerController`/`PokerCall`. Derby: `ENROLLED` (refund on quit/death) → `DECIDED` at the race start (a
+   into the same call); see `BlackjackController`/`BlackjackStand` and `PokerController`/`PokerCall`. The derby
+   (step 7) uses PLAYING (refund) during its group countdown and DECIDED from the start. Former note for the derby: `ENROLLED` (refund on quit/death) → `DECIDED` at the race start (a
    new state means a new ledger version written only while such a record is open, see `LedgerCodec.version`).
 5. Pack: a `<Game>Pack` + `<Game>Gui` class in the pack tool; GUI art glyphs go through `GuiFont.art/grid` with their
    window position, text positions are anchors (`GuiFont.anchor`, drawn with `TitleBuilder.text(anchor, …)`). Check
@@ -733,11 +735,16 @@ the roll of `CasinoExchange.payout` comes from the round's seed and the bet slot
 - Keyboard: `PokerScreen.keyPressed` maps S/1 to MITGEHEN and F/2 to AUSSTEIGEN while the button is active. In a
   chest the number keys and F reach the server as `NUMBER_KEY` / `SWAP_OFFHAND` clicks over a slot: 1 = MITGEHEN,
   2 and F = AUSSTEIGEN over any top slot (`Menu.keyButton`), through the same busy, open-guard, press-lock and danger
-  path as a click; the vanilla swap stays cancelled. S has no inventory binding. Blackjack likewise: 1 = KARTE,
+  path as a click; the vanilla swap stays cancelled. So number key 1 anywhere over the round menu calls, as in the
+  mod (whose key works anywhere on its screen; a chest needs the cursor over one of its slots); the 6-tick press
+  lock and the call's danger check apply as to a click. S has no inventory binding. Blackjack likewise: 1 = KARTE,
   2 = HALTEN, 3 = DOPPELN (the mod's H/T, S/R and D have no inventory binding; F is no blackjack key).
 - The bet menu closes after 120 s without a deal (`gui.idle-close-seconds`, the mod's 2400-tick `betIdle`), silently
   like the mod (blackjack too). Slot machine, wheel, Plinko and roulette never close in the mod; the plugin's idle
   close there keeps its "Menü geschlossen" note.
+- Safety re-review notes (0.6.0 live): an admin removing a table while its owner is away (quit before the call)
+  cannot rewrite the offline file, so his held records pay a fold at his next join, not the mod's refund; number
+  key 1 over the round menu calls (see Keyboard).
 - Not built: the camera turn toward the table (possible via rotation teleports, omitted: through the tunnel they
   risk jitter for little gain) and the panel's felt frame. The bet view draws three texts at full size where the mod
   shrinks them ("DER EINSATZ ZAHLT", "Ab Paar Vieren", "sonst bezahlt"); a smaller font row would need scaled glyph
@@ -776,6 +783,101 @@ the roll of `CasinoExchange.payout` comes from the round's seed and the bet slot
 - A hand older than 6 000 ticks is treated as stuck (a listener error): it ends, its records settle as stored and the
   table is free again (the longest real hand is ~1 000 ticks plus coins).
 
+### Step 7 (duck derby)
+
+Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on **one** duck. 1st pays 3 x the stake,
+2nd returns it, 3rd and 4th lose it (`DuckDerbyBlockEntity` 48-49, 389-390). The pure classes are verbatim ports
+(`DuckDerbyRace`: SplitMix64 planner with the story dice, 48 attempts, finish times, scoring, poses, gate, quacks;
+`DuckDerbyLayout`, `DuckDerbyGeometry`, `DuckDerbySignLights`, `DuckDerbyFootprint`, `DerbyPanelPresentation`);
+`Odds.derby` ports `CasinoOdds.derby`. Footprint 3 x 4, anchor part 10 (front centre), the sign on the back row.
+
+- **Solo** ("Solo spielen"): needs no countdown running. The winner is drawn (`nextInt(4)`, or with `derby.win-chance`
+  0..100 `CasinoOdds.derby` for the player's lane), then `seed = nextLong()` and the plan (`DerbyRules.draw`; if the
+  planner rejects all 48 attempts, a new seed, games.md 7 open question 1). The stakes are committed in one tick as
+  DECIDED records holding that result, and the race starts at once; every derby menu on the machine closes (the mod
+  refunds other players' drafts there; here nothing real lies in a menu).
+- **RTP** (`tools/rtp/DerbyRtp.java`): exactly `3p + (1 - p)/3` per item staked (`CasinoOdds.java:59`), with chance c %
+  `(2c + 25)/75`: natural odds and every group race **1** (win 1/4, push 1/4, loss 1/2), c = 10 0.6, c = 20 13/15,
+  c = 50 5/3. P(2nd) = 1/3 for each non-winner is exact by the planner's lane symmetry (checked by re-scoring
+  960 000 candidates under every relabelling: 0 differ) and measured over 220 000 plans (chi-square p = 0.36). No null
+  plan in 220 000 (model estimate 9e-82; `DerbyRules.draw` would retry 16 seeds, a group launch without a plan refunds).
+  Story mix 35.0 / 30.0 / 35.1 %, last finisher race tick 129..162, `endTick` 243..276. The plugin's `DuckDerbyRace`
+  equals an independent transcription and the mod's own class bit for bit over 20 000 plans. Tests: `DerbyRulesTest`,
+  `DuckDerbyRaceTest` (golden plans, invariants), `DerbyRtpSimulationTest` (races through the shipped path; sizes via
+  `KABOOF_DERBY_PLANS` / `KABOOF_DERBY_RACES`). Planner speed ~100-120 plans/s per thread (8 ms per plan, only at a
+  launch).
+- **Group** ("Gruppe (10s)" / "Bestätigen" / "Zurückziehen"): allowed at natural odds or exactly 25 (`groupAllowed`).
+  Each entrant's stakes are committed on their own as PLAYING records whose payout is the refund (the mod's held
+  escrow); the 200-tick countdown starts with the first entrant and is never extended; up to 64 entrants on any ducks,
+  one duck each; joining after the countdown has ended is refused. Withdraw settles the refund at once; the last one
+  out cancels the countdown. Entrants who quit, are kicked or die meanwhile are settled by those hooks (the refund;
+  death: into the drops) and drop out, as the mod removes and refunds them. **When the countdown ends the bet window
+  is closed, and only then** the winner (`nextInt(4)`: groups always use natural odds), the seed and the plan exist;
+  each entrant's records are rewritten to DECIDED with his result in **his own** ledger write (`WagerEngine.revise`).
+  One player's quit, death or crash never touches another's records; an entrant whose records are already gone at
+  that moment simply drops out.
+- **No leak**: before the bets are locked there is no result anywhere (no winner, no seed, no plan, nothing in a
+  record); the records of the countdown hold only the refund. The rig and the panel show the race from the launch on;
+  the panel shows "SIEGER / ZWEITER" from `resultTick`.
+- **The race**: quacks, splashes, the finish line, the result messages ("Deine Ente hat gewonnen!" etc. for online
+  entrants), the win/push/lose cues and the confetti follow the mod's tick plan. The records settle at `resultTick + 12`
+  (when the mod's credits fall due) into the inventory, the rest owed; then "N Gegenstände erhalten" and, within
+  16 blocks, the payout sound at the anchor and five happy-villager particles toward the player (`DerbyCredits.pay`).
+  The machine unlocks at `endTick`. The machine cannot be opened while a race runs ("Das Rennen läuft."); breaking is
+  refused while entrants wait or a race runs.
+- **Quit, kick, stop, crash, death** during the countdown settle the refund (the mod: refund); during the race the
+  stored result, which is what the race shows (the mod settles the credits at the launch too). Its anchor chunk is held
+  loaded (counted plugin ticket) from the first entrant to the race's end, so a race with nobody near still ends and
+  pays on time. A table removed by an admin settles what is stored: the refund in the countdown, the result in the
+  race (the mod makes the credits due at once).
+- Rewards: the mod's `DerbyCredits` ledger (pay only within 16 blocks, on the claim button or at join) is the
+  plugin's owed list: winnings go straight into the inventory wherever the player is, the rest owed and delivered
+  by the owed timer, `/casino abholen` or the menu's "Gewinn abholen" button (shown while anything is owed).
+- Legacy shared bets (`startLegacy`, unreachable in the mod) and the exchange rules are not built; the `forced` winner
+  argument is never used by the mod's menu and is not built.
+- Config `derby:` `win-chance` (-1 natural, 0..100 solo only), `needs-support` (default true: one of the twelve cells on
+  solid ground; the mod needs none), `idle-light-ticks`/`idle-light-range` for the sign bulbs' idle chase under the
+  shared light budget.
+- Recipes: the mod's `duck_derby`, `duck_derby_mechanism` with its 23 other duck orders (no recipe-book unlock in the
+  mod, craftable) and the four racing ducks.
+- **Look** (`DerbyRig`, `DerbyPanel`; pack `DerbyPack`, `DerbyModels`, meshes `pack-src/meshes/derby_{duck,gate}.json`
+  from `tools/meshes/convert-derby.sh`, 52 quads, 0 unmatched): the tub is the mod's twelve block models
+  `duck_derby_0..11` as item displays at their cells (turned like the blockstate, view range 2.0: tub, rim, posts, sign
+  board, flag). The renderer's parts: 4 duck displays (the converted 48-quad `DUCK` mesh with the lane's `LANE_UV`
+  baked in, pivot (lane centre, 13 + lift, z) px turned about X by the pitch; `plan.pose(lane, elapsed)` inside
+  `0 <= elapsed <= endTick + 1`, else z 56.5), one display with the four gate bars (sunk 3.6 px x `plan.gate`), one
+  for `signLights` (the full-bright `dd_sign` overlay at z 3.025 and the 12 bulbs at z 3.08, tint i =
+  `gray(round(255 x level))` from the controller's idle chase, brightness 15). 18 item displays + the panel = 19
+  entities (render.md 2.5: 21 with a label). All stand at the anchor's bottom centre (light = the renderer's
+  `lightCoords`, also for the tub), culling box 7.2 x 2.0 holding the machine, the sign and every duck pose in all
+  facings (`DerbyGeometryTest`, against an independent evaluation of the renderer's pose stack and the blockstate).
+  Cadence: ducks and gates every tick with the pose of now + 1 and interpolation 1, only what changed and only while a
+  player's eyes are within 64 blocks of the anchor (the renderer's view distance; the scan is cached 4 ticks); at rest
+  nothing is sent, a race with nobody near costs the cached scan; the first update in range glides the ducks to the
+  current pose in one tick. The bulbs are resent only when a grey changes.
+- **Panel**: one text display centred like the renderer's at machine (24, 2.6 blocks, 32) (a group panel taller than
+  70 px lifted as `sharedPanel` does; moved when its line count changes), view range 10 (hard cut instead of the
+  7.5-10 fade), rebuilt only when its content changes and only while a player is within 24 blocks. Group: the
+  countdown "Start in N s" with the brass bar (the remaining time in 20 steps), "N Spieler" / "N Spieler · Rennen
+  läuft" / from `resultTick` "SIEGER: X · ZWEITER: Y", up to 8 entrants in join order (the lane strip under the head,
+  name, up to three stakes), "+ N Spieler". Solo: the player's head and name, per staked lane the duck's name on the
+  lane colour over the bronze line (`background` draws `HEADER_EDGE` only as a line) and its stakes, from `resultTick`
+  "SIEGER: <Ente>" / "ZWEITER: <Ente>" in bold with the duck's colour. Words are the mod's lang keys with German
+  fallbacks; bars and strips are glyphs of the pack font `kaboofcasino:derby_panel`. Not built: the felt texture and
+  brass frame of the panel, 3D item icons, the per-viewer fade and own-entry-first order, the countdown's 1.5 x text
+  size, the winner/second column frames (the result lines name both); the lane box is 11 px instead of 14 to fit a
+  text line, and the header label is centred with the German name's width.
+
+- **GUI** (`DerbyBetMenu`, `DerbyMenuView`; pack `DerbyGui`, `DerbyGuiArt`, `DerbyGuiItems`): the mod's felt art
+  recomposed for a chest. Bets are a selection (nothing real lies in the menu): bet i (lane i % 4, row i / 4) on grid
+  columns 0/3/5/8, rows 1-3, one lane only (the others veiled; a click there shows "Eine Ente pro Rennen!"); the duck
+  cards above the columns, the hint (pick / "Deine Ente: …" / countdown, in the code's order countdown before
+  confirmed) and the player count on the right panel; SOLO over 36-39 (CLAIM "Gewinn abholen" in its place while
+  anything is owed), help 40 (the bettable items in its tooltip), GROUP / CONFIRM / WITHDRAW over 41-44 (greyed with
+  the group_unavailable tooltip when the win chance forbids groups), the lobby as 8 player heads in row 5 (own entry
+  first; name, duck and "Einsatz bestätigt" in the tooltip) with a pager in 53; the help panel re-laid out above the
+  inventory. Deviations: lanes on 18 px grid columns instead of the 52 px pitch, brand and hint moved to the right
+  panel, heads instead of drawn names, one pager instead of the two arrows, an 18 px help button, buttons 83 px wide.
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
@@ -799,7 +901,12 @@ boundary), `PokerPayoutTest` (every result and paytable line, signed NET lines),
 `PokerPlacementTest` (the mod's 4 x 3 part order, chunk fit), `PokerGeometryTest` (table, dealer and cards against an
 independent evaluation of the mod's renderer maths, culling box, entity budget), `PokerPanelTest`, `PokerPackKeysTest`,
 `PokerPackTest`, `PokerRoundMenuTest`, `PokerGuiTest` and `PokerGuiPreviewTest`
-(`build/reports/gui/poker-*-preview-<W>x<H>.png`). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
+(`build/reports/gui/poker-*-preview-<W>x<H>.png`). Step 7 adds `DerbyRulesTest`, `DuckDerbyRaceTest` (golden plans of an
+independent transcription, invariants), `DerbyRtpSimulationTest`, `DerbyPlacementTest`, `DerbyGeometryTest` (tub,
+ducks, gates, sign against an independent evaluation of the renderer, culling box, rotation steps, traffic),
+`DerbyPanelTest` (including: no result line before `resultTick` for any winner, solo and group), `DerbyPackKeysTest`,
+`DerbyPackTest`, `DerbyBetMenuTest`, `DerbyGuiTest` and `DerbyGuiPreviewTest`
+(`build/reports/gui/derby-*-preview-<W>x<H>.png`). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
 evaluated with the client's condition semantics), the display-deco tests (`DecoBlockstateTest`: every state of the mod's
 blockstates picks the same model and turn; `DecoGeometryTest`, `DecoTransformTest`, `DecoRulesTest`, `SofaLayoutTest`,
 `DecoPackKeysTest`, `DecoDisplayPackTest`: 280 baked stair states against vanilla's shapes), `SeatMathTest`, the
@@ -838,6 +945,11 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice    # inven
 testing/craft-test.sh                                                    # crafting vetoes and the reel recipe
 ```
 
+Duck derby on the test instance (#1 placed at 81 -58 58 from 81.5 -57 60.5; open with `place 81 -57 58 south`; bet
+slots row 1 = 9/12/14/17 for lanes 0-3 (click to select, right-click an inventory item for +1), SOLO 37, GROUP /
+CONFIRM / WITHDRAW 42; `derby.win-chance: 100` or `0` + `/casino reload` force a solo win or a loss/push; helper
+`scratchpad/casino/dk.sh open|bet|group|solo|withdraw|ledger|over`).
+
 Poker on the test instance (table #1 placed at 90 -58 41 from 90.5 -57 44.5; bet slots 29/31/33 (click a slot to
 select it, right-click an inventory item for +1), AUSTEILEN 49, MITGEHEN 46, AUSSTEIGEN 51; the decision opens 10.5 s
 after the deal; `poker.bias: 100` + `/casino reload` makes winning hands likely; helper
@@ -873,6 +985,15 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
   the live `messages_de.yml` so the new credits text is merged in. `config.yml` gets `music.enabled: true`. The casino
   pack grows to ~4.7 MB; the music pack (~22 MB) is offered after it, optional; clients that accepted the casino pack
   usually accept it silently (a second resource reload at login).
+- Step 7 ships as `KaboofCasino-0.7.0.jar`: remove `KaboofCasino-0.6.0.jar`. The live `config.yml` gets `derby:`
+  (`win-chance: -1`, `needs-support: true`, `idle-light-ticks: 4`, `idle-light-range: 16`) merged in, `messages_de.yml`
+  the `item.duck-derby*`/`item.derby-duck-*`, `derby.*` and `gui.derby.*` keys; no database migration and no new
+  ledger version (group entrants hold PLAYING records like poker hands, version 2 while open). The casino pack grows
+  to ~5.25 MB (the 300 s hard cap then asks for 17.1 KiB/s on average; unchanged policy). The four racing ducks, the
+  mechanism (24 duck orders) and the machine are craftable with the mod's recipes; `/casino give duck_derby` works too.
+  Natural odds pay 100 % (games.md 7 open question 2: Jack keeps or lowers `derby.win-chance`; below 25 there is a
+  house edge and no group races). A group race keeps up to 64 entrants with up to 3 records each: the live
+  `rounds.max-open: 4` allows a full three-row bet plus one more stake per player.
 - Step 6 ships as `KaboofCasino-0.6.0.jar`: remove `KaboofCasino-0.5.0.jar`. The live `config.yml` gets `poker:`
   (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `item.poker-table`, `poker.*` (including
   `poker.hand-settled`) and `gui.poker.*` keys. Delete the three lines `gui.blackjack.hit-lore`, `stand-lore` and

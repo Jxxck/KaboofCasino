@@ -74,6 +74,7 @@ public final class ConfigLoader {
                         r.bool("blackjack.needs-support", d.blackjack().needsSupport())),
                 new CasinoConfig.Poker(r.integer("poker.bias", d.poker().bias(), -100, 100),
                         r.bool("poker.needs-support", d.poker().needsSupport())),
+                game(r, "derby", d.derby()),
                 new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
                         100)),
                 new CasinoConfig.Music(r.bool("music.enabled", d.music().enabled())));
@@ -83,8 +84,9 @@ public final class ConfigLoader {
         return new CasinoConfig.Slot(r.integer(section + ".win-chance", d.winChance(), -1, 100),
                 r.integer(section + ".idle-light-ticks", d.idleLightTicks(), 0, 200),
                 r.integer(section + ".idle-light-range", d.idleLightRange(), 0, 128),
-                // only the roulette table has the switch (the other machines always need support)
-                section.equals("roulette") ? r.bool(section + ".needs-support", d.needsSupport()) : d.needsSupport());
+                // the roulette and the derby have the switch (the other machines always need support)
+                section.equals("roulette") || section.equals("derby")
+                        ? r.bool(section + ".needs-support", d.needsSupport()) : d.needsSupport());
     }
 
     /** Typed, range-checked reads with warnings. */

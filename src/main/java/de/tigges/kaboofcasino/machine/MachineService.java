@@ -206,6 +206,7 @@ public final class MachineService {
         boolean tableNeedsSupport = switch (type) {
             case BLACKJACK_TABLE -> config.get().blackjack().needsSupport();
             case POKER_TABLE -> config.get().poker().needsSupport();
+            case DUCK_DERBY -> config.get().derby().needsSupport();
             default -> config.get().roulette().needsSupport();
         };
         if (!supportOk(type, supported, bottom, tableNeedsSupport)) {

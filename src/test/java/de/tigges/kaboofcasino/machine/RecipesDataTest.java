@@ -41,6 +41,12 @@ class RecipesDataTest {
         assertEquals("#minecraft:planks", blackjack.key().get('P'));
         assertEquals("minecraft:redstone", blackjack.key().get('R'));
         assertEquals("roulettecasino:blackjack_table", blackjack.result());
+        Recipes.Def derby = d.get("duck_derby");
+        assertEquals(List.of("WWW", "GMG", "PRP"), derby.pattern());
+        assertEquals("roulettecasino:duck_derby_mechanism", derby.key().get('M'));
+        // the 23 other duck orders of the mechanism have no recipe-book unlock in the mod
+        assertEquals(List.of(), d.get("duck_derby_mechanism_order_07").unlocks());
+        assertEquals("roulettecasino:duck_derby_mechanism", d.get("duck_derby_mechanism_order_07").result());
     }
 
     @Test
@@ -99,8 +105,13 @@ class RecipesDataTest {
 
     /** The shipped set. */
     private static final class Set6 {
-        static final java.util.Set<String> MACHINES = java.util.Set.of("slot_machine_reel", "slot_machine_mechanism",
-                "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table", "blackjack_table",
-                "casino_chair", "casino_stool", "poker_table");
+        static final String[] ORDER_IDS = java.util.stream.IntStream.rangeClosed(1, 23)
+                .mapToObj(i -> String.format(java.util.Locale.ROOT, "duck_derby_mechanism_order_%02d", i))
+                .toArray(String[]::new);
+        static final java.util.Set<String> MACHINES = java.util.stream.Stream.concat(java.util.stream.Stream.of(
+                "slot_machine_reel", "slot_machine_mechanism", "slot_machine", "roulette_mechanism", "fortune_wheel",
+                "plinko", "roulette_table", "blackjack_table", "casino_chair", "casino_stool", "poker_table",
+                "derby_duck_yellow", "derby_duck_red", "derby_duck_white", "derby_duck_black", "duck_derby_mechanism",
+                "duck_derby"), java.util.Arrays.stream(ORDER_IDS)).collect(java.util.stream.Collectors.toSet());
     }
 }

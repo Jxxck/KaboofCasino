@@ -18,6 +18,7 @@ import java.util.Objects;
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
                            Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker,
+                           Slot derby,
                            Lights lights, Music music) {
 
     /**
@@ -96,7 +97,9 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     }
 
     /**
-     * Per machine type ({@code slot:}, {@code wheel:}, {@code plinko:}).
+     * Per machine type ({@code slot:}, {@code wheel:}, {@code plinko:}, {@code roulette:}, {@code derby:}).
+     * The derby's win chance applies to solo races only; group races always use natural odds and are allowed only
+     * at -1 or 25 ({@code DuckDerbyBlockEntity.groupAllowed}).
      *
      * @param winChance -1 = natural odds (the mod's default); 0..100 = forced pools (CasinoOdds)
      */
@@ -158,6 +161,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Slot(-1, 0, 16, true),
             new Blackjack(0, true),
             new Poker(0, true),
+            new Slot(-1, 4, 16, true),
             new Lights(4),
             new Music(true));
 }

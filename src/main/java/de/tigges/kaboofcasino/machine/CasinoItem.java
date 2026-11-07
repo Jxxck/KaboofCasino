@@ -23,7 +23,15 @@ public enum CasinoItem {
     CROUPIER_BADGE("croupier_badge", "roulettecasino:croupier_badge", Msg.ITEM_CROUPIER_BADGE, null),
     BLACKJACK_TABLE("blackjack_table", "roulettecasino:blackjack_table", Msg.ITEM_BLACKJACK_TABLE,
             MachineType.BLACKJACK_TABLE),
-    POKER_TABLE("poker_table", "roulettecasino:poker_table", Msg.ITEM_POKER_TABLE, MachineType.POKER_TABLE);
+    POKER_TABLE("poker_table", "roulettecasino:poker_table", Msg.ITEM_POKER_TABLE, MachineType.POKER_TABLE),
+    /** The four racing ducks: crafting components of the derby mechanism only (not bets, games.md 7). */
+    DERBY_DUCK_YELLOW("derby_duck_yellow", "roulettecasino:derby_duck_yellow", Msg.ITEM_DERBY_DUCK_YELLOW, null),
+    DERBY_DUCK_RED("derby_duck_red", "roulettecasino:derby_duck_red", Msg.ITEM_DERBY_DUCK_RED, null),
+    DERBY_DUCK_WHITE("derby_duck_white", "roulettecasino:derby_duck_white", Msg.ITEM_DERBY_DUCK_WHITE, null),
+    DERBY_DUCK_BLACK("derby_duck_black", "roulettecasino:derby_duck_black", Msg.ITEM_DERBY_DUCK_BLACK, null),
+    DUCK_DERBY_MECHANISM("duck_derby_mechanism", "roulettecasino:duck_derby_mechanism", Msg.ITEM_DERBY_MECHANISM,
+            null),
+    DUCK_DERBY("duck_derby", "roulettecasino:duck_derby", Msg.ITEM_DUCK_DERBY, MachineType.DUCK_DERBY);
 
     private final String id;
     private final String model;

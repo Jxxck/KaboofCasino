@@ -127,7 +127,8 @@ public abstract class StakeMenu extends GameMenu {
         active = 0;
     }
 
-    int active() {
+    /** The active slot (the marker, or the glint of a filled slot). */
+    protected int active() {
         return active;
     }
 
@@ -181,27 +182,7 @@ public abstract class StakeMenu extends GameMenu {
         int[] slots = stakeSlots();
         for (int i = 0; i < stakes.length; i++) {
             final int slot = i;
-            ItemStack icon;
-            if (stakes[i] != null) {
-                icon = DisplayCopies.of(PlayerAccount.material(stakes[i].item()), (int) stakes[i].count(), null,
-                        m.lines(Msg.GUI_STAKE_LORE));
-                if (i == active) {
-                    icon.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
-                }
-            } else if (!selectable(i)) {
-                ItemStack locked = lockedIcon(i);
-                icon = locked != null ? locked : DisplayCopies.model("kaboofcasino:gui/blank",
-                        m.render(Msg.GUI_STAKE_EMPTY), List.of());
-            } else if (i == active) {
-                icon = DisplayCopies.model("kaboofcasino:gui/stake_active", m.render(Msg.GUI_STAKE_ACTIVE),
-                        m.lines(ctx.config().get().bets().capPerRound() ? Msg.GUI_STAKE_ACTIVE_LORE_ROUND
-                                : Msg.GUI_STAKE_ACTIVE_LORE, Messages.text("max",
-                                Integer.toString(ctx.config().get().bets().maxStake()))));
-            } else {
-                icon = DisplayCopies.model("kaboofcasino:gui/blank", m.render(Msg.GUI_STAKE_EMPTY),
-                        m.lines(Msg.GUI_STAKE_EMPTY_LORE));
-            }
-            set(slots[i], Button.of(icon, (p, click) -> slotClicked(p, slot, click)));
+            set(slots[i], Button.of(stakeIcon(i), (p, click) -> slotClicked(p, slot, click)));
         }
         boolean owed = !owedNow().isEmpty();
         ItemStack button;
@@ -225,6 +206,32 @@ public abstract class StakeMenu extends GameMenu {
         }
         set(betsSlot(), Button.display(betsBook(ctx)));
         decorate();
+    }
+
+    /** The icon of bet slot {@code i}: its stake (glint if active), the active marker, an empty or a locked slot. */
+    protected ItemStack stakeIcon(int i) {
+        var m = ctx.messages().get();
+        if (stakes[i] != null) {
+            ItemStack icon = DisplayCopies.of(PlayerAccount.material(stakes[i].item()), (int) stakes[i].count(), null,
+                    m.lines(Msg.GUI_STAKE_LORE));
+            if (i == active) {
+                icon.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
+            }
+            return icon;
+        }
+        if (!selectable(i)) {
+            ItemStack locked = lockedIcon(i);
+            return locked != null ? locked : DisplayCopies.model("kaboofcasino:gui/blank",
+                    m.render(Msg.GUI_STAKE_EMPTY), List.of());
+        }
+        if (i == active) {
+            return DisplayCopies.model("kaboofcasino:gui/stake_active", m.render(Msg.GUI_STAKE_ACTIVE),
+                    m.lines(ctx.config().get().bets().capPerRound() ? Msg.GUI_STAKE_ACTIVE_LORE_ROUND
+                            : Msg.GUI_STAKE_ACTIVE_LORE, Messages.text("max",
+                            Integer.toString(ctx.config().get().bets().maxStake()))));
+        }
+        return DisplayCopies.model("kaboofcasino:gui/blank", m.render(Msg.GUI_STAKE_EMPTY),
+                m.lines(Msg.GUI_STAKE_EMPTY_LORE));
     }
 
     /** The bettable-items list (the mod's {@code CasinoBetList}, drawn left of its window) as a book tooltip. */
@@ -254,7 +261,8 @@ public abstract class StakeMenu extends GameMenu {
 
     // ---- clicks ----------------------------------------------------------------------------------------------------
 
-    private void slotClicked(Player player, int slot, ClickType click) {
+    /** A click on bet slot {@code slot}: select it, clear it (again / shift) or take one away (right). */
+    protected void slotClicked(Player player, int slot, ClickType click) {
         if (!selectable(slot)) {
             refused(player, slot);
             return;

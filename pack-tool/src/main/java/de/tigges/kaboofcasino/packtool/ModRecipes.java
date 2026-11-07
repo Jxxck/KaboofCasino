@@ -20,7 +20,16 @@ final class ModRecipes {
     /** The machine recipes built so far, in the mod's unlock order, then the seats. */
     static final List<String> SHIPPED = List.of("slot_machine_reel", "slot_machine_mechanism", "slot_machine",
             "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table", "blackjack_table", "casino_chair",
-            "casino_stool", "poker_table");
+            "casino_stool", "poker_table", "derby_duck_yellow", "derby_duck_red", "derby_duck_white",
+            "derby_duck_black", "duck_derby_mechanism", "duck_derby_mechanism_order_01", "duck_derby_mechanism_order_02",
+            "duck_derby_mechanism_order_03", "duck_derby_mechanism_order_04", "duck_derby_mechanism_order_05",
+            "duck_derby_mechanism_order_06", "duck_derby_mechanism_order_07", "duck_derby_mechanism_order_08",
+            "duck_derby_mechanism_order_09", "duck_derby_mechanism_order_10", "duck_derby_mechanism_order_11",
+            "duck_derby_mechanism_order_12", "duck_derby_mechanism_order_13", "duck_derby_mechanism_order_14",
+            "duck_derby_mechanism_order_15", "duck_derby_mechanism_order_16", "duck_derby_mechanism_order_17",
+            "duck_derby_mechanism_order_18", "duck_derby_mechanism_order_19", "duck_derby_mechanism_order_20",
+            "duck_derby_mechanism_order_21", "duck_derby_mechanism_order_22", "duck_derby_mechanism_order_23",
+            "duck_derby");
     /** Namespaces whose recipes all ship (step 4: every deco block and the speaker). */
     static final List<String> ALL_OF = List.of("casinodeco", "casinosound");
 
@@ -83,9 +92,14 @@ final class ModRecipes {
 
     /**
      * The items of the advancement's one inventory_changed criterion (named has_ingredient or has_<item>): one id, or
-     * several of which any unlocks (glass display shelf, serving tray).
+     * several of which any unlocks (glass display shelf, serving tray). No advancement (the 23 other duck orders of
+     * the derby mechanism): no unlock, like the mod (craftable, never shown by the recipe book on its own).
      */
     private static JsonArray unlock(ModJar jar, String ns, String name) {
+        String path = "data/" + ns + "/advancement/recipes/" + name + ".json";
+        if (!jar.has(path) && name.startsWith("duck_derby_mechanism_order_")) {
+            return new JsonArray();
+        }
         JsonObject advancement = Json.parse(jar.bytes("data/" + ns + "/advancement/recipes/" + name + ".json"));
         JsonArray found = null;
         for (Map.Entry<String, JsonElement> c : advancement.getAsJsonObject("criteria").entrySet()) {

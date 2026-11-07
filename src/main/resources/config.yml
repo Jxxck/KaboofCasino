@@ -138,6 +138,18 @@ plinko:
   idle-light-ticks: 4
   idle-light-range: 16
 
+derby:
+  # Entenrennen. -1 = Quoten wie im Mod: jede der vier Enten gewinnt mit 1/4, Erster zahlt 3x, Zweiter gibt den
+  # Einsatz zurück (RTP 100 %). 0..100 = erzwungene Gewinnchance der eigenen Ente, nur solo (CasinoOdds des Mods;
+  # RTP 3p + (1-p)/3, unter 25 mit Hausvorteil). Gruppenrennen gibt es nur bei -1 oder 25 und immer mit 1/4.
+  win-chance: -1
+  # true: mindestens eines der zwölf Felder braucht festen Boden darunter (Permadeath: kein Becken über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
+  # 12 Lämpchen am Schild (Lauflicht im Leerlauf).
+  idle-light-ticks: 4
+  idle-light-range: 16
+
 music:
   # Lounge-Musik des Mods an eingeschalteten Casino-Lautsprechern: 6 Stücke von Kevin MacLeod (CC BY 4.0), im Umkreis
   # von 48 Blöcken um den nächsten Lautsprecher, bis 12 Blöcke volle Lautstärke (Regler "Jukebox/Notenblöcke").
