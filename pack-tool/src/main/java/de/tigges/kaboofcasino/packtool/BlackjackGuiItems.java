@@ -80,6 +80,14 @@ final class BlackjackGuiItems {
 
     /** A model of flat quads (all textures as variables {@code t0, t1, ...}) for an item in {@code slot}. */
     static JsonObject model(int slot, List<Quad> quads) {
+        return model(TEXTURE_ID, slot, quads);
+    }
+
+    /**
+     * As {@link #model(int, List)} with the quads' textures below {@code textureId} (another game's directory); a
+     * texture name with a namespace ({@code kaboofcasino:item/...}) is used as it is.
+     */
+    static JsonObject model(String textureId, int slot, List<Quad> quads) {
         int s = scaleFor(slot, quads);
         int minX = Integer.MAX_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -93,7 +101,7 @@ final class BlackjackGuiItems {
             if (index < 0) {
                 index = names.size();
                 names.add(q.texture());
-                textures.addProperty("t" + index, TEXTURE_ID + q.texture());
+                textures.addProperty("t" + index, textureRef(textureId, q.texture()));
             }
             JsonObject face = new JsonObject();
             face.add("uv", Json.array(0, 0, 16, 16));
@@ -114,7 +122,7 @@ final class BlackjackGuiItems {
         if (maxX - minX <= 16 && maxY - minY <= 16) {
             throw new IllegalArgumentException("slot " + slot + ": a model of at most 16x16 px is not drawn oversized");
         }
-        textures.addProperty("particle", TEXTURE_ID + names.get(0));
+        textures.addProperty("particle", textureRef(textureId, names.get(0)));
         JsonObject gui = new JsonObject();
         gui.add("rotation", Json.array(0, 0, 0));
         gui.add("translation", Json.array(0, 0, 0));
@@ -125,6 +133,10 @@ final class BlackjackGuiItems {
         model.add("elements", elements);
         model.add("display", Json.object("gui", gui));
         return model;
+    }
+
+    private static String textureRef(String prefix, String name) {
+        return name.indexOf(':') >= 0 ? name : prefix + name;
     }
 
     static void texture(PackTree tree, String name, BufferedImage image) {

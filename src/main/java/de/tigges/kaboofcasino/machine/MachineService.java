@@ -191,8 +191,11 @@ public final class MachineService {
                 }
             }
         }
-        boolean tableNeedsSupport = type == MachineType.BLACKJACK_TABLE ? config.get().blackjack().needsSupport()
-                : config.get().roulette().needsSupport();
+        boolean tableNeedsSupport = switch (type) {
+            case BLACKJACK_TABLE -> config.get().blackjack().needsSupport();
+            case POKER_TABLE -> config.get().poker().needsSupport();
+            default -> config.get().roulette().needsSupport();
+        };
         if (!supportOk(type, supported, bottom, tableNeedsSupport)) {
             return Placement.of(PlaceResult.NO_SUPPORT);
         }

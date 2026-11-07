@@ -17,8 +17,8 @@ import java.util.Objects;
  * @param music    the speakers' lounge music and its optional pack (render.md 6)
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
-                           Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Lights lights,
-                           Music music) {
+                           Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker,
+                           Lights lights, Music music) {
 
     /**
      * @param enabled        send the pack at all
@@ -115,6 +115,16 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     }
 
     /**
+     * {@code poker:} (Casino Hold'em against the house dealer).
+     *
+     * @param bias         the mod's admin setting "which side the cards favour" (-100..100, default 0 = a fair deck;
+     *                     {@code CasinoSettings.bias}); the win chance does not apply to poker in the mod
+     * @param needsSupport at least one of the twelve cells needs solid ground below (false = the mod)
+     */
+    public record Poker(int bias, boolean needsSupport) {
+    }
+
+    /**
      * {@code music:}.
      *
      * @param enabled offer the optional music pack at login and play the mod's lounge music near switched-on
@@ -147,6 +157,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Slot(-1, 4, 16, true),
             new Slot(-1, 0, 16, true),
             new Blackjack(0, true),
+            new Poker(0, true),
             new Lights(4),
             new Music(true));
 }

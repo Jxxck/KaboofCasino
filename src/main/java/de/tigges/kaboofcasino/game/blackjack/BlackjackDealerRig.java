@@ -51,10 +51,19 @@ public final class BlackjackDealerRig {
      * {@code (float) now + (float) phase} (the mod's float arithmetic), then the play input of {@code view}.
      */
     public static DealerIdleAnimation.Pose pose(BlackjackTableState view, double now, long phase) {
-        DealerIdleAnimation.Pose pose = new DealerIdleAnimation.Pose();
-        DealerIdleAnimation.evaluate((float) now + (float) phase, pose);
         DealerPlayAnimation.Input input = new DealerPlayAnimation.Input();
         view.dealerInput(now, input);
+        return pose(input, now, phase);
+    }
+
+    /**
+     * The dealer's pose at {@code now} for a play input another table view produced at {@code now} (the poker table:
+     * {@code PokerTableState.dealerInput}; same model, idle loop and gestures): idle at {@code (float) now +
+     * (float) phase}, then {@code input} applied.
+     */
+    public static DealerIdleAnimation.Pose pose(DealerPlayAnimation.Input input, double now, long phase) {
+        DealerIdleAnimation.Pose pose = new DealerIdleAnimation.Pose();
+        DealerIdleAnimation.evaluate((float) now + (float) phase, pose);
         DealerPlayAnimation.apply(input, pose);
         return pose;
     }
@@ -70,7 +79,7 @@ public final class BlackjackDealerRig {
      * True while the dealer moves fast: a gesture runs, the watch fades in or out (10 ticks), or the watch's finger
      * tap runs ({@code DealerPlayAnimation.watch}: cycle 95..123 of 150).
      */
-    static boolean fast(DealerPlayAnimation.Input in) {
+    public static boolean fast(DealerPlayAnimation.Input in) {
         if (in.kind != DealerPlayAnimation.Kind.NONE) {
             return true;
         }

@@ -1,8 +1,8 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
-GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1,
-2, 3 and 5 built, how the next games plug in, and the pitfalls found on the way.
+GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
+to 6 built, how the next games plug in, and the pitfalls found on the way.
 
 Licence: MineVegas Casino is MIT with an attribution condition. Every public description must link
 https://www.curseforge.com/minecraft/mc-mods/minevegas-casino (it is in `pack.mcmeta`, `credits/CREDITS.md` in the
@@ -52,6 +52,7 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `game.plinko` | `PlinkoGame`, `PlinkoDrop`, `PlinkoLights` (verbatim ports), `PlinkoController`, `PlinkoRig`, `PlinkoMenu` |
 | `game.roulette` | `RouletteSpin` (verbatim port), `RouletteGame` (colours, payouts, forced pools), `RouletteController`, `RouletteRig`, `RouletteMenu` (9 slots, one colour), `RoulettePanel` |
 | `game.blackjack` | verbatim ports (`BlackjackRound`, `BlackjackShoe` + `copy()`, `BlackjackCards`, `BlackjackBias`, `BlackjackLayout`, `BlackjackCardMotion`, `BlackjackCardGeometry`, `BlackjackTableState`, `BlackjackFootprint`, `Dealer*`), `ShoeRandom`, `BlackjackStand` (stand result on a shoe copy), `BlackjackPayout`, `BlackjackController` (hand, PLAYING records, timeout/quit/death stand), `BlackjackRig` + `BlackjackDealerRig` + `BlackjackCardRig`, `BlackjackPanel`, `BlackjackBetMenu`, `BlackjackRoundMenu`, `BlackjackSnapshot` |
+| `game.poker` | verbatim ports (`PokerRound`, `PokerHands`, `PokerBias`, `PokerLayout`, `PokerTableState`, `PokerTableGeometry`; the shoe, cards, dealer and card motion are blackjack's), `PokerCall` (the called outcome on a shoe copy), `PokerPayout`, `PokerController` (hand, PLAYING records, timeout/quit/death fold), `PokerRig`, `PokerPanel`, `PokerBetMenu`, `PokerRoundMenu`, `PokerSnapshot` |
 | `deco.full` | the 27 full-cube deco blocks on 72 reserved `down=true` mushroom states (`FullDecoStates`, persistent table `tools/census/chosen-states.txt`), vanilla mushroom block items with `block_state`/`item_model`, drops, explosions, pistons, pilaster connections (`PilasterChoice`), the Paper-switch guard |
 | `deco.display` | the 41 display-entity deco types (`DecoType`): chunk-PDC records (`kaboofcasino:deco`), carriers (barrier / light + interaction / vanilla stairs and slabs), rigs, placement and support rules, connections (tables, bars, rope posts, the sofa's verbatim `SofaLayout`), protection, candle flames |
 | `seat` | sitting on chairs, stools and sofas: a non-persistent item-display vehicle, the mod's dismount search, forced stand-up on danger/combat/damage/quit/death/teleport, rescue of players found inside deco barriers |
@@ -167,7 +168,10 @@ The forward has to exist for that mode.
   death, the watchdog and the join after a crash therefore need no game logic: they settle the stored payout, which
   is exactly what the table then shows (the live hand stands as soon as its owner is gone). The double down is the
   game's rule: neither `bets.max-stake` nor the owed list stops it (the mod checks neither).
-  A PLAYING record's `ends` is its last revision + 60 s (deal, hit, double, result); the table owns its records
+  Poker (step 6) uses the same records: at DEAL the payout is the fold (nothing); at CALL the outcome after turn and
+  river is computed on a shoe copy (`PokerCall`) and written together with the call stake (2 x the ante); see
+  section 10, step 6.
+  A PLAYING record's `ends` is its last revision + 60 s (deal, hit, double, call, result); the table owns its records
   while its hand logic ran within 2 s (the heartbeat beats only after it) and until `ends` + 60 s grace, so a stuck
   hand (exception loop, missing rig) hands them to the watchdog (`BlackjackOwnershipTest`).
 - Ledger version 2 = PLAYING exists; it is written only while such a record is open (`LedgerCodec.version`), so a
@@ -330,10 +334,9 @@ provider definitions from the 26.3 client jar, see its README).
    slots); register it in the `machines.games(...)` switch in `KaboofCasinoPlugin`.
 4. Rounds go through `WagerEngine.commitAll` via `MachineController.commit`. Instant games: decide → commit →
    animate → `settleRound(NORMAL)` per record at the mod's payout tick, exactly like the wheel. Card games
-   (blackjack, poker next): `RoundState.PLAYING` records whose payout is the timeout rule's result (stand/fold)
+   (blackjack, poker): `RoundState.PLAYING` records whose payout is the timeout rule's result (stand/fold)
    computed on a copy of the shoe before every decision, rewritten with `WagerEngine.revise` (a mid-round stake goes
-   into the same call); see `BlackjackController`, `BlackjackStand`, `ShoeRandom`. Poker can reuse the shoe copy
-   and the PLAYING record as they are. Derby: `ENROLLED` (refund on quit/death) → `DECIDED` at the race start (a
+   into the same call); see `BlackjackController`/`BlackjackStand` and `PokerController`/`PokerCall`. Derby: `ENROLLED` (refund on quit/death) → `DECIDED` at the race start (a
    new state means a new ledger version written only while such a record is open, see `LedgerCodec.version`).
 5. Pack: a `<Game>Pack` + `<Game>Gui` class in the pack tool; GUI art glyphs go through `GuiFont.art/grid` with their
    window position, text positions are anchors (`GuiFont.anchor`, drawn with `TitleBuilder.text(anchor, …)`). Check
@@ -660,6 +663,85 @@ that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound 
   the eight cells on a sturdy block; the mod's `BlackjackTableBlock.canSurvive` is always true (`false` restores
   that). One supported cell is enough, so a table can still reach over a hole, as the roulette.
 
+### Step 6 (poker)
+
+The mod's poker is **Casino Hold'em against the house**: one player per table plays against the drawn dealer (no NPC
+entity, no other players in the hand, no pot between players, no side pots, no rake). The three seats are only
+positions: the hand is dealt to the seat nearest the player (`PokerLayout.nearestSeat`); someone else clicking a
+running table, or a table whose owner has the bet menu open, gets "<name> spielt an diesem Tisch.". Rules, timing,
+texts and sounds are the mod's: the pure classes are verbatim ports (`PokerRound`, `PokerHands`, `PokerBias`,
+`PokerLayout`, `PokerTableState`, `PokerTableGeometry`; two redundant array casts of the decompiler removed for
+-Xlint). One deck, reshuffled before every hand (`needsShuffle` is < 60 cards); deal player, dealer (face down),
+player, dealer, flop; the decision opens at t = 209 with a 600-tick timer that folds ("Die Zeit ist um: Du steigst
+aus."). CALL takes 2 x the ante of every bet slot from the storage slots (plain items per item kind, like
+`takeCallStake`; not enough: "Du hast nicht genug Gegenstände zum Mitgehen (zweimal den Einsatz).", nothing changes),
+deals turn and river, reveals the dealer's cards (index 1, then 0 after 22 ticks) and resolves 46 ticks later. The
+dealer qualifies with a pair of 4s; not qualified: the ante pays the paytable and the call pushes; otherwise win
+(ante paytable + call 1:1), push (refund) or loss. Ante paytable: royal flush 100:1, straight flush 20:1, four of a
+kind 10:1, full house 3:1, flush 2:1, anything else 1:1. A fold loses the ante; the dealer's cards stay hidden.
+Payouts per stake: `thirds` of the called stake (3 x the ante) in thirds of an item, so they always come out whole;
+the roll of `CasinoExchange.payout` comes from the round's seed and the bet slot. Differences:
+
+- **RTP** (`tools/rtp/PokerRtp.java`; every one of the 27 813 810 024 000 deals counted exactly, grouped by the five
+  board cards, 268 s): with the mod's own strategy (`PokerBias.simpleCall`) **0.984468006 per item staked** (ante +
+  calls; net -4.2727 % of the ante), calls 87.5 %, player wins (win + no-qualify) 0.491145; the optimal strategy (call
+  iff the call EV >= -1 ante) 0.991827 per item, house edge 2.1576 % of the ante (the published 2.16 %); always
+  calling 0.973668. Monte Carlo of the exact game path (java.util.Random LCG, the mod's Fisher-Yates, 8e9 hands)
+  0.98447715 +- 0.0000109. The mod's table says RETURN 98.2 %, WON 49.1 % (bias 0; its 40 000-hand measurement has
+  an SE of ~0.5 points). `PokerRtpSimulationTest` plays 10^7 hands through `PokerRound`/`BlackjackShoe`/`FairPayout`
+  (0.98445 +- 0.00031, outcome counts identical to the tool's replay, ~97 s) plus rigged shoes for every result
+  and paytable line. The payout thirds always come out whole (stake 3 x ante after the call), so the roll and odd
+  antes never matter.
+
+- **Records**: at DEAL every filled bet slot becomes one PLAYING record holding the fold (payout nothing) - the mod's
+  timeout rule, PLAN decision 2. At CALL the outcome after turn and river is computed on a copy of the shoe with the
+  round's own draw and bias (`PokerCall`, prediction = table checked by `PokerCallTest` for 40 000 hands at random
+  decision times, with and without bias); the records get 3 x the ante as stake, the call stake is taken and the
+  outcome becomes the payout in **one** ledger write (`WagerEngine.revise`, all slots of the hand together); only
+  then the live round deals. So quit, kick, stop, crash, death and the watchdog settle a fold before the call and the
+  final outcome after it, without game logic. The live hand folds at once when its owner is gone during the decision
+  (the mod waits for its 30 s timeout, with the same result), so the table shows what was paid; after the call
+  nothing is left to decide and the table plays the hand out. At the decision the records are rewritten with the
+  table's result (same value) and settle 22 ticks later with the first payout coin, one coin every 3 ticks.
+- After a restart or chunk unload the mod refunds an undecided wager (`recoverInterrupted`); here the stored fold or
+  called outcome is paid (PLAN decision 2). A table removed while loaded (admin) refunds an undecided hand in full,
+  including a paid call, as the mod's `onTableBroken` does.
+- A CALL in danger is refused and closes the menu (the hand runs on and times out to a fold, as the mod's timer
+  would); FOLD only gives up the ante and stays allowed. The mod has no danger rule.
+- The call ignores `bets.max-stake` and the owed list like the mod (it is part of the hand).
+- Bias ("which side the cards favour") is `poker.bias` (default 0), exchange rules and per-table settings are not
+  built. `poker.needs-support: true` (default) wants one of the twelve cells on a sturdy block (the mod: always).
+- Recipe: the mod's (with the Croupier's Badge); until step 8 tables come from `/casino give poker_table`.
+- Look (`PokerRig`, `PokerPanel`; pack `PokerPack`): the table is the mod's twelve block models `poker_0..11` as item
+  displays at their cells (turned like the blockstate, view range 2.0); the dealer is blackjack's eight-part rig at the
+  same `DealerPlacement`, posed from `PokerTableState.dealerInput` (shuffle, deal aimed at the slot, flip, pay /
+  collect / push toward the seat, celebrate, clear, and watching the player's seat during the decision); cards are
+  blackjack's card displays at the `PokerLayout` slots (two at the player's seat, the dealer's two face down until
+  revealed, index 1 first, five board cards, up to seven deck cards while shuffling). Same cadence and shared idle
+  budget as blackjack; distances from the anchor centre to the player's eyes (the mod's BER rule). Idle 20 entities,
+  peak 30 plus coins (render.md: 22/31); culling box 5.2 x 2.25 covering every pose in all facings
+  (`PokerGeometryTest`, also against an independent evaluation of the mod's formulas). The spectator panel (text
+  display above the board, 10 blocks, hard cut) shows head + name, the stakes, "DU <hand>" and "CROUPIER <hand>" (red
+  when the dealer does not qualify) and the result from 4 ticks after the decision, via the mod's lang keys; no felt
+  frame or 3D item icons. Coins fly from the seat's bet spot (`eject` at 15.5 px).
+- GUIs (`PokerBetMenu`, `PokerRoundMenu`; pack `PokerGui`, `PokerGuiArt`, `PokerGuiItems`): the bet view is the mod's
+  366 x 266 art recomposed like blackjack (bet frames on grid slots 29/31/33, AUSTEILEN 72 x 18 over 48-50, bets book
+  45, the paytable "DER EINSATZ ZAHLT" with the odds computed from `PokerHands.antePays`, MITGEHEN 2 x Einsatz 1:1,
+  CROUPIER Ab Paar Vieren / sonst bezahlt; 15 plain columns cut from the payout panel). The round view is a second
+  chest opened in the DEAL click: the mod's 160 x 196 panel pieces rebuilt 304 px wide with dealer box | board |
+  player box side by side (only one 32 px card row fits above the chest): board cards in slots 0/2/3/5/6, dealer cards
+  9/10, player cards 16/17, hand names 18/26 (the dealer's red when he does not qualify), EINSATZ / BILANZ label 19,
+  status / result 22, stakes 27-29 (the ante, "x3" in 43 after the call, like `anteStakes`), the NET lines per item
+  kind at the result (signed, up to 6), timer bar 39 (red at 38 steps or fewer), MITGEHEN over 45-48 (greyed unless
+  the decision is open and 2 x the ante of every item kind is in the storage slots) and AUSSTEIGEN over 50-53. The
+  mod's client timing: cards appear 22 ticks after the deal, a dealer card's face 8 ticks after the reveal, buttons
+  locked 6 ticks after a press; keyboard shortcuts do not exist in a chest. The controller refreshes the open round
+  menu every tick (only changed slots are sent) and closes it when the hand is over; the owner's right-click reopens
+  it during the hand. Deviations of the art: buttons 68 px each with a 22 px gap (to match the click areas), longer
+  German texts drawn unscaled, NET columns 54 / 36 px apart.
+- A hand older than 6 000 ticks is treated as stuck (a listener error): it ends, its records settle as stored and the
+  table is free again (the longest real hand is ~1 000 ticks plus coins).
+
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
@@ -676,7 +758,14 @@ exact outcome counts of `tools/rtp/BlackjackRtp.java`'s replay, rigged shoes for
 `WagerEngineReviseTest`, `BlackjackPlacementTest` (the mod's part order, chunk fit), `BlackjackGeometryTest` /
 `BlackjackModelsTest` (dealer and card transforms against an independent ModelPart/PoseStack evaluation, culling
 box), `BlackjackPackKeysTest`, `BlackjackPanelTest`, `BlackjackRoundMenuTest`, `BlackjackGuiTest` and
-`BlackjackGuiPreviewTest` (`build/reports/gui/blackjack-*-preview-<W>x<H>.png`). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
+`BlackjackGuiPreviewTest` (`build/reports/gui/blackjack-*-preview-<W>x<H>.png`). Step 6 adds `PokerRtpSimulationTest` (10^7 hands
+through the shipped classes, outcome counts identical to `tools/rtp/PokerRtp.java`'s replay, rigged shoes for every
+result and paytable line), `PokerCallTest` (call prediction = table for 40 000 hands, timeout fold, qualifier
+boundary), `PokerPayoutTest` (every result and paytable line, signed NET lines), `PokerOwnershipTest`,
+`PokerPlacementTest` (the mod's 4 x 3 part order, chunk fit), `PokerGeometryTest` (table, dealer and cards against an
+independent evaluation of the mod's renderer maths, culling box, entity budget), `PokerPanelTest`, `PokerPackKeysTest`,
+`PokerPackTest`, `PokerRoundMenuTest`, `PokerGuiTest` and `PokerGuiPreviewTest`
+(`build/reports/gui/poker-*-preview-<W>x<H>.png`). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
 evaluated with the client's condition semantics), the display-deco tests (`DecoBlockstateTest`: every state of the mod's
 blockstates picks the same model and turn; `DecoGeometryTest`, `DecoTransformTest`, `DecoRulesTest`, `SofaLayoutTest`,
 `DecoPackKeysTest`, `DecoDisplayPackTest`: 280 baked stair states against vanilla's shapes), `SeatMathTest`, the
@@ -715,6 +804,20 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice    # inven
 testing/craft-test.sh                                                    # crafting vetoes and the reel recipe
 ```
 
+Poker on the test instance (table #1 placed at 90 -58 41 from 90.5 -57 44.5; bet slots 29/31/33 (click a slot to
+select it, right-click an inventory item for +1), AUSTEILEN 49, MITGEHEN 46, AUSSTEIGEN 51; the decision opens 10.5 s
+after the deal; `poker.bias: 100` + `/casino reload` makes winning hands likely; helper
+`scratchpad/casino/pk.sh open|deal|call|fold|ends|ledger`):
+
+```bash
+$T/ptest.sh rcon "casino give poker_table Alice" "give Alice diamond 20" "tp Alice 90.5 -57 44.5 180 20"
+$T/ptest.sh b Alice hotbar 0; $T/ptest.sh b Alice place 90 -58 41 up                 # place
+$T/ptest.sh bx Alice 5 OPEN place 90 -57 42 south                                    # bet menu
+$T/ptest.sh b Alice click 82 right; $T/ptest.sh b Alice click 49                      # 1 diamond, AUSTEILEN
+sleep 11; $T/ptest.sh b Alice click 46                                               # MITGEHEN (51 AUSSTEIGEN)
+$T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice                # PLAYING record, x3, outcome
+```
+
 ## 12. Before going live
 
 - Default `pack.serve: minecraft-port`: no port forward needed; the URL is `http://5.9.137.26:25565/pack/<sha1>.zip`.
@@ -736,6 +839,13 @@ testing/craft-test.sh                                                    # craft
   the live `messages_de.yml` so the new credits text is merged in. `config.yml` gets `music.enabled: true`. The casino
   pack grows to ~4.7 MB; the music pack (~22 MB) is offered after it, optional; clients that accepted the casino pack
   usually accept it silently (a second resource reload at login).
+- Step 6 ships as `KaboofCasino-0.6.0.jar`: remove `KaboofCasino-0.5.0.jar`. The live `config.yml` gets `poker:`
+  (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `item.poker-table`, `poker.*` and `gui.poker.*`
+  keys; no database migration, no new ledger version (poker hands use the PLAYING records of 0.4.0). The casino pack
+  grows to ~5.0 MB, so the 300 s hard cap now asks for 16.3 KiB/s on average, slightly more than the 16 KiB/s
+  minimum (unchanged values; `DownloadDeadlineTest`'s steady-download bound now follows the pack size). Tables come from `/casino give poker_table` until the croupier hands
+  out badges (step 8). A three-slot poker hand holds three PLAYING records, so the live `rounds.max-open: 4` allows
+  one poker hand plus one more stake.
 - Step 5 ships as `KaboofCasino-0.4.0.jar`: remove `KaboofCasino-0.3.0.jar`. The live `config.yml` gets `blackjack:`
   (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `blackjack.*`, `gui.blackjack.*` and
   `machine.chunk-border-far` keys; no database migration. Ledgers become version 2 only while a blackjack hand is

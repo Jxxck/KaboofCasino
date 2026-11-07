@@ -27,7 +27,13 @@ public enum MachineType {
      * (p % 4 - 1, 0, p / 4 - 1), anchor = the placed cell = part 5; row -1 is the dealer's flat edge (behind), row 0
      * the players' round edge (front). The mod needs no support below.
      */
-    BLACKJACK_TABLE("blackjack_table", blackjack(), 0, false, false);
+    BLACKJACK_TABLE("blackjack_table", blackjack(), 0, false, false),
+    /**
+     * 4 wide x 3 deep x 1 Casino Hold'em table (games.md 4, {@code PokerTableBlock.partPos}): part p at
+     * (p % 4 - 1, 0, p / 4 - 1), anchor = the placed cell = part 5; row -1 is the dealer's edge, rows 0 and +1 the
+     * players' side. The mod needs no support below.
+     */
+    POKER_TABLE("poker_table", poker(), 0, false, false);
 
     private final String id;
     private final int[][] footprint;
@@ -51,6 +57,15 @@ public enum MachineType {
     /** True if the bottom row needs centre support below (the mod's {@code canSurvive}). */
     public boolean needsSupport() {
         return support;
+    }
+
+    /** Parts 0..11 of the poker table, in the mod's part order. */
+    private static int[][] poker() {
+        int[][] out = new int[12][];
+        for (int part = 0; part < 12; part++) {
+            out[part] = new int[] {part % 4 - 1, 0, part / 4 - 1};
+        }
+        return out;
     }
 
     /** Parts 0..7 of the blackjack table, in the mod's part order. */

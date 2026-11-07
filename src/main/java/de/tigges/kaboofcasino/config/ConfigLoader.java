@@ -72,6 +72,8 @@ public final class ConfigLoader {
                 game(r, "roulette", d.roulette()),
                 new CasinoConfig.Blackjack(r.integer("blackjack.bias", d.blackjack().bias(), -100, 100),
                         r.bool("blackjack.needs-support", d.blackjack().needsSupport())),
+                new CasinoConfig.Poker(r.integer("poker.bias", d.poker().bias(), -100, 100),
+                        r.bool("poker.needs-support", d.poker().needsSupport())),
                 new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
                         100)),
                 new CasinoConfig.Music(r.bool("music.enabled", d.music().enabled())));

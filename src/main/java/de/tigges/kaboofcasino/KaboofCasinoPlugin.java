@@ -152,6 +152,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             case PLINKO -> new PlinkoController(machine, ctx);
             case ROULETTE_TABLE -> new RouletteController(machine, ctx);
             case BLACKJACK_TABLE -> new de.tigges.kaboofcasino.game.blackjack.BlackjackController(machine, ctx);
+            case POKER_TABLE -> new de.tigges.kaboofcasino.game.poker.PokerController(machine, ctx);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         for (Listener l : List.of(menus, new MenuListener(menus, Bukkit::getCurrentTick,

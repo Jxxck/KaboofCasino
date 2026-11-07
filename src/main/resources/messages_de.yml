@@ -30,6 +30,13 @@ blackjack:
   cannot-double: "<yellow>Du hast nicht genug Gegenstände zum Verdoppeln."
   timeout: "<yellow>Die Zeit ist um: Du bleibst stehen."
 
+poker:
+  # message.roulettecasino.poker.busy / no_bet / cannot_call / timeout
+  busy: "<yellow><name> spielt an diesem Tisch."
+  no-bet: "<yellow>Setze einen Einsatz, bevor du spielst."
+  cannot-call: "<yellow>Du hast nicht genug Gegenstände zum Mitgehen (zweimal den Einsatz)."
+  timeout: "<yellow>Die Zeit ist um: Du steigst aus."
+
 machine:
   in-use: "<yellow><name> spielt gerade an diesem Automaten."
   not-yours: "<red>Diesen Automaten kann nur <name> oder ein Admin abbauen."
@@ -162,6 +169,28 @@ gui:
     stand-lore: "<gray>Bei dieser Summe bleiben"
     double: "<gold><b>DOPPELN"
     double-lore: "<gray>Einsatz verdoppeln, 1 Karte"
+  poker:
+    # gui.roulettecasino.poker.title / ante_pays / hand_9..5 / pay_straight_less / call / call_note / qualify_note /
+    # qualify_else / deal / fold; the payout panel's EINSATZ, Gewinne and CROUPIER are gui.blackjack.stake,
+    # gui.slot.payouts and gui.blackjack.dealer like in the mod; the odds (100:1 .. 1:1) are numbers.
+    # The button lore is the text of *_tip without the key hint (the keys do not work in a chest).
+    title: "POKER"
+    ante-pays: "DER EINSATZ ZAHLT"
+    pay-royal-flush: "Royal Flush"
+    pay-straight-flush: "Straight Flush"
+    pay-four-of-a-kind: "Vierling"
+    pay-full-house: "Full House"
+    pay-flush: "Flush"
+    pay-straight-less: "Bis zur Straße"
+    call-label: "MITGEHEN"
+    call-note: "2 × Einsatz"
+    qualify-note: "Ab Paar Vieren"
+    qualify-else: "sonst bezahlt"
+    deal: "<gold><b>AUSTEILEN"
+    call: "<gold><b>MITGEHEN"
+    call-lore: "<gray>Zweimal den Grundeinsatz setzen\n<gray>und die letzten zwei Karten sehen"
+    fold: "<gold><b>AUSSTEIGEN"
+    fold-lore: "<gray>Die Hand aufgeben:\n<gray>Der Grundeinsatz ist verloren"
   bets:
     # gui.roulettecasino.bets.title
     title: "<gold>Mögliche Einsätze"
@@ -179,6 +208,8 @@ item:
   # block.roulettecasino.blackjack_table, item.roulettecasino.croupier_badge
   blackjack-table: "Blackjack-Tisch"
   croupier-badge: "Croupier-Abzeichen"
+  # block.roulettecasino.poker_table
+  poker-table: "Pokertisch"
 
 panel:
   # gui.roulettecasino.slot.panel_title, result_lose, result_push, result_win, result_jackpot

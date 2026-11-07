@@ -20,7 +20,7 @@ final class ModRecipes {
     /** The machine recipes built so far, in the mod's unlock order, then the seats. */
     static final List<String> SHIPPED = List.of("slot_machine_reel", "slot_machine_mechanism", "slot_machine",
             "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table", "blackjack_table", "casino_chair",
-            "casino_stool");
+            "casino_stool", "poker_table");
     /** Namespaces whose recipes all ship (step 4: every deco block and the speaker). */
     static final List<String> ALL_OF = List.of("casinodeco", "casinosound");
 

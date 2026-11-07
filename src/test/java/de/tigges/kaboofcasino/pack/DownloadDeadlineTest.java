@@ -224,10 +224,12 @@ class DownloadDeadlineTest {
         int second = 0;
         while (s.ch().isOpen() && second < 90) {
             second++;
-            s.socket().release(4); // 256 KiB/s: 3 MB in ~12 s
+            s.socket().release(4); // 256 KiB/s: 5 MB in ~20 s
             s.second();
         }
-        assertTrue(second < 20, "finished in " + second + " s");
+        // the pack's own size decides how long (it grows with every game); plus the second that sees the end
+        long expected = (pack.size() + 256 * 1024 - 1) / (256 * 1024);
+        assertTrue(second <= expected + 1, "finished in " + second + " s, expected " + expected + " s");
         assertEquals(0, s.host().slots().of(pack).active());
         for (DownloadPolicy.Verdict v : DownloadPolicy.Verdict.values()) {
             assertEquals(0, s.host().slots().cuts(v), v.toString());

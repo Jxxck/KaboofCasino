@@ -22,7 +22,8 @@ public enum CasinoItem {
     /** The blackjack recipe's ingredient; the mod hands it out for a hired croupier (step 8). */
     CROUPIER_BADGE("croupier_badge", "roulettecasino:croupier_badge", Msg.ITEM_CROUPIER_BADGE, null),
     BLACKJACK_TABLE("blackjack_table", "roulettecasino:blackjack_table", Msg.ITEM_BLACKJACK_TABLE,
-            MachineType.BLACKJACK_TABLE);
+            MachineType.BLACKJACK_TABLE),
+    POKER_TABLE("poker_table", "roulettecasino:poker_table", Msg.ITEM_POKER_TABLE, MachineType.POKER_TABLE);
 
     private final String id;
     private final String model;

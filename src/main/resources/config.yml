@@ -116,6 +116,15 @@ blackjack:
   # Leere). false = wie im Mod, ganz ohne Stütze.
   needs-support: true
 
+poker:
+  # Poker (Casino Hold'em gegen den Croupier, 1 Deck, jede Runde neu gemischt, Croupier spielt ab Paar Vieren).
+  # Ausrichtung der Karten wie die Admin-Einstellung des Mods: 0 = faires Deck (RTP ~98,5 % mit der Strategie des
+  # Mods). +1..+100 begünstigt die Spieler, -1..-100 den Croupier. Eine Gewinnchance gibt es beim Poker im Mod nicht.
+  bias: 0
+  # true: mindestens eines der zwölf Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
+
 lights:
   # Leerlauf-Lichter aller Automaten zusammen: höchstens so viele Updates pro Tick (reihum). Jedes Update schickt
   # alle Lampenfarben eines Automaten an alle Spieler in der Nähe; so bleibt der Verkehr begrenzt, egal wie viele

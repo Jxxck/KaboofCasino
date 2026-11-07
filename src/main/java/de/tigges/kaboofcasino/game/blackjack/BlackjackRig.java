@@ -343,7 +343,7 @@ public final class BlackjackRig {
      * shoulder sweep, period 38, loop ticks 150-235; the elbow tweak, period 26, 296-362; the finger tap, period 20,
      * 392-438; each with a margin), 8 ticks in the calm rest of the loop (breathing 90, head turns over 35+ ticks).
      */
-    static int idleEvery(long now, long phase) {
+    public static int idleEvery(long now, long phase) {
         long t = Math.floorMod(now + phase, (long) DealerIdleAnimation.LOOP);
         boolean quick = (t >= 140 && t <= 240) || (t >= 288 && t <= 366) || (t >= 384 && t <= 442);
         return quick ? IDLE_EVERY_QUICK : IDLE_EVERY;

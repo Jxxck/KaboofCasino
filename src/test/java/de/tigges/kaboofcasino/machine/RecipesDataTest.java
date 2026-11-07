@@ -101,6 +101,6 @@ class RecipesDataTest {
     private static final class Set6 {
         static final java.util.Set<String> MACHINES = java.util.Set.of("slot_machine_reel", "slot_machine_mechanism",
                 "slot_machine", "roulette_mechanism", "fortune_wheel", "plinko", "roulette_table", "blackjack_table",
-                "casino_chair", "casino_stool");
+                "casino_chair", "casino_stool", "poker_table");
     }
 }
