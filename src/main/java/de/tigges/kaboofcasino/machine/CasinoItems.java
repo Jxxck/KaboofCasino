@@ -26,8 +26,9 @@ public final class CasinoItems {
         stack.setData(DataComponentTypes.ITEM_MODEL, Key.key(item.model()));
         stack.setData(DataComponentTypes.ITEM_NAME, messages.render(item.nameMsg()));
         if (item.machine().isPresent()) {
-            stack.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(messages.render(item == CasinoItem.CASHIER
-                    ? Msg.CASHIER_ITEM_LORE : Msg.ITEM_SLOT_MACHINE_LORE))));
+            Msg lore = item == CasinoItem.CASHIER ? Msg.CASHIER_ITEM_LORE
+                    : item.machine().get().isBoard() ? Msg.BOARD_ITEM_LORE : Msg.ITEM_SLOT_MACHINE_LORE;
+            stack.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(messages.render(lore))));
         }
         if (hand) {
             // CroupierHandItem: stacksTo(1), Rarity.UNCOMMON, the grey lore line

@@ -141,6 +141,12 @@ public final class AdminTexts {
         if (type == MachineType.CASHIER) {
             return Component.translatable("item.kaboofcasino.cashier", "Kasse"); // the plugin's own: no mod text
         }
+        if (type == MachineType.LEADERBOARD_WALL) {
+            return Component.translatable("item.kaboofcasino.leaderboard_wall", "Bestenliste (Wandtafel)");
+        }
+        if (type == MachineType.LEADERBOARD_COLUMN) {
+            return Component.translatable("item.kaboofcasino.leaderboard_column", "Bestenliste (Säule)");
+        }
         return t("block.roulettecasino." + type.id());
     }
 

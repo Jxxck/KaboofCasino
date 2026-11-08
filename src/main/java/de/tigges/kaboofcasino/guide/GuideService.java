@@ -51,19 +51,28 @@ public final class GuideService {
         this.sweep = sweep;
     }
 
-    /** Loads {@value GuideBook#RESOURCE}, registers the listener and the danger check. */
+    /**
+     * Loads {@value GuideBook#RESOURCE} and the recipe pictures ({@value RecipePictures#RESOURCE}), registers the
+     * listener and the danger check.
+     */
     public void enable() {
         try (InputStream in = ctx.plugin().getResource(GuideBook.RESOURCE)) {
             book = GuideBook.load(in);
         } catch (IOException e) {
             throw new UncheckedIOException("cannot read " + GuideBook.RESOURCE, e);
         }
-        dialogs = new GuideDialogs(book);
+        RecipePictures pictures;
+        try (InputStream in = ctx.plugin().getResource(RecipePictures.RESOURCE)) {
+            pictures = RecipePictures.load(in);
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot read " + RecipePictures.RESOURCE, e);
+        }
+        dialogs = new GuideDialogs(book, pictures);
         sessions = new GuideSessions(book.size());
         items = new GuideItems(book, ctx.messages());
         Bukkit.getPluginManager().registerEvents(new GuideListener(this), ctx.plugin());
         task = Bukkit.getScheduler().runTaskTimer(ctx.plugin(), this::tick, 1L, 1L);
-        Log.get().info("KaboofCasino guide: {} spreads", book.size());
+        Log.get().info("KaboofCasino guide: {} spreads, {} recipe pictures", book.size(), pictures.all().size());
     }
 
     /** Closes every open guide (plugin disable). */
@@ -165,6 +174,7 @@ public final class GuideService {
         Messages m = ctx.messages().get();
         return new GuideTexts(m.render(Msg.GUIDE_RECIPE), m.render(Msg.GUIDE_ANY_KIND), m.render(Msg.GUIDE_CREDITS),
                 page -> m.render(Msg.GUIDE_GOTO, Messages.text("page", Integer.toString(page))), items::vanillaName,
+                id -> items.stack(id, 1),
                 Map.of(NOTE_COUNTER, m.render(Msg.GUIDE_NOTE_COUNTER), NOTE_HAND, m.render(Msg.GUIDE_NOTE_HAND),
                         NOTE_BETS, m.render(Msg.GUIDE_NOTE_BETS), NOTE_NAMES, m.render(Msg.GUIDE_NOTE_NAMES),
                         NOTE_NUMBER, m.render(Msg.GUIDE_NOTE_NUMBER), NOTE_CHIPS, m.render(Msg.GUIDE_NOTE_CHIPS)));

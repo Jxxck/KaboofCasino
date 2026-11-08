@@ -27,6 +27,28 @@ class ConfigLoaderTest {
     }
 
     @Test
+    void theLeaderboardSettings(@TempDir Path dir) throws Exception {
+        assertEquals(new CasinoConfig.Leaderboard(false, 30, 15, 25, true), CasinoConfig.DEFAULTS.leaderboard());
+        Path file = dir.resolve("config.yml");
+        Files.writeString(file, """
+                leaderboard:
+                  craftable: true
+                  refresh-seconds: 10
+                  cycle-seconds: 3
+                  min-stake: 100
+                  weekly-log: false
+                """, StandardCharsets.UTF_8);
+        ConfigLoader.Loaded loaded = ConfigLoader.load(file, ConfigLoaderTest::jar);
+        CasinoConfig.Leaderboard l = loaded.config().leaderboard();
+        assertTrue(l.craftable());
+        assertEquals(30, l.refreshSeconds(), "below 30 s: the default");
+        assertEquals(5, l.cycleSeconds(), "a cycle under 5 s is raised to 5");
+        assertEquals(100, l.minStake());
+        assertTrue(!l.weeklyLog());
+        assertTrue(loaded.warnings().stream().anyMatch(w -> w.contains("leaderboard.refresh-seconds")));
+    }
+
+    @Test
     void missingKeysAreMergedAndBadValuesFallBack(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("config.yml");
         Files.writeString(file, """

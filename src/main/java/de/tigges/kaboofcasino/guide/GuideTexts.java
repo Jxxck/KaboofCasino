@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.HoverEventSource;
 
 /**
  * The texts of the guide dialogs that are not the mod's (messages_de.yml, editable) and the names of vanilla items
@@ -14,10 +15,12 @@ import net.kyori.adventure.text.Component;
  * @param credits     the licence line on the cover (render.md 5.3)
  * @param gotoPage    hover text of a link to spread n
  * @param vanillaName the translatable name of a {@code minecraft:} item
+ * @param itemHover   the tooltip of an item in a recipe picture (the server: the item stack as the guide shows it)
  * @param notes       plugin notes shown right under a mod text (its lang key) where this server works differently
  */
 public record GuideTexts(Component recipe, Component anyKind, Component credits, IntFunction<Component> gotoPage,
-                         Function<String, Component> vanillaName, Map<String, Component> notes) {
+                         Function<String, Component> vanillaName, Function<String, HoverEventSource<?>> itemHover,
+                         Map<String, Component> notes) {
 
     public GuideTexts {
         notes = notes == null ? Map.of() : Map.copyOf(notes);

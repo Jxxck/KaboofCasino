@@ -73,6 +73,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private de.tigges.kaboofcasino.guide.GuideService guide;
     private de.tigges.kaboofcasino.admin.AdminService admin;
     private de.tigges.kaboofcasino.cashier.CashierService cashier;
+    private de.tigges.kaboofcasino.board.BoardService boards;
     private LedgerListener ledger;
     private MenuService menus;
 
@@ -151,6 +152,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                 new de.tigges.kaboofcasino.visual.LightBudget(() -> this.config.lights().maxUpdatesPerTick()));
         cashier = new de.tigges.kaboofcasino.cashier.CashierService(ctx,
                 new de.tigges.kaboofcasino.cashier.CashierLog(db));
+        boards = new de.tigges.kaboofcasino.board.BoardService(ctx, db);
+        roundLog.afterSettle(boards::roundSettled);
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
             case FORTUNE_WHEEL -> new WheelController(machine, ctx);
@@ -160,6 +163,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             case POKER_TABLE -> new de.tigges.kaboofcasino.game.poker.PokerController(machine, ctx);
             case DUCK_DERBY -> new de.tigges.kaboofcasino.game.derby.DerbyController(machine, ctx);
             case CASHIER -> cashier.controller(machine);
+            case LEADERBOARD_WALL, LEADERBOARD_COLUMN -> boards.controller(machine);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         de.tigges.kaboofcasino.music.MusicOptOut musicOptOut = new de.tigges.kaboofcasino.music.MusicOptOut(this);
@@ -168,7 +172,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         for (Listener l : List.of(menus, new MenuListener(menus, Bukkit::getCurrentTick,
                         () -> config.gui().clickGuardTicks(), () -> messages), safety, ledger, packListener, musicOptOut,
                 new MachineListener(machines, menus, () -> messages), breaks, new ProtectionListener(machines),
-                new ChunkListener(machines), new ItemVetoListener(), new SafetyListener(machines, this))) {
+                new ChunkListener(machines), new ItemVetoListener(), new SafetyListener(machines, this), boards)) {
             getServer().getPluginManager().registerEvents(l, this);
         }
         music = new de.tigges.kaboofcasino.music.MusicService(ctx);
@@ -187,8 +191,10 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         de.tigges.kaboofcasino.wager.ChipItems.register();
         Recipes.load(getClassLoader());
         cashier.enable();
+        boards.enable();
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload, () -> fullDeco.status());
+        command.boards(boards);
         command.musicOptOut(musicOptOut);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register("casino", "KaboofCasino (MineVegas Casino)", List.of(), command));
@@ -266,6 +272,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             if (cashier != null) {
                 cashier.reloaded();
             }
+            if (boards != null) {
+                boards.reloaded();
+            }
             return fullDeco == null ? warnings : warnings + fullDeco.reloaded();
         } catch (RuntimeException e) {
             Log.get().error("reload failed; the old settings stay", e);
@@ -276,6 +285,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         try {
+            if (boards != null) {
+                boards.disable();
+            }
             if (guide != null) {
                 guide.disable();
             }

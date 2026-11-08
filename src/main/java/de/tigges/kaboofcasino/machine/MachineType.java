@@ -44,25 +44,56 @@ public enum MachineType {
      * The cashier (step 9, PLAN-2 C3; no game): 2 wide x 1 deep x 2 tall, the counter (part 0 = the placed cell =
      * anchor, part 1 to the viewer's right) and its glass and sign above (parts 2, 3); both bottom cells need support.
      */
-    CASHIER("cashier", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 0, false, true);
+    CASHIER("cashier", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 0, false, true),
+    /**
+     * The leaderboard wall board (step 10, PLAN-2 C4; no game): 3 wide x 2 tall x 1 deep, hung on a wall: the clicked
+     * wall face gives the facing (the board looks away from the wall), the cell in front of it is the anchor = the
+     * bottom middle (part 1); every cell needs a full wall face behind it ({@link #onWall()}).
+     */
+    LEADERBOARD_WALL("leaderboard_wall", new int[][] {{-1, 0, 0}, {0, 0, 0}, {1, 0, 0}, {-1, 1, 0}, {0, 1, 0},
+        {1, 1, 0}}, 0, false, false, true),
+    /**
+     * The leaderboard column (step 10): 1x1x3 like the slot machine, a post with a sign board on the upper two cells;
+     * the bottom cell needs support.
+     */
+    LEADERBOARD_COLUMN("leaderboard_column", new int[][] {{0, 0, 0}, {0, 1, 0}, {0, 2, 0}}, 0, false, true);
 
     private final String id;
     private final int[][] footprint;
     private final int rise;
     private final boolean fixedFacing;
     private final boolean support;
+    private final boolean wall;
 
     MachineType(String id, int[][] footprint, int rise, boolean fixedFacing, boolean support) {
+        this(id, footprint, rise, fixedFacing, support, false);
+    }
+
+    MachineType(String id, int[][] footprint, int rise, boolean fixedFacing, boolean support, boolean wall) {
         this.id = id;
         this.footprint = footprint;
         this.rise = rise;
         this.fixedFacing = fixedFacing;
         this.support = support;
+        this.wall = wall;
     }
 
-    /** True for the seven games; false for the cashier (no rounds, no win chance or bias). */
+    /** True for the seven games; false for the cashier and the leaderboards (no rounds, no win chance or bias). */
     public boolean isGame() {
-        return this != CASHIER;
+        return this != CASHIER && !isBoard();
+    }
+
+    /** The two leaderboard kinds (step 10). */
+    public boolean isBoard() {
+        return this == LEADERBOARD_WALL || this == LEADERBOARD_COLUMN;
+    }
+
+    /**
+     * Hung on a wall: placed only against a side face, facing away from it, and every cell needs the wall block
+     * behind it to have a full face towards it (instead of support below).
+     */
+    public boolean onWall() {
+        return wall;
     }
 
     /** True if the machine has no facing (always the SOUTH frame, footprint not rotated). */

@@ -17,7 +17,8 @@ import java.util.Map;
  * PackTool --mod-jar &lt;jar&gt; --mod-sha1 &lt;hex&gt; --src &lt;pack-src&gt; --out &lt;dir&gt;
  * </pre>
  * Writes {@code KaboofCasino-pack.zip}, {@code KaboofCasino-pack.zip.sha1} and {@code gui-layout.json} into the
- * output directory, the casino guide for the plugin's dialogs {@code guide.json} ({@link GuideData}), plus the
+ * output directory, the casino guide for the plugin's dialogs {@code guide.json} ({@link GuideData}) and its recipe
+ * pictures {@code guide-pictures.json} ({@link GuidePictures}), plus the
  * optional music pack {@code KaboofCasino-music.zip} + {@code .sha1} ({@link MusicPack};
  * a separate zip with its own hash, nothing of it is in the casino pack). Same inputs give byte-identical output
  * (sorted entries, fixed timestamps, deterministic PNG and JSON writers), so the SHA-1 only changes when the content
@@ -33,7 +34,7 @@ public final class PackTool {
 
     /** The result of one build. */
     record Result(byte[] zip, String sha1, byte[] layout, byte[] recipes, int files,
-                  List<TexturePadding.Padded> padded) {
+                  List<TexturePadding.Padded> padded, GuidePictures.Result pictures) {
     }
 
     public static void main(String[] args) {
@@ -54,6 +55,7 @@ public final class PackTool {
             Files.write(out.resolve(LAYOUT), result.layout());
             Files.write(out.resolve(ModRecipes.FILE), result.recipes());
             Files.write(out.resolve(GuideData.FILE), GuideData.build(modJar));
+            Files.write(out.resolve(GuidePictures.FILE), result.pictures().manifest());
             Files.write(out.resolve(MusicPack.ZIP), music.zip());
             Files.writeString(out.resolve(MusicPack.ZIP + ".sha1"), music.sha1() + "\n", StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -61,6 +63,9 @@ public final class PackTool {
         }
         System.out.println("KaboofCasino pack: " + result.files() + " files, " + result.zip().length + " bytes, sha1 "
                 + result.sha1() + (result.padded().isEmpty() ? "" : ", padded " + result.padded()));
+        System.out.println("KaboofCasino guide pictures: " + result.pictures().pictures() + " recipes, "
+                + result.pictures().glyphs() + " glyphs in " + result.pictures().providers() + " providers, fallbacks "
+                + result.pictures().fallbacks());
         System.out.println("KaboofCasino music pack: " + music.files() + " files, " + music.zip().length
                 + " bytes, sha1 " + music.sha1());
     }
@@ -122,6 +127,8 @@ public final class PackTool {
         // step 9: the cashier (rig model, item, menu art)
         CashierPack.add(jar, tree, packSrc);
         CashierGui.add(jar, tree, font, text);
+        // step 10: the leaderboards (wall board, column post and board, the two placing items)
+        LeaderboardPack.add(jar, tree, packSrc);
         stakeMarker(tree);
         List<String> events = new java.util.ArrayList<>(SlotMachinePack.SOUND_EVENTS);
         events.addAll(WheelPack.SOUND_EVENTS);
@@ -134,6 +141,7 @@ public final class PackTool {
         events.addAll(GuidePack.SOUND_EVENTS);
         events.addAll(DecoDisplayPack.SOUND_EVENTS);
         events.addAll(ChipPack.SOUND_EVENTS);
+        events.addAll(LeaderboardPack.SOUND_EVENTS);
         Sounds.write(jar, tree, events);
         List<String> prefixes = new java.util.ArrayList<>(SlotMachinePack.LANG_PREFIXES);
         prefixes.addAll(WheelPack.LANG_PREFIXES);
@@ -147,6 +155,7 @@ public final class PackTool {
         prefixes.addAll(DecoFullPack.LANG_PREFIXES);
         prefixes.addAll(DecoDisplayPack.LANG_PREFIXES);
         prefixes.addAll(ChipPack.LANG_PREFIXES);
+        prefixes.addAll(LeaderboardPack.LANG_PREFIXES);
         Lang.filter(jar, tree, "roulettecasino", prefixes);
         // the deco and speaker texts live in the mod's other two namespaces
         for (String ns : List.of("casinodeco", "casinosound")) {
@@ -160,10 +169,12 @@ public final class PackTool {
         text.writeTo(tree, font.textRows());
         font.write();
         List<TexturePadding.Padded> padded = TexturePadding.apply(tree);
+        // the guide's recipe pictures read the final item definitions and textures
+        GuidePictures.Result pictures = GuidePictures.add(jar, tree, text);
 
         byte[] zip = ZipOut.write(tree.files());
         JsonObject layout = font.manifest(text);
         return new Result(zip, ModJar.sha1Hex(zip), Json.bytes(layout), Json.bytes(ModRecipes.build(jar)), tree.size(),
-                padded);
+                padded, pictures);
     }
 }

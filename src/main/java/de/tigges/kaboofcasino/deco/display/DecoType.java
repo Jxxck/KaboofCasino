@@ -328,8 +328,15 @@ public enum DecoType {
         return place == Place.STACKED || this == CHANDELIER_WALL_SCONCE || vanillaCarrier();
     }
 
-    /** Range of the display entities: {@code view_range} x 64 blocks (x the client's entity distance setting). */
+    /**
+     * Range of the display entities: {@code view_range} x 64 blocks (x the client's entity distance setting). Covers
+     * over vanilla stairs and slabs reach as far as the server tracks displays (128 blocks, Paper's
+     * {@code entity-tracking-range.display}), so the vanilla carrier shows only where no display could (hotfix 0.9.1).
+     */
     public float viewRange() {
+        if (vanillaCarrier()) {
+            return 2.0f;
+        }
         return switch (this) {
             case CASINO_SIGN, CASINO_CHANDELIER, CASINO_TV_LARGE, CASINO_TV_3X3 -> 2.0f;
             case CASINO_BOTTLES, CHAMPAGNE_COUPES, SHOT_GLASSES, CASINO_CHIP_PILE, RECEPTION_PLAQUE, CASH_REGISTER,

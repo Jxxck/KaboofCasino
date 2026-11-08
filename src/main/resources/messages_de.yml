@@ -53,6 +53,59 @@ cashier:
   idle-closed: "<gray>Menü geschlossen: zu lange nichts getan. Die Kasse ist wieder frei."
   tray-full: "<yellow>Höchstens 18 Sorten auf einmal."
 
+# Bestenliste (Schritt 10): Tafeln (Wand 3x2, Säule 1x3) und /casino top. Gezählt werden nur Runden mit Chips.
+# Gewinn = Auszahlung minus Einsatz einer Runde; Multiplikator = Auszahlung / Einsatz (ab leaderboard.min-stake).
+board:
+  item-wall: "Bestenliste (Wandtafel)"
+  item-column: "Bestenliste (Säule)"
+  item-lore: "<gray>Die besten Spieler des Casinos, in Chips"
+  no-wall: "<red>Häng die Tafel an eine Wand: Klicke die Seite eines festen Blocks an, dahinter brauchen alle sechs Felder Wand."
+  # Tafel: Titel und Untertitel (<period> · <unit>)
+  title: "<gold><b><category>"
+  subtitle: "<gray><period> · <unit>"
+  unit-chips: "in Chips"
+  unit-multiplier: "ab <min> Einsatz"
+  unit-rounds: "Runden"
+  empty: "<gray>Noch keine Einträge"
+  loading: "<gray>Wird berechnet …"
+  pinned: "<yellow>Diese Tafel ist fest eingestellt."
+  category:
+    gewinn: "Größter Gewinn"
+    multiplikator: "Höchster Multiplikator"
+    netto: "Netto-Gewinn"
+    einsatz: "Gesetzte Chips"
+    runden: "Meiste Runden"
+    spielautomat: "Spielautomat"
+    gluecksrad: "Glücksrad"
+    plinko: "Plinko"
+    roulette: "Roulette"
+    blackjack: "Blackjack"
+    poker: "Poker"
+    entenrennen: "Entenrennen"
+  period:
+    woche: "Diese Woche"
+    gesamt: "Gesamt"
+  hidden: "<gray>Du erscheinst nicht mehr in der Bestenliste (ab der nächsten Aktualisierung). Mit <white>/casino bestenliste an</white> wieder."
+  shown: "<green>Du erscheinst wieder in der Bestenliste (ab der nächsten Aktualisierung)."
+  hide-usage: "<gray>/casino bestenliste aus|an – dich in der Bestenliste ausblenden oder wieder zeigen."
+  top-usage: "<gray>/casino top [<categories>] [woche|gesamt]"
+  top-header: "<gold>Bestenliste – <category></gold> <gray>(<period>, <unit>)"
+  top-line: "<gray><rank>. <white><name></white> – <gold><value>"
+  top-empty: "<gray>Noch keine Einträge."
+  top-loading: "<gray>Die Bestenliste wird gerade berechnet. Versuch es gleich noch mal."
+  top-you-hidden: "<dark_gray>Du bist ausgeblendet (/casino bestenliste an)."
+  # Dialog der Hand des Croupiers an einer Tafel (Kreativ + kaboofcasino.admin)
+  pin-title: "Bestenliste #<number>"
+  pin-state: "<gray>Kategorie: <white><category></white> · Zeitraum: <white><period></white>"
+  pin-help: "<gray>Fest eingestellt bleibt die Tafel dabei. Automatisch blättert sie alle paar Sekunden weiter, Rechtsklick wechselt die Kategorie."
+  pin-auto-category: "Kategorie: automatisch"
+  pin-auto-period: "Zeitraum: automatisch"
+  pin-auto: "automatisch"
+  pin-done: "Fertig"
+  pin-saved: "<green>Bestenliste #<number>: <category>, <period>."
+  # Wochensieger im Server-Log (nicht im Spiel gezeigt): <week> = "03.11.–09.11.2026", <lines> = je Kategorie die Top 3
+  weekly: "Bestenliste der Woche <week>: <lines>"
+
 shop:
   price-lore: "<gold>Preis: <price>"
   count-lore: "<gray><count> Stück pro Kauf"
@@ -265,8 +318,8 @@ pack:
   music-prompt: "<gold>KaboofCasino</gold>: freiwillige Lounge-Musik an Casino-Lautsprechern (ca. 22 MB) – Musik: Kevin MacLeod (incompetech.com), CC BY 4.0"
 
 command:
-  info: "<gold>KaboofCasino</gold> <gray>– Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino abholen · /casino credits"
-  usage: "<gray>/casino [stats|abholen|credits|musik] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
+  info: "<gold>KaboofCasino</gold> <gray>– Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino top · /casino abholen · /casino credits"
+  usage: "<gray>/casino [stats|top|bestenliste|abholen|credits|musik] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
   give-done: "<green><player> hat <item> bekommen."
   give-unknown: "<red>Unbekannte Maschine: <name>. Möglich: <list>"
   player-unknown: "<red>Spieler <name> ist nicht online."

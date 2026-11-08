@@ -43,7 +43,7 @@ class CashierLogTest {
                 try (Statement st = c.createStatement();
                      ResultSet rs = st.executeQuery("SELECT MAX(version) FROM schema_version")) {
                     rs.next();
-                    assertEquals(3, rs.getInt(1));
+                    assertEquals(4, rs.getInt(1)); // schema 4 (step 10) came after the cashier
                 }
                 try (PreparedStatement ps = c.prepareStatement("SELECT player, player_name, kind, machine, items_in, "
                         + "items_out, chip_value, owed, detail, at FROM cashier ORDER BY id");
@@ -71,7 +71,10 @@ class CashierLogTest {
                 // back to schema 2, as a 0.8.0 database
                 try (Statement st = c.createStatement()) {
                     st.executeUpdate("DROP TABLE cashier");
-                    st.executeUpdate("DELETE FROM schema_version WHERE version = 3");
+                    st.executeUpdate("DROP INDEX rounds_board"); // schema 4 (step 10) as well
+                    st.executeUpdate("DROP TABLE board_hidden");
+                    st.executeUpdate("DROP TABLE board_weeks");
+                    st.executeUpdate("DELETE FROM schema_version WHERE version >= 3");
                 }
             });
         }

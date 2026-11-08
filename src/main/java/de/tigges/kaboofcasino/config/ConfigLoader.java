@@ -78,7 +78,17 @@ public final class ConfigLoader {
                 new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
                         100)),
                 new CasinoConfig.Music(r.bool("music.enabled", d.music().enabled())),
-                de.tigges.kaboofcasino.cashier.CashierSettings.read(y, warnings));
+                de.tigges.kaboofcasino.cashier.CashierSettings.read(y, warnings),
+                leaderboard(r, d.leaderboard()));
+    }
+
+    private static CasinoConfig.Leaderboard leaderboard(Reader r, CasinoConfig.Leaderboard d) {
+        int cycle = r.integer("leaderboard.cycle-seconds", d.cycleSeconds(), 0, 600);
+        return new CasinoConfig.Leaderboard(r.bool("leaderboard.craftable", d.craftable()),
+                r.integer("leaderboard.refresh-seconds", d.refreshSeconds(), 30, 3600),
+                cycle > 0 && cycle < 5 ? 5 : cycle,
+                r.integer("leaderboard.min-stake", d.minStake(), 1, 1_000_000),
+                r.bool("leaderboard.weekly-log", d.weeklyLog()));
     }
 
     private static CasinoConfig.Slot game(Reader r, String section, CasinoConfig.Slot d) {

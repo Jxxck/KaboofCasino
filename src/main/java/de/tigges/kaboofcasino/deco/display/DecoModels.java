@@ -18,8 +18,13 @@ import org.joml.Vector3f;
 public final class DecoModels {
 
     public static final String PREFIX = "kaboofcasino:deco/";
-    /** Scale of displays over a vanilla carrier (render.md 4.4: just outside the carrier's faces, no z-fighting). */
-    public static final float VANILLA_SCALE = 1.002f;
+    /**
+     * Scale of the cover over a vanilla stair or slab carrier, about {@link #coverPivot}: every face of the cover lies
+     * at least {@code (VANILLA_SCALE - 1) / 4} = 0.008 blocks outside the carrier's face (at most 0.024), enough depth
+     * for the client to draw the cover in front of the carrier at every distance it renders the display (hotfix
+     * 0.9.1: 0.9.0 scaled 1.002 about the block centre, see {@link #coverPivot}).
+     */
+    public static final float VANILLA_SCALE = 1.032f;
 
     private static final Quaternionf R180 = new Quaternionf().rotationY((float) Math.PI);
 
@@ -190,9 +195,61 @@ public final class DecoModels {
      * {@code L * R180 * (m/16 - 0.5)}, so {@code L = Ry(-y) * R180}; see RigMath).
      */
     public static Transformation transformation(int yRot, float scale) {
+        return transformation(yRot, scale, new Vector3f());
+    }
+
+    /**
+     * As {@link #transformation(int, float)}, scaled about {@code pivot} (block-centred, world axes, -0.5..0.5)
+     * instead of the block centre: the translation moves by {@code (1 - scale) * pivot}.
+     */
+    public static Transformation transformation(int yRot, float scale, Vector3f pivot) {
         Quaternionf left = new Quaternionf().rotationY((float) Math.toRadians(-yRot)).mul(R180);
-        return new Transformation(new Vector3f(0, 0.5f, 0), left, new Vector3f(scale, scale, scale),
-                new Quaternionf());
+        float k = 1 - scale;
+        return new Transformation(new Vector3f(pivot.x * k, 0.5f + pivot.y * k, pivot.z * k), left,
+                new Vector3f(scale, scale, scale), new Quaternionf());
+    }
+
+    /**
+     * The point the cover over a vanilla carrier is scaled about (block-centred, world axes), from the carrier's
+     * solid eighths ({@code solid[x][y][z]}, index 0 = the low half; from its collision shape). 0.9.0 scaled about the
+     * block centre: faces on the block's middle planes (a slab's top, a stair's step and riser) did not move and lay
+     * exactly on the carrier's faces, so client depth tests picked either at random, "swapping" between the casino
+     * look and the vanilla block; the outer faces were only 0.001 out (flicker from about 30 blocks on). Here, per
+     * axis, the pivot lies a quarter block in on the solid side of every middle-plane face the shape has on that axis
+     * (stairs and slabs always agree; else, or with none, the centre), so a scale above 1 moves every face of the shape
+     * outward, by at least a quarter of the growth.
+     */
+    public static Vector3f coverPivot(boolean[][][] solid) {
+        float[] p = new float[3];
+        for (int axis = 0; axis < 3; axis++) {
+            int side = -1;
+            boolean conflict = false;
+            for (int a = 0; a < 2; a++) {
+                for (int b = 0; b < 2; b++) {
+                    boolean low = eighth(solid, axis, 0, a, b);
+                    boolean high = eighth(solid, axis, 1, a, b);
+                    if (low != high) {
+                        int s = low ? 0 : 1;
+                        if (side == -1) {
+                            side = s;
+                        } else if (side != s) {
+                            conflict = true;
+                        }
+                    }
+                }
+            }
+            p[axis] = side == -1 || conflict ? 0f : side == 0 ? -0.25f : 0.25f;
+        }
+        return new Vector3f(p[0], p[1], p[2]);
+    }
+
+    /** The eighth with coordinate {@code v} on {@code axis} (0 x, 1 y, 2 z) and {@code a}, {@code b} on the others. */
+    static boolean eighth(boolean[][][] solid, int axis, int v, int a, int b) {
+        return switch (axis) {
+            case 0 -> solid[v][a][b];
+            case 1 -> solid[a][v][b];
+            default -> solid[a][b][v];
+        };
     }
 
     /** Where model point (px) lands relative to the entity (tests). */

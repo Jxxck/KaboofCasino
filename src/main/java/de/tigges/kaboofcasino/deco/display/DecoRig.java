@@ -18,6 +18,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.persistence.PersistentDataType;
+import org.joml.Vector3f;
 
 /**
  * The entities of one decoration (server.md 3.5): one item display per {@link DecoModels.Part} at its cell's bottom
@@ -55,8 +56,9 @@ final class DecoRig {
     /** Spawns everything (after a despawn). */
     static void spawn(DecoBlock b, World world) {
         despawn(b);
+        Vector3f pivot = pivot(b, world);
         for (DecoModels.Part part : parts(b, world)) {
-            b.displays.add(display(b, world, part));
+            b.displays.add(display(b, world, part, pivot));
             b.keys.add(part.key());
             b.yaws.add(part.yRot());
         }
@@ -81,12 +83,16 @@ final class DecoRig {
             return true;
         }
         boolean changed = false;
+        Vector3f pivot = null;
         for (int i = 0; i < parts.size(); i++) {
             DecoModels.Part part = parts.get(i);
             if (!part.key().equals(b.keys.get(i)) || part.yRot() != b.yaws.get(i)) {
                 ItemDisplay d = b.displays.get(i);
                 d.setItemStack(Displays.model(part.key()));
-                d.setTransformation(transformation(b, part));
+                if (pivot == null) {
+                    pivot = pivot(b, world);
+                }
+                d.setTransformation(transformation(b, part, pivot));
                 b.keys.set(i, part.key());
                 b.yaws.set(i, part.yRot());
                 changed = true;
@@ -115,12 +121,41 @@ final class DecoRig {
         return type.vanillaCarrier() ? DecoModels.VANILLA_SCALE : 1.0f;
     }
 
-    private static ItemDisplay display(DecoBlock b, World world, DecoModels.Part part) {
+    /** The cover's scaling pivot ({@link DecoModels#coverPivot}) from the carrier's collision shape; else the centre. */
+    static Vector3f pivot(DecoBlock b, World world) {
+        if (!b.type().vanillaCarrier()) {
+            return new Vector3f();
+        }
+        return DecoModels.coverPivot(eighths(b.anchor().block(world).getCollisionShape().getBoundingBoxes()));
+    }
+
+    /** Which eighths of the cell (index 0 = the low half per axis) the boxes (block-relative) cover. */
+    static boolean[][][] eighths(java.util.Collection<org.bukkit.util.BoundingBox> boxes) {
+        boolean[][][] out = new boolean[2][2][2];
+        for (int x = 0; x < 2; x++) {
+            for (int y = 0; y < 2; y++) {
+                for (int z = 0; z < 2; z++) {
+                    double cx = x * 0.5 + 0.25;
+                    double cy = y * 0.5 + 0.25;
+                    double cz = z * 0.5 + 0.25;
+                    for (org.bukkit.util.BoundingBox box : boxes) {
+                        if (box.contains(cx, cy, cz)) {
+                            out[x][y][z] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    private static ItemDisplay display(DecoBlock b, World world, DecoModels.Part part, Vector3f pivot) {
         Pos a = b.anchor();
         boolean body = part.key().endsWith("chandelier_body");
         double lift = body ? 0.75 : 0.0;
         Location at = new Location(world, a.x() + part.dx() + 0.5, a.y() + part.dy() - lift, a.z() + part.dz() + 0.5);
-        org.bukkit.util.Transformation transform = transformation(b, part);
+        org.bukkit.util.Transformation transform = transformation(b, part, pivot);
         float[] cull = cull(b.type(), part);
         return world.spawn(at, ItemDisplay.class, d -> {
             d.setPersistent(false);
@@ -139,8 +174,9 @@ final class DecoRig {
      * The part's transformation; the chandelier body's entity stands 0.75 below its cell (its culling box grows upward
      * only, and the body hangs 11 px below the anchor), so its model is lifted back by as much.
      */
-    static org.bukkit.util.Transformation transformation(DecoBlock b, DecoModels.Part part) {
-        org.bukkit.util.Transformation t = DecoModels.transformation(part.yRot(), scale(b.type()) * part.modelScale());
+    static org.bukkit.util.Transformation transformation(DecoBlock b, DecoModels.Part part, Vector3f pivot) {
+        org.bukkit.util.Transformation t = DecoModels.transformation(part.yRot(), scale(b.type()) * part.modelScale(),
+                pivot);
         if (part.key().endsWith("chandelier_body")) {
             t = new org.bukkit.util.Transformation(t.getTranslation().add(0, 0.75f, 0), t.getLeftRotation(),
                     t.getScale(), t.getRightRotation());

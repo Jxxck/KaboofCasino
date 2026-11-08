@@ -57,7 +57,7 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `deco.full` | the 27 full-cube deco blocks on 72 reserved `down=true` mushroom states (`FullDecoStates`, persistent table `tools/census/chosen-states.txt`), vanilla mushroom block items with `block_state`/`item_model`, drops, explosions, pistons, pilaster connections (`PilasterChoice`), the Paper-switch guard |
 | `deco.display` | the 45 display-entity deco types (`DecoType`): chunk-PDC records (`kaboofcasino:deco`), carriers (barrier / light + interaction / vanilla stairs and slabs), rigs, placement and support rules, connections (tables, bars, rope posts, the sofa's verbatim `SofaLayout`), protection, candle flames, TV channels, the dealer station's `DealerStationHook` and lookup |
 | `croupier` | the croupier villager as a display NPC at a counter (step 8, option A): `CroupierService` (index, chunk lifecycle, trade screen, hiring, counter loss), `CroupierSpawnTrigger` + `VillagerOnCounterTrigger`, `CroupierEligibility`, `CroupierPlacement`, `CroupierRig`, `CroupierTrade`, `CroupierHiring`, records in chunk PDC `kaboofcasino:croupiers` |
-| `guide` | the casino guide book (step 8): `GuideBook` (the mod's `casino_guide.json`, embedded as `pack/guide.json`), `GuideDialogs` (spread → dialog model, pure), `GuidePaper` (Paper dialogs), `GuideSessions` (navigation, history, click rate), `GuideService` + `GuideListener` |
+| `guide` | the casino guide book (step 8): `GuideBook` (the mod's `casino_guide.json`, embedded as `pack/guide.json`), `RecipePictures` (the recipe pictures' lines, `pack/guide-pictures.json`), `GuideDialogs` (spread → dialog model, pure), `GuidePaper` (Paper dialogs), `GuideSessions` (navigation, history, click rate), `GuideService` + `GuideListener` |
 | `cashier` | the cashier (step 9, PLAN-2 C3): `CashierService` + `CashierController` (the machine kind `CASHIER`, one player at a time), `CashierRig`, the three tab menus (`ExchangeMenu`, `ChangeMenu`, `ShopMenu` on `CashierMenu`/`CashierView`), `Cashbox` (the atomic exchange, change and buy), `CashierMath`, `ShopEntry`/`Prizes`, `DailyLimits` (player PDC), `CashierLog` (DB table `cashier`); the shop editor of the croupier's hand is `admin/Shop*` |
 | `admin` | the croupier's hand (step 8, partial port of the mod's settings): `AdminService` (dialog sessions, clicks, edits, labels), `AdminDialogs`/`AdminPaper` (machine and whole-casino dialogs), `AdminClick` (payload parsing), `HandCopy` + `Clipboard` (copy/paste), `EditRate`, `AdminLabels` (floating names); `machine.MachineSettings` (own values over type values), `config.ConfigEdits` (comment-keeping `config.yml` edits) |
 | `seat` | sitting on chairs, stools and sofas: a non-persistent item-display vehicle, the mod's dismount search, forced stand-up on danger/combat/damage/quit/death/teleport, rescue of players found inside deco barriers |
@@ -325,9 +325,11 @@ path → bytes; different contents for one path fail) → `Credits` → `SlotMac
 `PlinkoGui` (tiles, glyphs, anchors, buttons; the 3x3 screens through `MachineGuiArt`) → the 72x14 collect button
 and the stake marker → `Sounds` + `Lang` (once, for all shipped games) → `TextGlyphs` (text fonts) → `GuiFont` (gui
 font + manifest) → `TexturePadding` (atlas textures to multiples of 16, UVs rescaled; animated or item/generated odd textures
-fail) → `ZipOut` (sorted, fixed DOS time, PNG/OGG stored, rest deflated 9). Byte-identical output for identical
-inputs (`PackBuildTest`). Next to the zip it writes `gui-layout.json` (glyphs, anchors, text rows) and
-`recipes.json` (`ModRecipes`: the shipped recipes and their unlock items from the mod's JSON).
+fail) → `GuidePictures` (the guide's recipe pictures: font and art, read from the final pack) → `ZipOut` (sorted,
+fixed DOS time, PNG/OGG stored, rest deflated 9). Byte-identical output for identical
+inputs (`PackBuildTest`). Next to the zip it writes `gui-layout.json` (glyphs, anchors, text rows),
+`recipes.json` (`ModRecipes`: the shipped recipes and their unlock items from the mod's JSON), `guide.json`
+(`GuideData`) and `guide-pictures.json` (`GuidePictures`: the lines of every recipe picture).
 
 `pack-src/`: `meshes/slot_*.json`, `wheel_pennant.json`, `plinko_{ball,lamp,bulb,rim,glow}.json` (converted by
 `tools/meshes/convert-{slot,wheel,plinko}.sh` with the research's `mesh2json.py`, which re-bakes every quad with a
@@ -535,7 +537,9 @@ Look:
   displays rebuilt at chunk load, a round-robin verifier. Carriers: barrier (full collision, broken with the machine
   break timer; the item goes into the breaker's inventory), light blocks with the mod's light level plus an interaction
   box (one left click breaks), or vanilla stairs/slabs placed by vanilla from the deco item (crimson/warped under
-  velvet, polished andesite/diorite/blackstone under checkers and marble; the display sits over them at 1.002).
+  velvet, polished andesite/diorite/blackstone under checkers and marble; the display sits over them at 1.032, scaled
+  about a pivot a quarter block inside the carrier's solid part so every face lies 0.008..0.024 outside the carrier's;
+  hotfix 0.9.1, see below).
   Deviations: carriers are full cubes or nothing. A rope post's carrier is a barrier one block high, so a line of
   rope posts is a 1-block wall that players can jump onto and walk across; the mod's post and the rope between two
   posts collide up to 24 px (1.5 blocks), which nobody can jump, and raising it would need a second solid block above
@@ -991,10 +995,8 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   name keys of 91 casino ids) from the SHA-checked jar; `processResources` embeds it as `pack/guide.json`.
   - Mapping: a top line "« Vorherige Seite  n / 34  Nächste Seite »"; title widgets bold in the mod's gold
     `#F2C65A`, labels and texts in its colours; items as item bodies (labels beside the icon become the description,
-    else the name, a link if the mod's `index` points to a spread); tiles as icon + link; recipes as an item body with
-    the result and "Rezept · Name" / the mod's "Formloses Rezept · Name", shaped ones as a digit grid ("-" = empty,
-    empty edge rows and columns trimmed) with a numbered legend, shapeless ones as counts ("1× Leder"), linked
-    ingredients, tags as their first item + "(beliebige Sorte)"; scenes as their main items' icons (the hiring scene
+    else the name, a link if the mod's `index` points to a spread); tiles as icon + link; recipes as pictures (see
+    "Recipe pictures" below); scenes as their main items' icons (the hiring scene
     and the villager figures: a villager spawn egg named "Dorfbewohner"/"Croupier"); the arrow "↓", rules as a
     struck-through line; chips and previews dropped (every variant is shown); the cover ends with the licence line.
     Buttons: the 4 bookmarks (open chapter in gold), « Vorherige Seite / Inhalt (only with a way back) / Nächste
@@ -1013,12 +1015,40 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     Theke (Leine ab) und klick die Theke an."; spread 33 under 219 (creative tab: `/casino give croupier_hand`) and
     213 "Einsätze und Auszahlung" (not in the dialog here: config.yml); spread 34 under 262 (the name field instead of
     a tab) and 260 (slider only, no typed number).
-  - Deviations: "Rezept" is the plugin's German text (the mod has only "Formloses Rezept"); recipes are digit grids,
-    not 3 x 3 slots (dialog bodies stack vertically); scenes are 16 px icons (dialog items are always 16 x 16); items
+  - Recipe pictures (Jack's request, 2026-11-08: a picture of the crafting grid instead of the text listing): one
+    plain-message body per recipe whose glyphs (font `kaboofcasino:guide_recipe`, built by the pack tool's
+    `GuidePictures` + `GuideIcons`) draw the mod's recipe widget (`CasinoGuideScreen`: 3 x 3 slots of 18 px in its
+    colours, the gold arrow from `book.png`, the 26 px output slot with its frame outline, the shapeless sign above
+    the arrow, the result's count like an item stack's, right-aligned with the vanilla shadow) on a 128 x 68 felt
+    card in the book's frame colours, with the caption "Rezept · Name" / the mod's "Formloses Rezept · Name" right
+    above it. All 89 recipes are drawn horizontally (the mod draws 9 of them vertically for lack of room); shapeless
+    ingredients fill the grid from the top left. Icons (`GuideIcons`): vanilla items by their vanilla texture's
+    resource location (40 items in `GuideIcons.VANILLA`; nothing of Mojang's is copied into the pack), casino items
+    from the pack's own item definition (the `gui` icon of the mod's display-context selects, `item/generated`
+    layers, the `all`/`side` face of a cube, the lower half of a slab, the lower half plus the upper left quarter of
+    stairs; animated textures show their first frame); a font can only draw flat images, so blocks show their front
+    face, not the inventory's 3D render (0 fallbacks to the "?" glyph today). Every icon has its item's tooltip (the
+    server sends the stack; a tag shows its first member's name + "(beliebige Sorte)"), icons of items with an index
+    entry on another spread are links (as the mod's), the shapeless sign has the mod's tooltip. Layout: a dialog
+    line is centred on its own width, and a vanilla texture's glyph width is only known to the client, so such a
+    glyph ends a line of its own and is also drawn once 8192 px to the left (off screen): centring then cancels its
+    width exactly, whatever texture the client has. Opaque block faces count as 17 px. The caption sits between two
+    runs of -8192 px (negative line width: still centred, never wraps), so recipes with many vanilla items (the
+    nugget-heavy decoration, the TV) get up to two blank lines above the caption; every picture is 9 to 11 lines.
+    The text box (9 px per line + padding) contains the card, so all tooltips work.
+  - Deviations: "Rezept" is the plugin's German text (the mod has only "Formloses Rezept"); recipe pictures show
+    flat icons (block fronts instead of 3D renders) and no tag cycling (the first member, as before); scenes are
+    16 px icons (dialog items are always 16 x 16); items
     without a label show their name (the mod only on hover); the added top navigation line; "Fertig" needs one round
     trip, ESC closes at once.
   - Tests: `GuideBookTest`, `GuideDialogsTest` (all 34 spreads with and without history, a full snapshot of spread
-    3, styles), `GuideSessionsTest`, `GuideActionTest` (forged payloads); pack tool `GuideDataTest` (every key in all
+    3, styles; every recipe a picture with its caption, tooltips, links, shapeless sign and count; every picture
+    glyph in the pack's font), `GuideSessionsTest`, `GuideActionTest` (forged payloads); pack tool
+    `GuidePicturesTest` (a model of the client's line layout: every icon in its slot for random, 1 px and 17 px
+    vanilla widths, the card centred and inside the text box, no line that could wrap, counts right-aligned, hidden
+    copies off screen; textures ours or the table's vanilla ones, no Mojang file in the pack, byte-identical, under
+    64 KB; with `-Pcasino.clientJar=<26.3 client jar>` also: every vanilla texture exists, 16 x 16, one frame, the
+    opaque ones opaque), `GuideDataTest` (every key in all
     12 languages, every mod key with its exact German text, every item id resolves).
 - **Croupier's hand** (`roulettecasino:croupier_hand`, games.md 20; Jack's partial proposal; package `admin`):
   - Access: creative + `kaboofcasino.admin`; outside creative every use shows the mod's `creative_only` message,
@@ -1298,6 +1328,67 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
 - **"Inventar" label**: a light plate (gold border, cream fill) under the vanilla label in all ten felt title arts
   (slot, wheel, Plinko, roulette, blackjack bet/round, poker bet/round, derby, cashier).
 
+### Step 10 (part 2: the leaderboard; PLAN-2 C4)
+
+- **Data** (`board/BoardQueries`, schema 4 `V4__leaderboard.sql`): settled chip rounds of the round log
+  (`stake_item = kaboofcasino:chips`; ore rounds of 0.8.0 and older never match), by `settled_at`; index
+  `rounds_board (status, stake_item, settled_at)`. A round's win is payout minus stake; the multiplier is
+  payout / stake in hundredths (only rounds from `leaderboard.min-stake` chips, default 25, and only wins); net profit
+  is the sum of payout minus stake, listed only while positive. Ties: the latest name, alphabetically. Names: the
+  player's latest name in the log. Categories (`BoardCategory`, command words): `gewinn`, `multiplikator`, `netto`,
+  `einsatz`, `runden` and the biggest win per game (`spielautomat`, `gluecksrad`, `plinko`, `roulette`, `blackjack`,
+  `poker`, `entenrennen`). Periods (`BoardPeriod`): this week from Monday 00:00 Europe/Berlin (summer time included)
+  and all time.
+- **Computing** (`BoardService`): one `BoardSnapshot` of all 12 categories x 2 periods (top 10 each) on the DB thread,
+  at most every `leaderboard.refresh-seconds` (30..3600, default 30) and only when something changed (a settled round,
+  via `RoundLog.afterSettle`; a player hiding or showing himself; `/casino reload`; the week turning). Boards and
+  `/casino top` read the latest snapshot on MAIN and never wait for the database.
+- **Hiding**: `/casino bestenliste aus|an` sets the PDC flag `kaboofcasino:board_hidden`; the DB thread cannot read
+  player files, so the choice is mirrored into the table `board_hidden` at every change and every join (the PDC wins).
+  Hidden players are left out (no "anonym" line), from the next computation on.
+- **`/casino top [kategorie] [woche|gesamt]`**: the same top 10 in chat (default: biggest win, this week; words in any
+  order, "Glücksrad" also with umlaut); a hidden player is told he is hidden.
+- **Weekly summary** (`leaderboard.weekly-log`, default on): the first computation after Monday 00:00 logs last week's
+  top 3 per category once (`board_weeks` remembers it across restarts) as one INFO line "Bestenliste der Woche
+  dd.MM.–dd.MM.yyyy: ...", for Jack to post on Discord; the casino calls no Discord API.
+- **Boards** (machine kinds `LEADERBOARD_WALL`, `LEADERBOARD_COLUMN`; items `leaderboard_wall` "Bestenliste
+  (Wandtafel)" and `leaderboard_column` "Bestenliste (Säule)", `/casino give`; recipes only with
+  `leaderboard.craftable: true`: wall `GSG/WWW` gold, small casino sign, green wool; column `S/W/B` small casino sign,
+  green wool, black marble bar; both unlock with a small casino sign). Machine rules as for every machine: barrier
+  carriers, chunk fit, 2-block player clearance, logout spots, spawn protection, breaking and drops, verify and rescue.
+  - The wall board is 3 wide x 2 tall and hangs on a wall: only a click on a block's side face places it (facing away
+    from the wall, the clicked cell's neighbour is the bottom middle), and every cell needs a block with a full face
+    behind it (no panes, fences or other carriers); a click on a floor says "Häng die Tafel an eine Wand ...".
+  - The column is 1x1x3 on support like the slot machine: a post in the bottom cell and a 1.5-wide sign board over the
+    upper two.
+  - Look (`pack-tool/LeaderboardPack`): the mod's big-sign style, walnut and brass frame with warm bulbs, green felt,
+    a header with red self-lit LED letters ("BESTENLISTE" / "TOP 10"; `light_emission`, no animation, no light
+    blocks). Text (`BoardRig`, `BoardView`): four shared text displays on the felt (title, subtitle "Diese Woche · in
+    Chips", the names column left-aligned, the values column right-aligned; each column ends in a line of spaces wider
+    than any entry so the client aligns every line to one edge), ranks 1-3 in gold, silver and bronze, names cut to
+    fit with "…", full brightness, no background. No player heads: a skin needs a profile lookup per offline player.
+  - Pages: every category, each for this week and all time; a board turns to the next page every
+    `leaderboard.cycle-seconds` (default 15, 0 = off); a right click goes to the next category (with the category
+    pinned: the other period; both pinned: "Diese Tafel ist fest eingestellt."), at most twice a second per board.
+    Text is sent only when the page or the data changed.
+  - The croupier's hand on a board opens its pin dialog (`admin/BoardPins`): "Kategorie: automatisch" or one category,
+    "Zeitraum: automatisch" or one period, the current choices marked; a click applies at once (machine record data
+    `cat=<id>;period=<id>`, logged), "Fertig"/ESC closes.
+
+#### Hotfix 0.9.1 (deco stairs and slabs flickering)
+
+- Jack saw deco stairs and slabs "swap all the time" between the casino look and the vanilla carrier. Cause: z-fighting.
+  0.9.0 scaled the cover 1.002 about the block centre, so faces on the block's middle planes (a slab's top, a stair's
+  step and riser) did not move at all and lay exactly on the carrier's faces (the depth test picked either, at every
+  distance), and the outer faces were only 0.001 out (flicker from about 30 blocks). Not entity churn: the cover
+  displays kept their UUIDs for minutes with the verifier running every 100 ticks (bot test, before and after).
+- Fix (`DecoModels.coverPivot`, `DecoRig.pivot`): the cover is scaled 1.032 about a pivot that lies, per axis, a
+  quarter block inside the solid side of every middle-plane face of the carrier's shape (read from its collision
+  boxes as eighths; stairs and slabs always agree, a double slab keeps the centre). Every exposed face then lies
+  0.008..0.024 blocks outside the carrier's (`DecoTransformTest` checks all 40 stair states and the 3 slab types).
+  The cover's view range is 2.0 (128 blocks, Paper's display tracking range), so the vanilla carrier shows only where
+  the server sends no display at all. No vanilla block's look is changed.
+
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
@@ -1341,7 +1432,7 @@ change, buy against `FakeAccount`: nothing changes on any refusal, owed chips, r
 tool `CashierPackTest`; `ConfigLoaderTest.theMergeKeepsTheFileMode`. Step 8 adds the croupier tests (`CroupierEligibilityTest`,
 `CroupierPlacementTest`, `CroupierCodecTest`, `CroupierTradeTest`, `CroupierHiringTest`, `CroupierRigTest`, pack tool
 `CroupierPackTest`), the guide tests (`GuideBookTest`, `GuideDialogsTest`, `GuideSessionsTest`, `GuideActionTest`,
-pack tool `GuideDataTest`), the croupier's-hand tests (`MachineRecordCodecTest`, `MachineSettingsTest`,
+pack tool `GuideDataTest`, `GuidePicturesTest`), the croupier's-hand tests (`MachineRecordCodecTest`, `MachineSettingsTest`,
 `BreakRulesTest`, `ConfigEditsTest`, `AdminClickTest`, `AdminSessionsTest`, `AdminDialogsTest`, `AdminTextsTest`,
 `CopyPasteTest`, `EditRateTest`), the TV/dealer-station cases in the deco tests, the unlock checks in
 `RecipesDataTest`, `WagerEngineTest.settleRoundsIgnoresDuplicateAndGoneIds`/`deliveredOfCountsOnlyTheSettledRowsItems`

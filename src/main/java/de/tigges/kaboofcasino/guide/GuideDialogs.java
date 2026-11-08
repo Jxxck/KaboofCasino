@@ -19,14 +19,18 @@ import de.tigges.kaboofcasino.guide.GuideView.Body;
 import de.tigges.kaboofcasino.guide.GuideView.Button;
 import de.tigges.kaboofcasino.guide.GuideView.ItemBody;
 import de.tigges.kaboofcasino.guide.GuideView.TextBody;
+import de.tigges.kaboofcasino.guide.RecipePictures.Picture;
+import de.tigges.kaboofcasino.guide.RecipePictures.Segment;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.ShadowColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
@@ -43,11 +47,12 @@ import net.kyori.adventure.text.format.TextDecoration;
  *       (the mod jumps there on a click);</li>
  *   <li>tile (a button to another spread): an item body with the tile's icon and its label (or the item's name) as a
  *       link;</li>
- *   <li>recipe: an item body with the result (its count on the icon) and as description "Rezept" or the mod's
- *       "Formloses Rezept" with the result's name, then for a shaped recipe the grid (one digit per ingredient, "-"
- *       empty, empty edge rows and columns trimmed: the shape may go anywhere in the crafting grid) and the legend,
- *       for a shapeless one the ingredients with their counts; ingredients with an index entry elsewhere are links;
- *       a tag shows its first member plus "(beliebige Sorte)";</li>
+ *   <li>recipe: a picture of the crafting grid ({@link RecipePictures}, laid out by the pack tool): one text whose
+ *       glyphs draw the mod's recipe widget on a felt card (3 x 3 slots, arrow, framed output slot with the result's
+ *       icon and count, the shapeless sign) with the caption "Rezept" or the mod's "Formloses Rezept" · result name
+ *       above it. Every icon has the item's tooltip (a tag: its first member's name plus "(beliebige Sorte)"), icons
+ *       of items with an index entry elsewhere are links (as the mod's), the shapeless sign has the mod's
+ *       tooltip;</li>
  *   <li>scene (3D): an item body for each main item ({@link GuideBook#sceneItems}); the croupier hiring scene and an
  *       entity become a villager spawn egg named "Dorfbewohner" or "Croupier";</li>
  *   <li>arrow: "↓"; rule: a struck-through line; chips and the hover preview: nothing (every variant is shown).</li>
@@ -70,19 +75,26 @@ public final class GuideDialogs {
     static final String VILLAGER_ICON = "minecraft:villager_spawn_egg";
     static final String CROUPIER_KEY = "entity.roulettecasino.villager.croupier";
     static final String VILLAGER_KEY = "entity.minecraft.villager";
+    static final String SHAPELESS_KEY = "guide.roulettecasino.expansion.shapeless";
 
     private static final TextColor GOLD = TextColor.color(GuideBook.Color.GOLD.rgb());
     private static final TextColor CREAM = TextColor.color(GuideBook.Color.CREAM.rgb());
     private static final TextColor MUTED = TextColor.color(GuideBook.Color.MUTED.rgb());
 
     private final GuideBook book;
+    private final RecipePictures pictures;
 
-    public GuideDialogs(GuideBook book) {
+    public GuideDialogs(GuideBook book, RecipePictures pictures) {
         this.book = book;
+        this.pictures = pictures;
     }
 
     public GuideBook book() {
         return book;
+    }
+
+    public RecipePictures pictures() {
+        return pictures;
     }
 
     /**
@@ -126,7 +138,7 @@ public final class GuideDialogs {
                 }
                 case Tile t -> body.add(item(t.ref(), 1, link(t.key() != null ? tr(t.key()) : name(t.ref(), texts),
                         GuideAction.link(t.page()), texts)));
-                case Recipe r -> body.add(item(r.result(), r.count(), recipe(r, number, texts)));
+                case Recipe r -> body.add(new TextBody(recipe(r, number, i, texts), TEXT_WIDTH));
                 case Scene s -> {
                     if (s.hiring()) {
                         body.add(entity(true));
@@ -225,83 +237,65 @@ public final class GuideDialogs {
         return item(VILLAGER_ICON, 1, name.color(CREAM));
     }
 
-    /** The recipe description: label and result, then the grid and legend (shaped) or the ingredient counts. */
-    Component recipe(Recipe r, int page, GuideTexts texts) {
-        List<Component> lines = new ArrayList<>();
-        Component label = r.shapeless() ? tr("guide.roulettecasino.expansion.shapeless") : texts.recipe();
-        lines.add(Component.text().append(label.color(GOLD)).append(Component.text(" · ", MUTED))
-                .append(name(r.result(), texts).color(CREAM)).build());
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        for (String cell : r.cells()) {
-            if (cell != null) {
-                counts.merge(cell, 1, Integer::sum);
-            }
+    /**
+     * The picture of the recipe widget {@code widget} of spread {@code page}: the pack's lines with the caption in its
+     * place, the icons' tooltips and links. Without a picture (a plugin jar whose pack lacks it) only the caption.
+     */
+    Component recipe(Recipe r, int page, int widget, GuideTexts texts) {
+        Component caption = caption(r, texts);
+        Optional<Picture> picture = pictures.picture(page, widget);
+        if (picture.isEmpty()) {
+            return caption;
         }
-        List<String> ingredients = List.copyOf(counts.keySet());
-        if (r.shapeless()) {
-            for (String ingredient : ingredients) {
-                lines.add(Component.text().append(Component.text(counts.get(ingredient) + "× ", GOLD))
-                        .append(ingredient(ingredient, page, texts)).build());
+        List<Component> lines = new ArrayList<>();
+        for (List<Segment> line : picture.get().lines()) {
+            TextComponent.Builder out = Component.text();
+            for (Segment segment : line) {
+                out.append(segment(segment, r, page, caption, texts));
             }
-        } else {
-            for (String row : grid(r.cells(), ingredients)) {
-                lines.add(gridRow(row));
-            }
-            for (int i = 0; i < ingredients.size(); i++) {
-                lines.add(Component.text().append(Component.text((i + 1) + " ", GOLD))
-                        .append(ingredient(ingredients.get(i), page, texts)).build());
-            }
+            lines.add(out.build());
         }
         return Component.join(JoinConfiguration.newlines(), lines);
     }
 
+    /** "Rezept · Name" or the mod's "Formloses Rezept · Name". */
+    private Component caption(Recipe r, GuideTexts texts) {
+        Component label = r.shapeless() ? tr(SHAPELESS_KEY) : texts.recipe();
+        return Component.text().append(label.color(GOLD)).append(Component.text(" · ", MUTED))
+                .append(name(r.result(), texts).color(CREAM)).build();
+    }
+
     /**
-     * The shape as rows of digits (1 = first ingredient, row by row) and "-" for empty cells, without empty edge rows
-     * and columns.
+     * One run of a picture line: glyphs of the picture font drawn white (the texture's own colours) without the text
+     * shadow, except the count, which keeps the vanilla shadow of an item count.
      */
-    static List<String> grid(List<String> cells, List<String> ingredients) {
-        int top = 3;
-        int bottom = -1;
-        int left = 3;
-        int rightmost = -1;
-        for (int i = 0; i < 9; i++) {
-            if (cells.get(i) != null) {
-                top = Math.min(top, i / 3);
-                bottom = Math.max(bottom, i / 3);
-                left = Math.min(left, i % 3);
-                rightmost = Math.max(rightmost, i % 3);
-            }
+    private Component segment(Segment s, Recipe r, int page, Component caption, GuideTexts texts) {
+        if (s.kind() == RecipePictures.Kind.CAPTION) {
+            return caption;
         }
-        List<String> rows = new ArrayList<>();
-        for (int row = top; row <= bottom; row++) {
-            StringBuilder s = new StringBuilder();
-            for (int col = left; col <= rightmost; col++) {
-                String cell = cells.get(row * 3 + col);
-                if (col > left) {
-                    s.append(' ');
-                }
-                s.append(cell == null ? "-" : Integer.toString(ingredients.indexOf(cell) + 1));
-            }
-            rows.add(s.toString());
-        }
-        return rows;
+        TextComponent glyphs = Component.text(s.text(), NamedTextColor.WHITE).font(pictures.font());
+        return switch (s.kind()) {
+            case COUNT -> glyphs;
+            case CELL -> icon(glyphs, r.cells().get(s.cell()), page, texts);
+            case RESULT -> icon(glyphs, r.result(), page, texts);
+            case HINT -> glyphs.shadowColor(ShadowColor.none()).hoverEvent(HoverEvent.showText(tr(SHAPELESS_KEY)));
+            case PLAIN, CAPTION -> glyphs.shadowColor(ShadowColor.none());
+        };
     }
 
-    /** Digits gold, "-" muted (digits and "-" have the same 6 px advance, so the rows line up). */
-    private static Component gridRow(String row) {
-        var out = Component.text();
-        for (char c : row.toCharArray()) {
-            out.append(Component.text(c, c == '-' ? MUTED : c == ' ' ? CREAM : GOLD));
-        }
-        return out.build();
-    }
-
-    private Component ingredient(String ref, int page, GuideTexts texts) {
+    /**
+     * An icon: the item's tooltip (a tag: its first member's name and "(beliebige Sorte)"), a link if the item has an
+     * index entry for another spread.
+     */
+    private Component icon(TextComponent glyphs, String ref, int page, GuideTexts texts) {
+        Component out = glyphs.shadowColor(ShadowColor.none());
         if (ref.startsWith("#")) {
-            return name(GuideBook.shown(ref), texts).color(CREAM).append(texts.anyKind().color(MUTED));
+            return out.hoverEvent(HoverEvent.showText(name(GuideBook.shown(ref), texts).append(texts.anyKind())));
         }
-        Component link = indexLink(ref, page, texts);
-        return link != null ? link : name(ref, texts).color(CREAM);
+        out = out.hoverEvent(texts.itemHover().apply(ref));
+        OptionalInt target = book.indexPage(ref);
+        return target.isPresent() && target.getAsInt() != page
+                ? out.clickEvent(GuideAction.link(target.getAsInt()).click()) : out;
     }
 
     /** A clickable text: gold, underlined, hover "Seite n". */

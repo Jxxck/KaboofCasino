@@ -30,6 +30,9 @@ tasks.withType<JavaCompile>().configureEach {
 val modJar = rootProject.layout.projectDirectory.file(providers.gradleProperty("casino.modJar"))
 val modJarSha1 = providers.gradleProperty("casino.modJarSha1")
 val packSrc = rootProject.layout.projectDirectory.dir("pack-src")
+// Optional: a vanilla client jar (-Pcasino.clientJar=...) lets GuidePicturesTest check the vanilla textures the guide's
+// recipe pictures name. Read only; nothing of it goes into the pack.
+val clientJar = providers.gradleProperty("casino.clientJar")
 
 tasks.test {
     useJUnitPlatform()
@@ -39,11 +42,14 @@ tasks.test {
     val jar = modJar
     val sha1 = modJarSha1
     val src = packSrc
+    val client = clientJar
+    inputs.property("clientJar", client.orElse(""))
     jvmArgumentProviders.add(CommandLineArgumentProvider {
         listOf(
             "-Dkaboofcasino.modJar=" + jar.get().asFile.absolutePath,
             "-Dkaboofcasino.modJarSha1=" + sha1.get(),
             "-Dkaboofcasino.packSrc=" + src.asFile.absolutePath,
+            "-Dkaboofcasino.clientJar=" + client.getOrElse(""),
         )
     })
     testLogging {

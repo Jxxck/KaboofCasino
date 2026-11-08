@@ -86,6 +86,8 @@ public final class CasinoCommand implements BasicCommand {
             case "credits" -> m.lines(Msg.COMMAND_CREDITS).forEach(sender::sendMessage);
             case "musik", "music" -> music(sender, args);
             case "stats", "statistik" -> stats(sender);
+            case "top" -> top(sender, args);
+            case "bestenliste", "leaderboard" -> hide(sender, args);
             case "abholen", "collect" -> {
                 if (sender instanceof Player p) {
                     ctx.ledger().collect(p);
@@ -114,6 +116,55 @@ public final class CasinoCommand implements BasicCommand {
         musicOptOut.set(p, off);
         m.send(p, off ? Msg.COMMAND_MUSIC_OFF : Msg.COMMAND_MUSIC_ON);
         de.tigges.kaboofcasino.util.Log.get().info("{} turned the lounge music {}", p.getName(), off ? "off" : "on");
+    }
+
+    /**
+     * {@code /casino top [kategorie] [woche|gesamt]}: the top 10 in chat, from the same snapshot as the boards. Without
+     * a category the biggest win, without a period this week; the two words may come in either order.
+     */
+    private void top(CommandSender sender, String[] args) {
+        Messages m = ctx.messages().get();
+        if (boards == null) {
+            return;
+        }
+        de.tigges.kaboofcasino.board.BoardCategory category = de.tigges.kaboofcasino.board.BoardCategory.BIGGEST_WIN;
+        de.tigges.kaboofcasino.board.BoardPeriod period = de.tigges.kaboofcasino.board.BoardPeriod.WEEK;
+        for (int i = 1; i < args.length; i++) {
+            var c = de.tigges.kaboofcasino.board.BoardCategory.byId(args[i]);
+            var p = de.tigges.kaboofcasino.board.BoardPeriod.byId(args[i]);
+            if (c.isPresent()) {
+                category = c.get();
+            } else if (p.isPresent()) {
+                period = p.get();
+            } else {
+                m.send(sender, Msg.BOARD_TOP_USAGE, Messages.text("categories", String.join("|",
+                        Stream.of(de.tigges.kaboofcasino.board.BoardCategory.values())
+                                .map(de.tigges.kaboofcasino.board.BoardCategory::id).toList())));
+                return;
+            }
+        }
+        boards.top(sender instanceof Player p ? p : null, sender, category, period);
+    }
+
+    /** {@code /casino bestenliste aus|an}: hides the player on the boards and in {@code /casino top} (or shows him). */
+    private void hide(CommandSender sender, String[] args) {
+        Messages m = ctx.messages().get();
+        String what = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
+        if (!(sender instanceof Player p) || boards == null
+                || !(what.equals("aus") || what.equals("an") || what.equals("off") || what.equals("on"))) {
+            m.send(sender, Msg.BOARD_HIDE_USAGE);
+            return;
+        }
+        boolean hide = what.equals("aus") || what.equals("off");
+        boards.hide(p, hide);
+        m.send(p, hide ? Msg.BOARD_HIDDEN : Msg.BOARD_SHOWN);
+    }
+
+    private de.tigges.kaboofcasino.board.BoardService boards;
+
+    /** The leaderboard ({@code /casino top}, {@code /casino bestenliste}). */
+    public void boards(de.tigges.kaboofcasino.board.BoardService boards) {
+        this.boards = boards;
     }
 
     /** The music opt-out store ({@code /casino musik}); null = the subcommand only shows its usage. */
@@ -249,11 +300,20 @@ public final class CasinoCommand implements BasicCommand {
         boolean admin = source.getSender().hasPermission("kaboofcasino.admin");
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
-            Stream<String> subs = Stream.of("stats", "abholen", "credits", "musik");
+            Stream<String> subs = Stream.of("stats", "top", "bestenliste", "abholen", "credits", "musik");
             if (admin) {
                 subs = Stream.concat(subs, Stream.of("give", "remove", "reload"));
             }
             return subs.filter(s -> s.startsWith(prefix)).toList();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("bestenliste")) {
+            return Stream.of("aus", "an").filter(s -> s.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
+        }
+        if ((args.length == 2 || args.length == 3) && args[0].equalsIgnoreCase("top")) {
+            String prefix = args[args.length - 1].toLowerCase(Locale.ROOT);
+            return Stream.concat(Stream.of(de.tigges.kaboofcasino.board.BoardCategory.values())
+                            .map(de.tigges.kaboofcasino.board.BoardCategory::id), Stream.of("woche", "gesamt"))
+                    .filter(s -> s.startsWith(prefix)).toList();
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("musik") || args[0].equalsIgnoreCase("music"))) {
             return Stream.of("aus", "an").filter(s -> s.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();

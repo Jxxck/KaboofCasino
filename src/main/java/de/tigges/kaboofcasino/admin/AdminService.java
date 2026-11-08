@@ -82,6 +82,8 @@ public final class AdminService {
     private BukkitTask task;
     /** The cashier's shop dialog (step 9): the hand on a cashier opens it instead of the machine dialog. */
     private ShopEditor shop;
+    /** The leaderboards' pin dialog (step 10): the hand on a board opens it instead of the machine dialog. */
+    private BoardPins pins;
 
     /** @param reload {@code /casino reload} (config and texts); returns the number of warnings */
     public AdminService(CasinoContext ctx, IntSupplier reload) {
@@ -95,6 +97,8 @@ public final class AdminService {
         labels = new AdminLabels(ctx, this::allowed);
         shop = new ShopEditor(ctx, reload, this::allowed, this::limited);
         shop.enable();
+        pins = new BoardPins(ctx, this::allowed, this::limited);
+        pins.enable();
         Bukkit.getPluginManager().registerEvents(new HandListener(this, ctx.machines()), ctx.plugin());
         task = Bukkit.getScheduler().runTaskTimer(ctx.plugin(), this::tick, TICKS, TICKS);
         Log.get().info("KaboofCasino croupier's hand: {} copied setting(s) kept", clipboard.size());
@@ -116,6 +120,9 @@ public final class AdminService {
         usedTick.clear();
         if (labels != null) {
             labels.clear();
+        }
+        if (pins != null) {
+            pins.disable();
         }
         if (shop != null) {
             shop.disable();
@@ -207,7 +214,14 @@ public final class AdminService {
         }
         if (machine.type() == MachineType.CASHIER) {
             sessions.forget(player.getUniqueId()); // the cashier has no settings: its prize shop instead
+            pins.forget(player);
             shop.open(player, machine);
+            return;
+        }
+        if (machine.type().isBoard()) {
+            sessions.forget(player.getUniqueId()); // a board has no settings: its pin instead
+            shop.forget(player);
+            pins.open(player, machine);
             return;
         }
         if (sneaking) {
@@ -301,6 +315,7 @@ public final class AdminService {
 
     private void open(Player player, AdminSessions.Target target) {
         shop.forget(player);
+        pins.forget(player);
         sessions.open(player.getUniqueId(), target, Bukkit.getCurrentTick());
         show(player, target, false, false);
     }
@@ -560,11 +575,13 @@ public final class AdminService {
     void forget(Player player) {
         sessions.forget(player.getUniqueId());
         shop.forget(player);
+        pins.forget(player);
     }
 
     void quit(Player player) {
         sessions.forget(player.getUniqueId());
         shop.forget(player);
+        pins.forget(player);
         rate.forget(player.getUniqueId());
         usedTick.remove(player.getUniqueId());
     }

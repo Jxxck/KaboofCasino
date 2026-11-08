@@ -49,7 +49,7 @@ public final class MachineService {
 
     /** Outcome of {@link #place}. */
     public enum PlaceResult {
-        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_BORDER, PLAYER_NEAR, LOGOUT_SPOT
+        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_BORDER, PLAYER_NEAR, LOGOUT_SPOT, NO_WALL
     }
 
     /** A refused placement and, for {@link PlaceResult#CHUNK_BORDER}, where to move the machine (player-relative). */
@@ -159,9 +159,13 @@ public final class MachineService {
                            ItemStack item) {
         Threads.requireMain();
         World world = clicked.getWorld();
+        if (type.onWall() && (clicked.isReplaceable() || !isHorizontal(face))) {
+            return Placement.of(PlaceResult.NO_WALL);
+        }
         Block placedBlock = clicked.isReplaceable() ? clicked : clicked.getRelative(face);
         Block anchorBlock = placedBlock.getRelative(0, type.rise(), 0);
-        Facing facing = type.fixedFacing() ? Facing.SOUTH : Facing.towardsPlayer(player.getFacing());
+        Facing facing = type.onWall() ? Facing.of(face) : type.fixedFacing() ? Facing.SOUTH
+                : Facing.towardsPlayer(player.getFacing());
         Pos anchor = Pos.of(anchorBlock);
         List<Pos> carriers = type.carriers(anchor, facing);
         // every part in one chunk: the record lives in the anchor chunk, verify/remove never load a neighbour
@@ -209,8 +213,9 @@ public final class MachineService {
             case DUCK_DERBY -> config.get().derby().needsSupport();
             default -> config.get().roulette().needsSupport();
         };
-        if (!supportOk(type, supported, bottom, tableNeedsSupport)) {
-            return Placement.of(PlaceResult.NO_SUPPORT);
+        if (type.onWall() ? !wallOk(world, carriers, facing) : !supportOk(type, supported, bottom,
+                tableNeedsSupport)) {
+            return Placement.of(type.onWall() ? PlaceResult.NO_WALL : PlaceResult.NO_SUPPORT);
         }
         if (type == MachineType.SLOT_MACHINE && slotCrowded(anchor, facing)) {
             return Placement.of(PlaceResult.CROWDED);
@@ -270,6 +275,26 @@ public final class MachineService {
     /** @param fluidState the cell's fluid state is not empty (seagrass, kelp, bubble columns, waterlogged blocks) */
     static boolean wet(boolean liquid, boolean waterlogged, boolean fluidState) {
         return liquid || waterlogged || fluidState;
+    }
+
+    static boolean isHorizontal(BlockFace face) {
+        return face == BlockFace.NORTH || face == BlockFace.SOUTH || face == BlockFace.EAST || face == BlockFace.WEST;
+    }
+
+    /**
+     * A wall board's support: behind every cell (against its facing) a block with a full face towards the cell, so the
+     * board never hangs in the air or on glass panes, fences or another board's barrier.
+     */
+    boolean wallOk(World world, List<Pos> carriers, Facing facing) {
+        BlockFace back = facing.blockFace().getOppositeFace();
+        for (Pos p : carriers) {
+            Block behind = p.block(world).getRelative(back);
+            if (isCarrier(Pos.of(behind)) || foreignCarriers.test(Pos.of(behind))
+                    || !behind.getBlockData().isFaceSturdy(facing.blockFace(), BlockSupport.FULL)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -647,6 +672,7 @@ public final class MachineService {
             case CHUNK_BORDER -> Msg.MACHINE_CHUNK_BORDER;
             case PLAYER_NEAR -> Msg.MACHINE_PLAYER_NEAR;
             case LOGOUT_SPOT -> Msg.MACHINE_LOGOUT_SPOT;
+            case NO_WALL -> Msg.BOARD_NO_WALL;
             case PLACED -> null;
         };
         if (msg == Msg.MACHINE_CHUNK_BORDER && placement.blocks() > 1) {

@@ -16,12 +16,28 @@ import java.util.Objects;
  * @param slot     slot machine settings
  * @param music    the speakers' lounge music and its optional pack (render.md 6)
  * @param cashier  the cashier: exchange rates, craftable, the prize shop (PLAN-2 C3)
+ * @param leaderboard the leaderboard boards and {@code /casino top} (PLAN-2 C4)
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
                            Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker,
                            Slot derby,
                            Lights lights, Music music,
-                           de.tigges.kaboofcasino.cashier.CashierSettings cashier) {
+                           de.tigges.kaboofcasino.cashier.CashierSettings cashier, Leaderboard leaderboard) {
+
+    /**
+     * The leaderboard (step 10, PLAN-2 C4).
+     *
+     * @param craftable      true: both boards have a recipe; false (default): only {@code /casino give}
+     * @param refreshSeconds how often the lists are recomputed from the database at most (30..3600; only when rounds
+     *                       were played or someone hid himself since)
+     * @param cycleSeconds   a board without a pinned category turns to the next page every so many seconds (0 = only
+     *                       by right click; 5..600)
+     * @param minStake       the multiplier category counts rounds from this chip stake on (1..1 000 000)
+     * @param weeklyLog      after a week (Monday 00:00 Berlin) its winners go to the server log once
+     */
+    public record Leaderboard(boolean craftable, int refreshSeconds, int cycleSeconds, int minStake,
+                              boolean weeklyLog) {
+    }
 
     /**
      * @param enabled        send the pack at all
@@ -168,5 +184,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Slot(-1, 4, 16, true),
             new Lights(4),
             new Music(true),
-            de.tigges.kaboofcasino.cashier.CashierSettings.DEFAULTS);
+            de.tigges.kaboofcasino.cashier.CashierSettings.DEFAULTS,
+            new Leaderboard(false, 30, 15, 25, true));
 }

@@ -28,7 +28,7 @@ class MachineSettingsTest {
                 new CasinoConfig.Slot(slot, 4, 16, true), d.wheel(), d.plinko(),
                 new CasinoConfig.Slot(roulette, 0, 16, true), new CasinoConfig.Blackjack(blackjack, true),
                 new CasinoConfig.Poker(poker, true), new CasinoConfig.Slot(derby, 4, 16, true), d.lights(),
-                d.music(), d.cashier());
+                d.music(), d.cashier(), d.leaderboard());
     }
 
     @Test
@@ -65,7 +65,8 @@ class MachineSettingsTest {
     @Test
     void typeValuesAndConfigPathsCoverEveryGameOnce() {
         // every game once; the cashier is no game (no win chance, no bias)
-        assertEquals(EnumSet.complementOf(EnumSet.of(MachineType.CASHIER)), EnumSet.copyOf(MachineSettings.MOD_ORDER));
+        assertEquals(EnumSet.complementOf(EnumSet.of(MachineType.CASHIER, MachineType.LEADERBOARD_WALL,
+                MachineType.LEADERBOARD_COLUMN)), EnumSet.copyOf(MachineSettings.MOD_ORDER));
         assertEquals(List.of("roulette", "blackjack", "poker", "derby", "slots", "wheel", "plinko"),
                 MachineSettings.MOD_ORDER.stream().map(MachineSettings::modType).toList());
         CasinoConfig d = CasinoConfig.DEFAULTS;

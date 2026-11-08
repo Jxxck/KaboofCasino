@@ -64,8 +64,11 @@ public final class Recipes {
     }
 
     private static volatile List<Def> defs = List.of();
-    /** The plugin's own recipes (not the mod's): the cashier's while {@code cashier.craftable} is on (step 9). */
-    private static volatile List<Def> own = List.of();
+    /**
+     * The plugin's own recipes (not the mod's) by source: the cashier's while {@code cashier.craftable} is on (step 9),
+     * the leaderboards' while {@code leaderboard.craftable} is on (step 10).
+     */
+    private static final Map<String, List<Def>> OWN = new java.util.concurrent.ConcurrentSkipListMap<>();
     /** The registered recipes by key (only those whose items all exist). */
     private static volatile Map<NamespacedKey, Def> registered = Map.of();
     /** The result stack of every registered recipe. */
@@ -127,9 +130,12 @@ public final class Recipes {
         return defs;
     }
 
-    /** Sets the plugin's own recipes; they are registered (or dropped) with the mod's at the next {@link #register}. */
-    public static void own(List<Def> recipes) {
-        own = List.copyOf(recipes);
+    /**
+     * Sets one source's own recipes ({@code "cashier"}, {@code "leaderboard"}); they are registered (or dropped) with
+     * the mod's at the next {@link #register}.
+     */
+    public static void own(String source, List<Def> recipes) {
+        OWN.put(source, List.copyOf(recipes));
     }
 
     /** A casino stack: a machine item ({@link CasinoItems}) or a registered deco/seat/speaker item. */
@@ -161,7 +167,7 @@ public final class Recipes {
         Map<NamespacedKey, Def> done = new LinkedHashMap<>();
         Map<NamespacedKey, ItemStack> made = new LinkedHashMap<>();
         List<Def> every = new ArrayList<>(defs);
-        every.addAll(own);
+        OWN.values().forEach(every::addAll);
         for (Def d : every) {
             try {
                 ItemStack result = casinoId(d.result()) ? casinoStack(d.result(), messages, d.count())

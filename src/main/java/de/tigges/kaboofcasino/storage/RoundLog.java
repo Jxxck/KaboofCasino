@@ -23,9 +23,16 @@ public final class RoundLog implements RoundSink {
     }
 
     private final Database db;
+    /** Runs on the DB thread after a settled row was written (the leaderboard's "recompute" mark). */
+    private volatile Runnable afterSettle = () -> { };
 
     public RoundLog(Database db) {
         this.db = db;
+    }
+
+    /** Sets the hook run on the DB thread after each settled row (step 10: the leaderboard). */
+    public void afterSettle(Runnable hook) {
+        this.afterSettle = hook;
     }
 
     @Override
@@ -74,6 +81,7 @@ public final class RoundLog implements RoundSink {
                 ps.setString(7, r.id().toString());
                 ps.executeUpdate();
             }
+            afterSettle.run();
         });
     }
 

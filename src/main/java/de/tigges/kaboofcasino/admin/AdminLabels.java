@@ -71,12 +71,23 @@ final class AdminLabels {
             case SLOT_MACHINE -> new double[] {0.5, 4.1, 0.5};
             case FORTUNE_WHEEL, PLINKO, DUCK_DERBY -> new double[] {0.5, 3.5, 0.5};
             case CASHIER -> new double[] {0.5, 2.6, 0.5};
+            case LEADERBOARD_WALL -> new double[] {0.5, 2.5, 0.5};
+            case LEADERBOARD_COLUMN -> new double[] {0.5, 3.5, 0.5};
         };
     }
 
     /** The label's text as the default font measures it (German names; approximate advances). */
     static String plain(MachineType type, String name, int number) {
-        return !name.isBlank() ? name : AdminTexts.GERMAN.get("block.roulettecasino." + type.id()) + " #" + number;
+        if (!name.isBlank()) {
+            return name;
+        }
+        String german = switch (type) {
+            case CASHIER -> "Kasse";
+            case LEADERBOARD_WALL -> "Bestenliste (Wandtafel)";
+            case LEADERBOARD_COLUMN -> "Bestenliste (Säule)";
+            default -> AdminTexts.GERMAN.get("block.roulettecasino." + type.id());
+        };
+        return german + " #" + number;
     }
 
     /** Approximate default-font width in pixels (most glyphs 6, narrow ones less). */

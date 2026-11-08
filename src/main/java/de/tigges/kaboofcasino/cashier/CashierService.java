@@ -90,7 +90,7 @@ public final class CashierService {
      */
     public void enable() {
         recipe = settings().craftable();
-        Recipes.own(recipe ? List.of(recipe()) : List.of());
+        Recipes.own("cashier", recipe ? List.of(recipe()) : List.of());
     }
 
     /** After {@code /casino reload} (and the croupier's hand's config edits): registers or removes the recipe. */
@@ -100,7 +100,7 @@ public final class CashierService {
             return;
         }
         recipe = craftable;
-        Recipes.own(craftable ? List.of(recipe()) : List.of());
+        Recipes.own("cashier", craftable ? List.of(recipe()) : List.of());
         Recipes.register(ctx.messages().get());
         Log.get().info("KaboofCasino cashier recipe {}", craftable ? "registered (cashier.craftable: true)"
                 : "removed (cashier.craftable: false)");

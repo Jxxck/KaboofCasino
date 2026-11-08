@@ -10,7 +10,7 @@ import java.util.List;
  * translatable components: the guide texts, the screen's buttons and the names of every item, block and the croupier
  * the guide shows (the casino's blocks and items of all three namespaces, so the client's own language is used; the
  * plugin's fallback is German). {@code GuideDataTest} checks that every key the guide uses is in the shipped lang
- * files.
+ * files. The recipe pictures' font and art come last ({@link GuidePictures}): they read the finished pack.
  */
 final class GuidePack {
 

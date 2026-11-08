@@ -143,6 +143,21 @@ music:
   # Für das Paket gilt eine Änderung ab dem nächsten Login, für die Musik sofort nach /casino reload.
   enabled: true
 
+leaderboard:
+  # Die Bestenliste (Schritt 10): Tafeln an der Wand (3x2) und Säulen (1x3), dazu /casino top. Aufstellen:
+  # /casino give leaderboard_wall bzw. leaderboard_column. Gezählt werden nur Runden mit Chips.
+  # true: beide Tafeln auch craftbar (Rezepte kaboofcasino:leaderboard_wall und kaboofcasino:leaderboard_column).
+  craftable: false
+  # Höchstens so oft (Sekunden, 30 bis 3600) rechnet die Bestenliste neu, und nur wenn seitdem gespielt wurde.
+  refresh-seconds: 30
+  # Eine Tafel ohne fest eingestellte Kategorie blättert alle so viele Sekunden weiter (5 bis 600; 0 = nur per
+  # Rechtsklick). Rechtsklick wechselt die Kategorie, die Hand des Croupiers stellt sie fest ein.
+  cycle-seconds: 15
+  # Der höchste Multiplikator zählt erst ab diesem Einsatz (in Chips), damit 1-Chip-Glückstreffer nicht alles schlagen.
+  min-stake: 25
+  # Nach jeder Woche (Montag 00:00 Berlin) stehen die Sieger einmal im Server-Log (zum Posten auf Discord).
+  weekly-log: true
+
 cashier:
   # Die Kasse (Schritt 9): Erze in Chips wechseln, Kleingeld, Preis-Shop. Aufstellen: /casino give cashier.
   # true: auch craftbar (Rezept kaboofcasino:cashier, schaltet mit einer Registrierkasse frei:
