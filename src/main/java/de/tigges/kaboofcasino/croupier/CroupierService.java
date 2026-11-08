@@ -1,6 +1,7 @@
 package de.tigges.kaboofcasino.croupier;
 
 import de.tigges.kaboofcasino.CasinoContext;
+import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.deco.display.DealerStationHook;
 import de.tigges.kaboofcasino.deco.display.DecoBlock;
@@ -37,6 +38,8 @@ import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -61,16 +64,19 @@ import org.bukkit.util.BoundingBox;
  * The croupier villager of MineVegas Casino (games.md 10) for vanilla clients: a display NPC at a croupier counter
  * (Jack's option A). Keeps the index of loaded croupiers (records in the chunk PDC, {@link CroupierRecords}), rebuilds
  * their entities at chunk load and when they vanish, runs their idle loop, trade screen, hiring and sounds, applies
- * vanilla's job-site rule when a counter is lost, and asks the {@link CroupierSpawnTrigger} for new croupiers.
+ * vanilla's job-site rule when a counter is lost, and asks the {@link CroupierSpawnTrigger} for a new croupier when a
+ * player right-clicks a free counter (never on its own).
  *
  * <ul>
  *   <li>Trade: a right click with the main hand (not sneaking, as a villager) opens a vanilla merchant screen titled
  *       with the mod's {@code entity.roulettecasino.villager.croupier} ("Croupier"): 24 emeralds for a hiring card, 64
  *       uses, 2 villager experience, price multiplier 0 ({@link CroupierTrade}); uses and experience live in the
- *       record; restocked once per Minecraft day while it has its counter. One player at a time: the mod's busy rule
+ *       record; restocked by vanilla's rule while it has its counter (it works at the counter in working hours, at
+ *       most every 300 ticks: up to 2 restocks a day, the second 2400 ticks after the first). One player at a time:
+ *       the mod's busy rule
  *       for hiring ({@code message.roulettecasino.croupier_busy}) also answers a second player who wants to trade (a
  *       vanilla villager would just ignore him). Sounds as the villager makes them: yes/no when the payment changes,
- *       its ambient (trade) voice now and then, the cartographer's work sound when it restocks, and the trade's
+ *       its ambient (trade) voice now and then, the cartographer's work sound when it works, and the trade's
  *       experience orb at the croupier.</li>
  *   <li>Hiring: a hiring card on the croupier ({@link CroupierHiring}): busy check, the kept villager inventory drops
  *       at its spot, the croupier is gone for good, the badge, the burst, the sounds and the stream.</li>
@@ -83,7 +89,7 @@ import org.bukkit.util.BoundingBox;
  */
 public final class CroupierService implements DealerStationHook, CroupierSpawnTrigger.Spawns {
 
-    /** Ticks between the trigger's scans, the rig checks, restocks and the near-player refresh. */
+    /** Ticks between the rig checks and the near-player refresh. */
     public static final int SCAN_TICKS = 20;
     /** Rig spawns per tick after chunk loads. */
     static final int SPAWNS_PER_TICK = 4;
@@ -313,13 +319,6 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
                 return true;
             }
         });
-        if (scan) {
-            try {
-                trigger.scan(this);
-            } catch (RuntimeException e) {
-                Log.incident("croupier trigger scan", e);
-            }
-        }
     }
 
     private void spawnRig(Croupier c) {
@@ -362,8 +361,8 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
                 Log.get().info("Croupier {} at {}: entities vanished, respawning", c.id(), c.record().stand());
                 c.rig.spawn(w.getGameTime());
             }
-            restock(c, w);
         }
+        work(c, w);
         UUID id = c.id();
         c.rig.tick(w.getGameTime(), c.watched, () -> ctx.lights().grant(id, tick));
         screen(c, w);
@@ -387,17 +386,32 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
         w.playSound(c.rig.feet(), sound, SoundCategory.NEUTRAL, 1.0F, CroupierTrade.voicePitch(random));
     }
 
-    /** The daily restock (with the cartographer's work sound when stock came back). */
-    private void restock(Croupier c, World w) {
+    /**
+     * Vanilla's {@code WorkAtPoi} at the counter: in working hours ({@link CroupierTrade#workHours}), at most every
+     * {@value CroupierTrade#WORK_CHECK_TICKS} game ticks and then on a coin flip, the croupier works: its work sound
+     * (the cartographer's) and {@code shouldRestock}/{@code restock} ({@link CroupierTrade#shouldRestock}). Not without
+     * a counter (no job site) and not while a player trades (deviation: vanilla would resend the offers).
+     */
+    private void work(Croupier c, World w) {
         CroupierRecord r = c.record();
-        CroupierTrade.Restock s = CroupierTrade.restock(r.uses(), r.restockDay(), CroupierTrade.day(w.getFullTime()),
-                r.hasCounter(), c.trading());
-        if (s.uses() == r.uses() && s.day() == r.restockDay()) {
+        long now = w.getGameTime();
+        if (!r.hasCounter() || c.trading() || !CroupierTrade.workHours(w.getTime())
+                || now - c.lastWork < CroupierTrade.WORK_CHECK_TICKS || random.nextInt(2) != 0) {
             return;
         }
-        update(c, r.withRestock(s.uses(), s.day()));
-        if (s.restocked() && c.heard) {
+        c.lastWork = now;
+        if (c.heard) {
             voice(c, w, Sound.ENTITY_VILLAGER_WORK_CARTOGRAPHER);
+        }
+        CroupierTrade.RestockCheck check = CroupierTrade.shouldRestock(r.restock(), now,
+                CroupierTrade.day(w.getFullTime()), r.uses());
+        if (check.restock()) {
+            CroupierTrade.RestockState after = CroupierTrade.restocked(check.state(), now);
+            update(c, r.withRestock(0, after));
+            Log.get().info("Croupier {} at {} restocked ({} use(s) back, restock {} today)", c.id(), r.stand(),
+                    r.uses(), after.today());
+        } else if (!check.state().equals(r.restock())) {
+            update(c, r.withRestock(r.uses(), check.state()));
         }
     }
 
@@ -411,11 +425,9 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
             }
             return;
         }
-        World w = world(c.record().stand());
-        if (w == null) {
+        if (world(c.record().stand()) == null) {
             return;
         }
-        restock(c, w);
         if (c.merchant == null) {
             c.merchant = Bukkit.createMerchant();
         }
@@ -731,6 +743,68 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
         spawnRig(c);
     }
 
+    /**
+     * A right click on a counter (option A's only trigger): on a free counter a villager standing on it may become its
+     * croupier ({@link CroupierSpawnTrigger#stationUsed}); otherwise the player is told why not (action bar), also with
+     * an item in the hand (a deco carrier never takes a held item anyway). A counter with a croupier does nothing (the
+     * mod's station has no use).
+     */
+    @Override
+    public boolean onUse(Player player, DecoRecord station) {
+        Threads.requireMain();
+        if (!enabled || byCounter.containsKey(station.id()) || FakePlayers.isFake(player)
+                || player.getGameMode() == GameMode.SPECTATOR) {
+            return false;
+        }
+        Messages m = ctx.messages().get();
+        if (!player.hasPermission("kaboofcasino.use")) {
+            m.actionBar(player, Msg.ERROR_NO_PERMISSION);
+            return true;
+        }
+        CroupierEligibility.Verdict verdict = trigger.stationUsed(this, station, player,
+                inReach(player, station.anchor()));
+        if (verdict == CroupierEligibility.Verdict.OK) {
+            return true;
+        }
+        m.actionBar(player, hint(verdict));
+        return true;
+    }
+
+    /** The action-bar answer to a click on a free counter that made no croupier. */
+    static Msg hint(CroupierEligibility.Verdict verdict) {
+        return switch (verdict) {
+            case NOBODY, GONE, NOT_ABOVE_COUNTER -> Msg.CROUPIER_HINT;
+            case NOT_ON_TOP -> Msg.CROUPIER_NOT_ON_TOP;
+            case NITWIT -> Msg.CROUPIER_NITWIT;
+            case EMPLOYED, LEVEL, EXPERIENCE, TRADES -> Msg.CROUPIER_EMPLOYED;
+            case BABY -> Msg.CROUPIER_BABY;
+            case LEASHED -> Msg.CROUPIER_LEASHED;
+            case NAMED -> Msg.CROUPIER_NAMED;
+            case RIDING, PASSENGERS -> Msg.CROUPIER_RIDING;
+            case TRADING, SLEEPING, COUNTER_TAKEN, OK -> Msg.CROUPIER_BUSY_VILLAGER;
+            case OUT_OF_REACH -> Msg.CROUPIER_OUT_OF_REACH;
+        };
+    }
+
+    /**
+     * Vanilla's server-side reach check for a block ({@code isWithinBlockInteractionRange(pos, 1.0)}): the eyes within
+     * the block interaction range plus 1 of the block's box.
+     */
+    static boolean inReach(Player player, Pos block) {
+        AttributeInstance range = player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE);
+        double reach = (range == null ? 4.5 : range.getValue()) + 1.0;
+        Location eye = player.getEyeLocation();
+        return distanceSquared(eye.getX(), eye.getY(), eye.getZ(), block) <= reach * reach;
+    }
+
+    /** From a point to the box of {@code block}. */
+    static double distanceSquared(double x, double y, double z, Pos block) {
+        double dx = Math.max(0, Math.max(block.x() - x, x - (block.x() + 1)));
+        double dy = Math.max(0, Math.max(block.y() - y, y - (block.y() + 1)));
+        double dz = Math.max(0, Math.max(block.z() - z, z - (block.z() + 1)));
+        return dx * dx + dy * dy + dz * dz;
+    }
+
     @Override
     public void onRemoved(DecoRecord station) {
         Threads.requireMain();
@@ -816,40 +890,7 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
     // ---- spawns (CroupierSpawnTrigger.Spawns) -----------------------------------------------------------------------
 
     @Override
-    public List<DecoRecord> freeStations() {
-        List<DecoRecord> out = new ArrayList<>();
-        for (DecoRecord station : deco.dealerStations()) {
-            if (!byCounter.containsKey(station.id())) {
-                out.add(station);
-            }
-        }
-        return out;
-    }
-
-    @Override
-    public Optional<Player> nearestPlayer(Pos station, double range) {
-        World w = world(station);
-        if (w == null) {
-            return Optional.empty();
-        }
-        Location centre = new Location(w, station.x() + 0.5, station.y() + 0.5, station.z() + 0.5);
-        Player best = null;
-        double bestD = range * range;
-        for (Player p : w.getPlayers()) {
-            if (p.getGameMode() == GameMode.SPECTATOR || p.isDead() || FakePlayers.isFake(p)) {
-                continue;
-            }
-            double d = p.getLocation().distanceSquared(centre);
-            if (d <= bestD) {
-                bestD = d;
-                best = p;
-            }
-        }
-        return Optional.ofNullable(best);
-    }
-
-    @Override
-    public boolean spawn(DecoRecord station, CroupierSpawnTrigger.Origin origin, Player nearest) {
+    public boolean spawn(DecoRecord station, CroupierSpawnTrigger.Origin origin, Player player) {
         Threads.requireMain();
         if (!enabled || byCounter.containsKey(station.id()) || deco.byId(station.id()).isEmpty()) {
             return false;
@@ -861,15 +902,14 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
         }
         double towardsX = 0.0;
         double towardsZ = 0.0;
-        if (nearest != null && nearest.getWorld().equals(w)) {
-            towardsX = nearest.getLocation().getX() - (counter.x() + 0.5);
-            towardsZ = nearest.getLocation().getZ() - (counter.z() + 0.5);
+        if (player != null && player.getWorld().equals(w)) {
+            towardsX = player.getLocation().getX() - (counter.x() + 0.5);
+            towardsZ = player.getLocation().getZ() - (counter.z() + 0.5);
         }
         CroupierPlacement.Stand s = CroupierPlacement.choose(counter, towardsX, towardsZ, cells(w));
         CroupierRecord r = new CroupierRecord(UUID.randomUUID(), s.feet(), s.lift(), s.facing(), station.id(), counter,
                 origin.villager(), origin.snapshot(), origin.version(), origin.items(), 0, 0,
-                CroupierTrade.day(w.getFullTime()), ctx.clock().getAsLong(),
-                nearest == null ? null : nearest.getUniqueId());
+                CroupierTrade.RestockState.NONE, ctx.clock().getAsLong(), player == null ? null : player.getUniqueId());
         CroupierRecords.put(w.getChunkAt(counter.chunkX(), counter.chunkZ()), r);
         Croupier c = new Croupier(r);
         register(c);

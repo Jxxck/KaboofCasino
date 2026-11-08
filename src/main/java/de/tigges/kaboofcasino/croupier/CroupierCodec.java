@@ -14,8 +14,8 @@ import java.util.UUID;
 
 /**
  * {@link CroupierRecord} <-> one JSON string of the chunk's list (version {@value #VERSION}). Fields that may be absent
- * (counter, villager, snapshot, items, near) default to "none"; a record of a newer version ({@link NewerVersion}) or
- * one that cannot be read is never decoded, and the chunk store keeps it verbatim. Pure.
+ * (counter, villager, snapshot, items, near) default to "none", the restock fields to 0; a record of a newer version
+ * ({@link NewerVersion}) or one that cannot be read is never decoded, and the chunk store keeps it verbatim. Pure.
  */
 public final class CroupierCodec {
 
@@ -68,7 +68,9 @@ public final class CroupierCodec {
         }
         o.addProperty("uses", r.uses());
         o.addProperty("xp", r.xp());
-        o.addProperty("restockDay", r.restockDay());
+        o.addProperty("restockTime", r.restock().lastGameTime());
+        o.addProperty("restockCheckDay", r.restock().lastCheckDay());
+        o.addProperty("restocks", r.restock().today());
         o.addProperty("created", r.createdAt());
         if (r.createdNear() != null) {
             o.addProperty("near", r.createdNear().toString());
@@ -110,7 +112,9 @@ public final class CroupierCodec {
         int xp = Math.clamp(whole(o, "xp"), 0, Integer.MAX_VALUE);
         return new CroupierRecord(UUID.fromString(string(o, "id")), stand, number(o, "lift", 0.0), facing, counter,
                 counterPos, uuid(o, "villager"), optional(o, "snapshot"), optional(o, "mc"), items, uses, xp,
-                whole(o, "restockDay"), whole(o, "created"), uuid(o, "near"));
+                new CroupierTrade.RestockState(whole(o, "restockTime"), whole(o, "restockCheckDay"),
+                        (int) Math.clamp(whole(o, "restocks"), 0L, CroupierTrade.RESTOCKS_PER_DAY)),
+                whole(o, "created"), uuid(o, "near"));
     }
 
     /** The id of an encoded record, also of a newer version; null if even that cannot be read. */

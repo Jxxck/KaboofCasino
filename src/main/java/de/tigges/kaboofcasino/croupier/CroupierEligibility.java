@@ -3,18 +3,15 @@ package de.tigges.kaboofcasino.croupier;
 import de.tigges.kaboofcasino.util.Pos;
 
 /**
- * Option A's safety rules: may this villager, found by a counter's check, become the counter's croupier? In the mod an
- * unemployed adult (non-nitwit) villager claims a free dealer station as its job site (games.md 10.1); here a player
- * brings it onto the counter and the counter consumes it. Every rule must hold; the first one that fails is the
- * verdict. Pure.
+ * Option A's safety rules: may this villager, standing on a counter a player right-clicked, become the counter's
+ * croupier? In the mod an unemployed adult (non-nitwit) villager claims a free dealer station as its job site (games.md
+ * 10.1); here a player brings it onto the counter and clicks the counter, which consumes it. Nothing ever converts
+ * without that click. Every rule must hold; the first one that fails is the verdict. Pure.
  */
 public final class CroupierEligibility {
 
     /** Feet within this of the counter's top count as standing on it (the barrier's top is exactly y + 1). */
     static final double ON_TOP = 1.0E-3;
-    /** A player (not spectating, not a server-side bot) must be this close to the counter's centre. */
-    public static final double PLAYER_RANGE = 8.0;
-
     /** Why a villager is not taken (or {@link #OK}). */
     public enum Verdict {
         OK,
@@ -46,8 +43,10 @@ public final class CroupierEligibility {
         /** A player has its trade screen open. */
         TRADING,
         SLEEPING,
-        /** No player within {@link #PLAYER_RANGE} blocks (nobody brought it). */
-        NO_PLAYER
+        /** The clicking player is not within reach of the counter (vanilla's block interaction range). */
+        OUT_OF_REACH,
+        /** No villager stands in the block above the counter (only a click's answer, never {@link #check}'s). */
+        NOBODY
     }
 
     /**
@@ -66,9 +65,9 @@ public final class CroupierEligibility {
     /**
      * @param counter     the dealer station's block
      * @param taken       the counter has a croupier already
-     * @param playerNear  a player is within {@link #PLAYER_RANGE} blocks of the counter
+     * @param inReach     the clicking player is within reach of the counter
      */
-    public static Verdict check(Facts v, Pos counter, boolean taken, boolean playerNear) {
+    public static Verdict check(Facts v, Pos counter, boolean taken, boolean inReach) {
         if (!v.alive()) {
             return Verdict.GONE;
         }
@@ -118,8 +117,8 @@ public final class CroupierEligibility {
         if (v.sleeping()) {
             return Verdict.SLEEPING;
         }
-        if (!playerNear) {
-            return Verdict.NO_PLAYER;
+        if (!inReach) {
+            return Verdict.OUT_OF_REACH;
         }
         return Verdict.OK;
     }

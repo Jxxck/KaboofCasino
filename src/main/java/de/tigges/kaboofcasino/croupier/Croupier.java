@@ -5,7 +5,8 @@ import org.bukkit.inventory.Merchant;
 
 /**
  * A loaded croupier: its record, its entities (null until the first spawn after the chunk loaded), its merchant (made
- * when first traded with) and who has its trade screen open, plus the vanilla villager's sound clock. Thread: MAIN.
+ * when first traded with) and who has its trade screen open, plus the vanilla villager's sound and work clocks.
+ * Thread: MAIN.
  */
 final class Croupier {
 
@@ -22,6 +23,8 @@ final class Croupier {
     boolean heard;
     /** A player within the idle loop's range (refreshed every scan). */
     boolean watched;
+    /** Game time of its last work at the counter ({@code WorkAtPoi.lastCheck}; 0 after a chunk load, as vanilla's). */
+    long lastWork;
 
     Croupier(CroupierRecord record) {
         this.record = record;

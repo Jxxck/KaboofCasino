@@ -932,7 +932,8 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   the whole TV and drops its item once at the anchor (the mod's `tick` → `destroyBlock(anchor, true)`). A hit on any
   column's click box removes all cells and gives one item. A cell whose light block vanished without an event
   (`/fill`, an exploit) removes the TV without a drop (deco rule; the mod would drop the anchor's item). Explosions
-  and pistons leave TVs alone (light carriers; the mod's TV is IMMOVEABLE).
+  and pistons leave TVs alone (light carriers; the mod's TV is IMMOVEABLE, but an explosion could break it: here TVs
+  take no direct explosion damage).
 - **Channels**: the record's state is the channel 0..8 (0 = off). A right click on a click box with the main hand,
   not sneaking (sneaking passes, as `isSecondaryUseActive`), steps `DecoRecord.nextChannel`: off → 3 → 1 → 2 → 4 →
   5 → 6 → 7 → 8 → off on all cells at once (one record update swaps every cell's model and sets the light blocks to
@@ -956,8 +957,13 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   models and the dealer model with display definitions, `block.roulettecasino.casino_tv*`/`dealer_station` in all 12
   languages; the screen pictures (512 x 288, 256 x 144) need no padding. Recipes: the mod's four (`ModRecipes.SHIPPED`),
   their results are the paper deco items.
+- **Clearance** (safety, as machines): barrier deco that does not stand on support below (`DecoType.playerClearance`:
+  the dealer station, `Place.FREE`, and the two wall shelves, `Place.WALL`) is refused within 2 blocks (box to box,
+  `MachineService.PLAYER_CLEARANCE`) of another non-spectating player ("Hier steht jemand zu nah – das braucht zwei
+  Blöcke Abstand zu anderen Spielern.") and, as every barrier deco, on a logout spot: nobody can be capped in a hole.
 - **Deviations** (deco rules): no collision on TVs (the mod's panel collides 2 px deep) and a full 16 px barrier for
-  the dealer station (the mod's top ends at 11.7 px); a TV breaks at the first hit instead of 60 ticks; no villager
+  the dealer station (the mod's top ends at 11.7 px); TVs take no direct explosion damage; a TV breaks at the first
+  hit instead of 60 ticks; no villager
   job-site POI (the croupier module finds stations through the lookup).
 - **Tests**: `DecoBlockstateTest.televisionsEveryState` (all 288 + 288 + 648 states: model, `y` and cell of every
   placed part; the legacy `on=true, screen=0` = channel 1) and `dealerStation`; `DecoGeometryTest` (cells to the
@@ -1000,6 +1006,11 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     Gefahr.") and closes on damage, a mob targeting the player or the danger sweep ("Gefahr – Handbuch zu."); the
     sweep counts riding a vehicle and standing in water as danger, so it cannot be read on a horse or in a minecart
     (open decision for Jack, easy to relax). Creative is unrestricted.
+  - Plugin notes (`guide.note-*`, gray italic, right under the mod text they amend): spread 3 under text 043 ("In
+    einem Dorf vergibt die Theke den Beruf des Croupiers."): "Hier: Stell einen arbeitslosen Dorfbewohner auf die
+    Theke (Leine ab) und klick die Theke an."; spread 33 under 219 (creative tab: `/casino give croupier_hand`) and
+    213 "Einsätze und Auszahlung" (not in the dialog here: config.yml); spread 34 under 262 (the name field instead of
+    a tab) and 260 (slider only, no typed number).
   - Deviations: "Rezept" is the plugin's German text (the mod has only "Formloses Rezept"); recipes are digit grids,
     not 3 x 3 slots (dialog bodies stack vertically); scenes are 16 px icons (dialog items are always 16 x 16); items
     without a label show their name (the mod only on hover); the added top navigation line; "Fertig" needs one round
@@ -1023,10 +1034,10 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     source scan test holds them to it). `/casino reload` never touches own values.
   - Whole-casino dialog: the seven type values (win chance with "normal" = -1, bias) and "breakable"; Save and
     "Alles normal" (two clicks: every win chance -1, every bias 0). Written into the live `config.yml` with Bukkit's
-    comment-keeping `YamlConfiguration` (only the `ConfigEdits.EDITABLE` paths, temp file + atomic move), then the
-    plugin's own reload. Bet lists and exchange rules stay config-only.
+    comment-keeping `YamlConfiguration` (only the `ConfigEdits.EDITABLE` paths, temp file + atomic move; the new file
+    gets the old one's POSIX permissions, owner and group, so e.g. 664 stays 664), then the plugin's own reload. Bet lists and exchange rules stay config-only.
   - `machines.breakable` (default true, new key merged at start): false = survival players cannot mine machines
-    (silent, as the mod); creative and `/casino remove` still remove them.
+    (silent, as the mod), their owners included: then only creative players or `/casino remove` remove machines.
   - Copy/paste: the hand keeps only the copy's identity (type, token, position, number, name) in its PDC and shows the
     mod's "Kopierte Einstellungen: …" lore; the values stay on the server under the token (at most 256, overworld
     PDC, survive restarts). Chance/bias paste only between machines of the same game; a token that dropped out pastes
@@ -1049,21 +1060,27 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     mod's German text), `CopyPasteTest`, `EditRateTest`.
 - **Croupier** (games.md 10; Jack's option A: a display NPC at a counter). Package `croupier`; the only part in which
   A and A' ("appears with the counter") differ is the `CroupierSpawnTrigger`.
-  - **Trigger A** (`VillagerOnCounterTrigger`): every 20 ticks each loaded counter without a croupier
-    (`DisplayDecoService.dealerStations()`) looks into the block directly above it, never further. A villager there
-    becomes its croupier if every rule of `CroupierEligibility` holds: feet in that block and standing on the
-    counter's top (on ground, y = counter + 1), profession none, not a nitwit, level 1, villager XP 0, no trades, adult,
-    not leashed, no custom name, not riding, no passengers, not trading, not asleep, the counter has no croupier, and
-    (added) a player (not spectating, not a bot) within 8 blocks of the counter. A villager that stands on a counter
-    and is refused is logged once per reason (not a dying one and not one only passing through). The conversion releases the villager's job site, bed, potential job
+  - **Trigger A** (`VillagerOnCounterTrigger`, explicit: nothing ever converts on its own): only when a player
+    right-clicks a counter without a croupier (`DealerStationHook.onUse`: main hand, as the mod would use the block;
+    permission `kaboofcasino.use`; the player within reach, vanilla's `isWithinBlockInteractionRange(pos, 1.0)` with
+    the block interaction range attribute) does the counter look into the block directly above it, never further. A
+    villager there becomes its croupier if every rule of `CroupierEligibility` holds: feet in that block and standing
+    on the counter's top (on ground, y = counter + 1), profession none, not a nitwit, level 1, villager XP 0, no trades,
+    adult, not leashed, no custom name, not riding, no passengers, not trading, not asleep, the counter has no croupier,
+    and the clicking player within reach. Otherwise the player gets a short action-bar answer in the mod's style
+    (`croupier.*` in `messages_de.yml`: "Stell einen arbeitslosen Dorfbewohner auf die Theke und klick sie an.", or the
+    reason: nitwit, has a job, child, leash, name, not free, busy, not on top, too far). A refused villager is logged
+    once per reason with the clicking player (not a dying one, not one only passing by). A villager standing on a
+    counter that nobody clicks stays a villager. The conversion releases the villager's job site, bed, potential job
     site and meeting point (`Villager.releaseAllPois()` by reflection, as the mod's hiring does before it removes a
     villager; no API has it; a failure only leaves the claims, logged once), keeps `createSnapshot().getAsString()`,
     the Minecraft version and every inventory stack (`serializeAsBytes`, Base64) in the record, spawns the croupier
-    and removes the villager; logged with world, position, villager UUID and the nearest player. A' would be
+    and removes the villager; logged with world, position, villager UUID and the clicking player's name. A' would be
     `stationPlaced` calling `spawns.spawn(station, Origin.NONE, placer)`.
   - **Record** (`CroupierRecord`, `CroupierCodec`, `CroupierRecords`): chunk PDC `kaboofcasino:croupiers`, a list of
     JSON strings, version 1 (`v`); spot (block, feet height, facing), counter id and block, villager UUID, snapshot,
-    items, uses, XP, restock day, creation time and nearest player. A newer or unreadable entry is logged CRITICAL and
+    items, uses, XP, vanilla's restock bookkeeping (last restock game time, last check's day, restocks today),
+    creation time and the player who brought it. A newer or unreadable entry is logged CRITICAL and
     kept verbatim (that croupier stays inactive). Croupier, counter and record always share one chunk: it is placed
     only beside a counter in the counter's chunk and re-attaches only to one there, so nothing is looked up across a
     chunk border. Index on chunk load/unload; after a load the record's counter is checked (missing = counter lost).
@@ -1085,12 +1102,17 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     change it), Hero of the Village lowers it as in vanilla (by 7, to 17 emeralds, at level I). Uses and XP go into the record
     (`PlayerPurchaseEvent`, MONITOR); the player's orb is vanilla's 3-6 (+5 on a level-up: 10/70/150/250 XP) at the
     croupier (the recipe's own reward is off, Paper's custom merchant would drop the villager XP at the player).
-    Restocked once per Minecraft day (`fullTime / 24000`) while it has its counter and nobody trades. One player at a
+    Restock as vanilla (`WorkAtPoi` + `Villager.shouldRestock`/`restock`, `CroupierTrade.shouldRestock`): in working
+    hours (day time 2000-9000, the villager schedule's WORK) the croupier works at its counter at most every 300 game
+    ticks (then on a coin flip): its work sound, then up to 2 restocks per day, the second at least 2400 game ticks
+    after the first; the count resets when the day (overworld day count, `fullTime / 24000`) is later than at the last
+    check (from day 1 on, as vanilla) or 12 000 game ticks passed since the last restock. Only with its counter (no job
+    site, no work) and not while a player trades (vanilla would restock and resend the offers). One player at a
     time: a second one gets the mod's `message.roulettecasino.croupier_busy` ("Dieser Croupier ist beschäftigt.",
     action bar), which the mod only uses for hiring (a vanilla villager ignores the second player). The screen closes
     beyond 8 blocks. Sounds as a villager: yes/no when the payment changes (`notifyTradeUpdated`, its 20-tick gate),
-    the ambient (trade) voice by vanilla's ambient clock within 16 blocks, the cartographer's work sound on a
-    restock; voice pitch 0.8-1.2.
+    the ambient (trade) voice by vanilla's ambient clock within 16 blocks, the cartographer's work sound at every
+    work at the counter; voice pitch 0.8-1.2.
   - **Hiring** (`CroupierHiring`, verbatim where pure): a card in the clicked hand, or in the off hand with an empty
     main hand; busy check; the kept villager items drop at the croupier's block like `Block.popResource`; the croupier
     is gone for good; survival: one card used, the badge into that hand if it is empty now, else the inventory, else
@@ -1102,20 +1124,27 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     Minecraft version is restored with a warning; if it cannot be restored the croupier stays, CRITICAL). XP > 0: it
     keeps its profession, stays without a counter (tradeable, hireable, no restock; one on the counter's top steps
     down if a floor carries it) and takes a free counter placed right next to it (same height and chunk; placed into
-    its feet block it stands on the counter's top). Using the counter itself does nothing (the mod's station has no
-    use). A croupier whose chunk unloads disappears with it and comes back from its record.
-  - **Deviations**: the croupier is the dealer model with the idle loop (no villager entity: no walking, sleeping,
-    gossip, breeding, zombie conversion, level-up regeneration); the busy message also for trading; the added player
-    rule; restock once a day without the work schedule; the trade screen is the vanilla one (the mod's
+    its feet block it stands on the counter's top); a vanilla villager would look for a free job site within 48
+    blocks, here only an adjacent counter is taken. Using a counter that has a croupier does nothing (the mod's
+    station has no use). A croupier whose chunk unloads disappears with it and comes back from its record.
+  - **Deviations**: the croupier is the blackjack table's dealer model with its idle loop, not a villager in the mod's
+    croupier outfit: no head tracking, no crossed arms, no biome skin and no level badge, and no villager entity (no
+    walking, sleeping, gossip, breeding, zombie conversion, level-up regeneration); the conversion needs the click on
+    the counter (the mod's villager claims the station by itself); the busy message also for trading; no restock while
+    a player trades; re-attaching only to an adjacent counter (not within 48 blocks); the trade screen is the vanilla one (the mod's
     `croupier_trade.png` look is a client mixin; as a title glyph the art would hide the offer button, and vanilla's
     dark labels would be unreadable on its dark green), and it shows no level name or XP bar (a plugin merchant has
     no villager level; the record keeps the XP); no danger sweep on the trade screen (as a villager's). A villager
     the mod's job-site rule has already made jobless (profession, XP 0, level 1, no job site: vanilla's
     `ResetProfession` resets it within a second) counts as unemployed; with its job site it is refused (`EMPLOYED`).
+  - **Crash caveat**: the villager is removed and the croupier's record written in the same tick, but the entity and
+    the chunk data are saved separately. A server crash between the two saves can duplicate the jobless level-1
+    villager (the villager comes back and the croupier exists) or lose it (the villager is gone, the record was not
+    saved). Nothing else is at stake (a jobless level-1 villager has no trades or experience).
   - **Tests**: `CroupierEligibilityTest` (every refusal on its own), `CroupierPlacementTest` (side order, blocked
     sides, carpet/path heights, chunk border, counter top, loss, re-attach), `CroupierCodecTest` (round trip, minimal
     v1, newer and broken entries, the store keeps foreign entries), `CroupierTradeTest` (the trade, Hero of the
-    Village, levels, orb, restock by day), `CroupierHiringTest` (card hand, card and badge, the stream point for point
+    Village, levels, orb, vanilla's restock rule step by step, working hours), `CroupierHiringTest` (card hand, card and badge, the stream point for point
     against the mod's arithmetic, colours), `CroupierRigTest` (feet offset = the dealer's placement, pack keys and
     texts); pack tool `CroupierPackTest` (the mod's trade JSON = the plugin's constants).
 
@@ -1155,8 +1184,10 @@ pack tool `GuideDataTest`), the croupier's-hand tests (`MachineRecordCodecTest`,
 `CopyPasteTest`, `EditRateTest`), the TV/dealer-station cases in the deco tests, the unlock checks in
 `RecipesDataTest`, `WagerEngineTest.settleRoundsIgnoresDuplicateAndGoneIds`/`deliveredOfCountsOnlyTheSettledRowsItems`
 and `PackListenerTest.aPlayerWhoTurnedTheMusicOffGetsNoMusicRequest`. Croupier on the test instance:
-`testing/croupier-test.sh setup|refuse|leash|push|trade|reopen|breakA|reattach|hire|fresh|breakB` (the bot's
-`selecttrade <n>` picks a merchant offer, `MERCHANT` lines log the offers). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
+`testing/croupier-test.sh setup|hint|refuse|leash|push|trade|reopen|breakA|reattach|hire|fresh|breakB|wait|hole`
+(a villager converts only on Alice's click on its counter; `wait` keeps an eligible villager on a counter for 35 s
+without one; `hole` needs bot Bob) and `testing/croupier-restock-test.sh` (vanilla restock timing with `/time set`,
+about 6 minutes); the bot's `selecttrade <n>` picks a merchant offer, `MERCHANT` lines log the offers. Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
 evaluated with the client's condition semantics), the display-deco tests (`DecoBlockstateTest`: every state of the mod's
 blockstates picks the same model and turn; `DecoGeometryTest`, `DecoTransformTest`, `DecoRulesTest`, `SofaLayoutTest`,
 `DecoPackKeysTest`, `DecoDisplayPackTest`: 280 baked stair states against vanilla's shapes), `SeatMathTest`, the
@@ -1247,9 +1278,11 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
   villager is not given back). The casino pack is 5,861,439 bytes (~5.59 MiB; the 300 s hard cap then asks for
   19.1 KiB/s on average; unchanged policy). Counters (`dealer_station`), TVs and the guide are craftable with the
   mod's recipes; the hiring card only comes from a croupier's trade (or `/casino give croupier_hiring_card`), the
-  croupier's hand only from `/casino give croupier_hand` (creative + `kaboofcasino.admin`). A croupier appears when a
-  player brings an unemployed level-1 villager onto a free counter (log line "Croupier: villager … became a
-  croupier"); refusals are logged once per villager and reason. The conversion releases the villager's bed and job
+  croupier's hand only from `/casino give croupier_hand` (creative + `kaboofcasino.admin`). A croupier appears only
+  when a player brings an unemployed level-1 villager onto a free counter and right-clicks the counter (log line
+  "Croupier: villager … became a croupier; clicked by <name>"); refusals are logged once per villager and reason.
+  `messages_de.yml` also gets `croupier.*`, `deco.player-near` and the `guide.note-*` lines. With
+  `machines.breakable: false` owners cannot mine their own machines either (only creative or `/casino remove`). The conversion releases the villager's bed and job
   site via reflection on the server's villager (`releaseAllPois`); after a Paper update that renames it, only a WARN
   is logged and the claims stay.
 - Step 7 ships as `KaboofCasino-0.7.0.jar`: remove `KaboofCasino-0.6.0.jar`. The live `config.yml` gets `derby:`

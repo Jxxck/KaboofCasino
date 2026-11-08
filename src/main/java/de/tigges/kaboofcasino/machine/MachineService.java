@@ -395,7 +395,7 @@ public final class MachineService {
     }
 
     /** True if {@code box} comes within {@code distance} blocks of any carrier block (box to box). */
-    static boolean near(BoundingBox box, List<Pos> carriers, double distance) {
+    public static boolean near(BoundingBox box, List<Pos> carriers, double distance) {
         for (Pos p : carriers) {
             double dx = Math.max(0, Math.max(p.x() - box.getMaxX(), box.getMinX() - (p.x() + 1)));
             double dy = Math.max(0, Math.max(p.y() - box.getMaxY(), box.getMinY() - (p.y() + 1)));

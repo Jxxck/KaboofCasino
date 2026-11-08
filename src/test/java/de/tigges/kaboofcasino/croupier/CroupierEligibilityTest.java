@@ -86,13 +86,14 @@ class CroupierEligibilityTest {
                 false, false, false, false, true));
         assertEquals(Verdict.COUNTER_TAKEN, CroupierEligibility.check(f, COUNTER, true, true));
         seen.add(Verdict.COUNTER_TAKEN);
-        assertEquals(Verdict.NO_PLAYER, CroupierEligibility.check(f, COUNTER, false, false));
-        seen.add(Verdict.NO_PLAYER);
+        assertEquals(Verdict.OUT_OF_REACH, CroupierEligibility.check(f, COUNTER, false, false));
+        seen.add(Verdict.OUT_OF_REACH);
         // with the positional rules of theVillagerMustStandOnTheCounter: every refusal is covered
         seen.add(Verdict.NOT_ABOVE_COUNTER);
         seen.add(Verdict.NOT_ON_TOP);
         seen.add(Verdict.OK);
-        assertEquals(EnumSet.allOf(Verdict.class), seen);
+        // NOBODY is the click's answer when no villager is there, never check's
+        assertEquals(EnumSet.complementOf(EnumSet.of(Verdict.NOBODY)), seen);
     }
 
     private static void expect(Set<Verdict> seen, Verdict want, Facts f) {

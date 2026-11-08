@@ -26,7 +26,8 @@ class CroupierCodecTest {
         return new CroupierRecord(UUID.fromString("0b6c3b8e-4f0e-4c4a-9b1e-2a7f4f3b9d10"), new Pos(W, -1201, 1022, 33),
                 -0.0625, Facing.WEST, UUID.fromString("7a1d9a52-7d1c-4d3a-8f0e-0c6d2b3e4f50"),
                 new Pos(W, -1202, 1022, 33), UUID.fromString("e2c8d1f4-1b9a-4f3e-9c2d-5a6b7c8d9e0f"), SNBT, "26.3",
-                List.of("AAEC", "3q2+7w=="), 17, 34, 20_512L, 1_762_612_345_678L,
+                List.of("AAEC", "3q2+7w=="), 17, 34, new CroupierTrade.RestockState(492_311_000L, 20_512L, 1),
+                1_762_612_345_678L,
                 UUID.fromString("11111111-2222-3333-4444-555555555555"));
     }
 
@@ -42,14 +43,16 @@ class CroupierCodecTest {
         // an attached croupier on its counter's top, the largest whole numbers
         CroupierRecord top = new CroupierRecord(UUID.randomUUID(), new Pos(W, 5, -64, 5),
                 CroupierPlacement.COUNTER_TOP, Facing.SOUTH, UUID.randomUUID(), new Pos(W, 5, -64, 5), null, null,
-                null, List.of(), CroupierTrade.MAX_USES, Integer.MAX_VALUE, Long.MAX_VALUE, Long.MIN_VALUE, null);
+                null, List.of(), CroupierTrade.MAX_USES, Integer.MAX_VALUE,
+                new CroupierTrade.RestockState(Long.MAX_VALUE, Long.MIN_VALUE, CroupierTrade.RESTOCKS_PER_DAY),
+                Long.MIN_VALUE, null);
         assertEquals(top, CroupierCodec.decode(CroupierCodec.encode(top)));
     }
 
     @Test
     void aCroupierWithoutVillagerOrCounterOmitsTheirFields() {
         CroupierRecord r = new CroupierRecord(UUID.randomUUID(), new Pos(W, 0, 64, 0), 0.0, Facing.NORTH, null, null,
-                null, null, null, List.of(), 0, 6, 3L, 9L, null);
+                null, null, null, List.of(), 0, 6, new CroupierTrade.RestockState(3L, 0L, 0), 9L, null);
         String json = CroupierCodec.encode(r);
         JsonObject o = JsonParser.parseString(json).getAsJsonObject();
         for (String absent : List.of("counter", "cx", "villager", "snapshot", "mc", "items", "near")) {
@@ -74,7 +77,7 @@ class CroupierCodecTest {
         assertFalse(r.hasCounter());
         assertEquals(0, r.uses());
         assertEquals(0, r.xp());
-        assertEquals(0L, r.restockDay());
+        assertEquals(CroupierTrade.RestockState.NONE, r.restock());
         assertTrue(r.items().isEmpty());
         // unknown fields of a later minor change are ignored
         assertEquals(r, CroupierCodec.decode(minimal.replace("}", ",\"future\":[1,2]}")));
@@ -120,7 +123,7 @@ class CroupierCodecTest {
     void theStoreReplacesOnlyItsOwnEntry() {
         CroupierRecord a = full();
         String other = CroupierCodec.encode(new CroupierRecord(UUID.randomUUID(), new Pos(W, 0, 64, 0), 0.0,
-                Facing.NORTH, null, null, null, null, null, List.of(), 0, 0, 0L, 0L, null));
+                Facing.NORTH, null, null, null, null, null, List.of(), 0, 0, null, 0L, null));
         String newer = other.replace("\"v\":1", "\"v\":9");
         String garbage = "%%% garbage %%%";
         List<String> list = List.of(garbage, CroupierCodec.encode(a), newer, other);
@@ -136,14 +139,14 @@ class CroupierCodecTest {
         UUID id = UUID.randomUUID();
         Pos at = new Pos(W, 0, 64, 0);
         assertThrows(IllegalArgumentException.class, () -> new CroupierRecord(id, at, 0.0, Facing.NORTH,
-                UUID.randomUUID(), null, null, null, null, List.of(), 0, 0, 0, 0, null));
+                UUID.randomUUID(), null, null, null, null, List.of(), 0, 0, null, 0, null));
         assertThrows(IllegalArgumentException.class, () -> new CroupierRecord(id, at, 0.0, Facing.NORTH,
-                UUID.randomUUID(), new Pos("minecraft:the_end", 0, 64, 1), null, null, null, List.of(), 0, 0, 0, 0,
+                UUID.randomUUID(), new Pos("minecraft:the_end", 0, 64, 1), null, null, null, List.of(), 0, 0, null, 0,
                 null));
         assertThrows(IllegalArgumentException.class, () -> new CroupierRecord(id, at, Double.NaN, Facing.NORTH, null,
-                null, null, null, null, List.of(), 0, 0, 0, 0, null));
-        CroupierRecord r = new CroupierRecord(id, at, 0.0, Facing.NORTH, null, null, null, null, null, null, -3, -1, 0,
-                0, null);
+                null, null, null, null, List.of(), 0, 0, null, 0, null));
+        CroupierRecord r = new CroupierRecord(id, at, 0.0, Facing.NORTH, null, null, null, null, null, null, -3, -1,
+                null, 0, null);
         assertEquals(0, r.uses());
         assertEquals(0, r.xp());
         assertTrue(r.items().isEmpty());

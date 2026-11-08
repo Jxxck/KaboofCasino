@@ -101,6 +101,8 @@ deco:
   chunk-border: "<red>Das passt hier nicht ganz in einen Chunk – setz es einen Block weiter nach <direction>."
   chunk-border-far: "<red>Das passt hier nicht ganz in einen Chunk – setz es <blocks> Blöcke weiter nach <direction>."
   logout-spot: "<red>Hier ist jemand ausgeloggt – stell das woanders hin."
+  # barrier deco without support below (croupier counter, wall shelves): two blocks to other players, as machines
+  player-near: "<red>Hier steht jemand zu nah – das braucht zwei Blöcke Abstand zu anderen Spielern."
   seat-danger: "<red>Gefahr – du stehst auf."
 
 # the casino guide (dialogs); its own texts come from the mod (pack lang files), these are the plugin's additions
@@ -114,6 +116,25 @@ guide:
   # licence line on the cover
   credits: "<gray>Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>"
   danger-close: "<red>Gefahr – Handbuch zu."
+  # plugin notes under the mod's texts where this server works differently (spread 3: text 043; spreads 33/34)
+  note-counter: "<gray><i>Hier: Stell einen arbeitslosen Dorfbewohner auf die Theke (Leine ab) und klick die Theke an."
+  note-hand: "<gray><i>Hier: /casino give croupier_hand (nur Admins)."
+  note-bets: "<gray><i>Hier nicht im Fenster: Einsätze und Auszahlungen stehen in der config.yml."
+  note-names: "<gray><i>Hier: das Feld „Name“ im Fenster der Maschine."
+  note-number: "<gray><i>Hier nur der Balken, keine Zahleneingabe."
+
+# the croupier counter: answers to a right click on a free counter (option A: a click converts the villager on it)
+croupier:
+  hint: "Stell einen arbeitslosen Dorfbewohner auf die Theke und klick sie an."
+  not-on-top: "Der Dorfbewohner muss oben auf der Theke stehen."
+  nitwit: "Ein Nitwit wird kein Croupier."
+  employed: "Dieser Dorfbewohner hat schon einen Beruf."
+  baby: "Ein Kind wird kein Croupier."
+  leashed: "Nimm dem Dorfbewohner erst die Leine ab."
+  named: "Ein Dorfbewohner mit Namen wird kein Croupier."
+  riding: "Der Dorfbewohner muss frei auf der Theke stehen."
+  busy-villager: "Der Dorfbewohner ist gerade beschäftigt."
+  out-of-reach: "Komm näher an die Theke."
 
 pack:
   prompt: "<gold>KaboofCasino</gold>: Grafiken und Sounds von <yellow>MineVegas Casino</yellow> (MIT), curseforge.com/minecraft/mc-mods/minevegas-casino"

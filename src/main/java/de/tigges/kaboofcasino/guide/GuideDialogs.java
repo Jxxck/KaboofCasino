@@ -97,16 +97,27 @@ public final class GuideDialogs {
         List<Widget> widgets = page.widgets();
         for (int i = 0; i < widgets.size(); i++) {
             Widget w = widgets.get(i);
+            List<String> shown = new ArrayList<>(2);
             switch (w) {
-                case Title t -> body.add(text(tr(t.key()).color(GOLD).decorate(TextDecoration.BOLD)));
-                case Label l -> body.add(text(styled(l)));
-                case Text t -> body.add(text(tr(t.key()).color(color(t.color()))));
+                case Title t -> {
+                    body.add(text(tr(t.key()).color(GOLD).decorate(TextDecoration.BOLD)));
+                    shown.add(t.key());
+                }
+                case Label l -> {
+                    body.add(text(styled(l)));
+                    shown.add(l.key());
+                }
+                case Text t -> {
+                    body.add(text(tr(t.key()).color(color(t.color()))));
+                    shown.add(t.key());
+                }
                 case Item item -> {
                     List<Component> beside = new ArrayList<>();
                     while (i + 1 < widgets.size() && beside(item, widgets.get(i + 1))) {
                         Widget next = widgets.get(++i);
                         beside.add(next instanceof Label l ? styled(l)
                                 : tr(((Text) next).key()).color(color(((Text) next).color())));
+                        shown.add(next instanceof Label l ? l.key() : ((Text) next).key());
                     }
                     Component description = !beside.isEmpty() ? Component.join(JoinConfiguration.newlines(), beside)
                             : indexLink(item.ref(), number, texts);
@@ -133,6 +144,12 @@ public final class GuideDialogs {
                 }
                 case Preview p -> {
                     // no hover preview in a dialog
+                }
+            }
+            for (String key : shown) {
+                Component note = key == null ? null : texts.notes().get(key);
+                if (note != null) {
+                    body.add(text(note)); // the plugin's note right under the mod text it amends
                 }
             }
         }

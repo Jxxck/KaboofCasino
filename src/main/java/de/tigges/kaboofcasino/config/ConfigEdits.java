@@ -1,11 +1,14 @@
 package de.tigges.kaboofcasino.config;
 
+import de.tigges.kaboofcasino.util.Log;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributes;
 import java.util.Map;
 import java.util.Set;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -44,16 +47,47 @@ public final class ConfigEdits {
         return yaml.saveToString();
     }
 
-    /** Rewrites the live file with {@code values} (temp file + atomic move). */
+    /**
+     * Rewrites the live file with {@code values} (temp file + atomic move). The new file keeps the old one's POSIX
+     * permissions (e.g. 664), owner and group, so an admin's file mode survives the edit.
+     */
     public static void write(Path file, Map<String, Object> values) throws IOException {
         String before = Files.readString(file, StandardCharsets.UTF_8);
         String after = apply(before, values);
         Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
         Files.writeString(tmp, after, StandardCharsets.UTF_8);
+        copyAttributes(file, tmp);
         try {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException e) {
             Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    /**
+     * Owner, group and permissions of {@code from} onto {@code to} (POSIX file systems; elsewhere nothing). Owner and
+     * group first (a change of owner may clear permission bits), then the permissions. A refused owner change (the
+     * server runs as another user than the file's owner) is logged and leaves the server's user as owner.
+     */
+    static void copyAttributes(Path from, Path to) throws IOException {
+        PosixFileAttributeView source = Files.getFileAttributeView(from, PosixFileAttributeView.class);
+        PosixFileAttributeView target = Files.getFileAttributeView(to, PosixFileAttributeView.class);
+        if (source == null || target == null) {
+            return;
+        }
+        PosixFileAttributes old = source.readAttributes();
+        try {
+            PosixFileAttributes now = target.readAttributes();
+            if (!now.owner().equals(old.owner())) {
+                target.setOwner(old.owner());
+            }
+            if (!now.group().equals(old.group())) {
+                target.setGroup(old.group());
+            }
+        } catch (IOException | SecurityException e) {
+            Log.get().warn("config.yml: could not keep owner {} / group {} ({})", old.owner().getName(),
+                    old.group().getName(), e.toString());
+        }
+        target.setPermissions(old.permissions());
     }
 }

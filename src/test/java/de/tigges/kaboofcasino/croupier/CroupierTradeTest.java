@@ -80,22 +80,57 @@ class CroupierTradeTest {
     }
 
     @Test
-    void restockOncePerDayWhileItHasItsCounter() {
-        // same day: nothing
-        assertEquals(new CroupierTrade.Restock(30, 100, false), CroupierTrade.restock(30, 100, 100, true, false));
-        // the next day: stock back, the mark moves
-        assertEquals(new CroupierTrade.Restock(0, 101, true), CroupierTrade.restock(30, 100, 101, true, false));
-        // several days later: still once
-        assertEquals(new CroupierTrade.Restock(0, 140, true), CroupierTrade.restock(64, 100, 140, true, false));
-        // nothing was used: the mark moves, nothing to restock (no work sound)
-        assertEquals(new CroupierTrade.Restock(0, 101, false), CroupierTrade.restock(0, 100, 101, true, false));
-        // without a counter (its job site) or while someone trades: nothing
-        assertEquals(new CroupierTrade.Restock(30, 100, false), CroupierTrade.restock(30, 100, 105, false, false));
-        assertEquals(new CroupierTrade.Restock(30, 100, false), CroupierTrade.restock(30, 100, 105, true, true));
-        // /time set back: only the mark follows, no extra restock
-        assertEquals(new CroupierTrade.Restock(30, 90, false), CroupierTrade.restock(30, 100, 90, true, false));
-        CroupierTrade.Restock again = CroupierTrade.restock(30, 90, 90, true, false);
-        assertFalse(again.restocked());
+    void restockFollowsVanillasShouldRestock() {
+        CroupierTrade.RestockState s = CroupierTrade.RestockState.NONE;
+        // a new croupier, day 5, game time 100 000, one card sold: the first check resets (12 000 ticks since 0) and
+        // restocks at once (none today yet)
+        CroupierTrade.RestockCheck c = CroupierTrade.shouldRestock(s, 100_000, 5, 1);
+        assertTrue(c.restock());
+        assertEquals(new CroupierTrade.RestockState(100_000, 5, 0), c.state());
+        s = CroupierTrade.restocked(c.state(), 100_000);
+        assertEquals(new CroupierTrade.RestockState(100_000, 5, 1), s);
+        // nothing used: no restock (and nothing counts)
+        assertFalse(CroupierTrade.shouldRestock(s, 103_000, 5, 0).restock());
+        // the second restock of the day: not before 2 400 ticks after the first, then once
+        assertFalse(CroupierTrade.shouldRestock(s, 102_400, 5, 3).restock());
+        c = CroupierTrade.shouldRestock(s, 102_401, 5, 3);
+        assertTrue(c.restock());
+        s = CroupierTrade.restocked(c.state(), 102_401);
+        assertEquals(2, s.today());
+        // a third one the same day: never, however long it waits within 12 000 ticks
+        assertFalse(CroupierTrade.shouldRestock(s, 110_000, 5, 64).restock());
+        assertFalse(CroupierTrade.shouldRestock(s, 114_401, 5, 64).restock());
+        // more than 12 000 ticks after the last restock: the count resets (vanilla), one more is allowed
+        c = CroupierTrade.shouldRestock(s, 114_402, 5, 64);
+        assertTrue(c.restock());
+        assertEquals(new CroupierTrade.RestockState(114_402, 5, 0), c.state());
+        // a later day resets as well, even right after a restock (/time add)
+        s = CroupierTrade.restocked(c.state(), 114_402);
+        s = CroupierTrade.restocked(s, 117_000);
+        assertFalse(CroupierTrade.shouldRestock(s, 117_100, 5, 9).restock());
+        c = CroupierTrade.shouldRestock(s, 117_100, 6, 9);
+        assertTrue(c.restock());
+        assertEquals(new CroupierTrade.RestockState(117_100, 6, 0), c.state());
+        // vanilla quirk: on day 0 no check has a day to compare with (lastCheckDay > 0 is required)
+        CroupierTrade.RestockState d0 = new CroupierTrade.RestockState(500, 0, 2);
+        assertFalse(CroupierTrade.shouldRestock(d0, 600, 1, 9).restock());
+        assertEquals(1, CroupierTrade.shouldRestock(d0, 600, 1, 9).state().lastCheckDay());
+        // a day that went backwards (/time set) only moves the mark
+        CroupierTrade.RestockState back = new CroupierTrade.RestockState(1_000, 9, 2);
+        c = CroupierTrade.shouldRestock(back, 1_100, 7, 9);
+        assertFalse(c.restock());
+        assertEquals(new CroupierTrade.RestockState(1_000, 7, 2), c.state());
+    }
+
+    @Test
+    void itWorksInTheVillagersWorkingHours() {
+        assertFalse(CroupierTrade.workHours(0));
+        assertFalse(CroupierTrade.workHours(1_999));
+        assertTrue(CroupierTrade.workHours(2_000));
+        assertTrue(CroupierTrade.workHours(8_999));
+        assertFalse(CroupierTrade.workHours(9_000));
+        assertTrue(CroupierTrade.workHours(24_000L * 1391 + 6_000));
+        assertFalse(CroupierTrade.workHours(-1));
     }
 
     @Test

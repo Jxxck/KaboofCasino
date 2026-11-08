@@ -164,8 +164,23 @@ public final class GuideService {
     private GuideTexts texts() {
         Messages m = ctx.messages().get();
         return new GuideTexts(m.render(Msg.GUIDE_RECIPE), m.render(Msg.GUIDE_ANY_KIND), m.render(Msg.GUIDE_CREDITS),
-                page -> m.render(Msg.GUIDE_GOTO, Messages.text("page", Integer.toString(page))), items::vanillaName);
+                page -> m.render(Msg.GUIDE_GOTO, Messages.text("page", Integer.toString(page))), items::vanillaName,
+                Map.of(NOTE_COUNTER, m.render(Msg.GUIDE_NOTE_COUNTER), NOTE_HAND, m.render(Msg.GUIDE_NOTE_HAND),
+                        NOTE_BETS, m.render(Msg.GUIDE_NOTE_BETS), NOTE_NAMES, m.render(Msg.GUIDE_NOTE_NAMES),
+                        NOTE_NUMBER, m.render(Msg.GUIDE_NOTE_NUMBER)));
     }
+
+    /**
+     * The mod texts that get a plugin note: spread 3 "In einem Dorf vergibt die Theke den Beruf des Croupiers." (here a
+     * click on the counter converts the villager standing on it), spread 33 "Im Kreativ-Tab des Casinos, ohne Rezept."
+     * and "Einsätze und Auszahlung" (not built: config.yml), spread 34 "Der Reiter Name benennt sie um." (no tabs: the
+     * name field) and "Ziehe den Balken oder tippe eine Zahl." (sliders only).
+     */
+    static final String NOTE_COUNTER = "guide.roulettecasino.text.043";
+    static final String NOTE_HAND = "guide.roulettecasino.text.219";
+    static final String NOTE_BETS = "guide.roulettecasino.text.213";
+    static final String NOTE_NAMES = "guide.roulettecasino.text.262";
+    static final String NOTE_NUMBER = "guide.roulettecasino.text.260";
 
     /** Every {@code safety.sweep-ticks}: the danger check of every open guide. */
     private void tick() {

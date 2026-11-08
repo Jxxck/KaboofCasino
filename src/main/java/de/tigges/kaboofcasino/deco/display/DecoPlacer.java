@@ -3,6 +3,7 @@ package de.tigges.kaboofcasino.deco.display;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.machine.Facing;
+import de.tigges.kaboofcasino.machine.MachineService;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.util.Pos;
 import java.util.ArrayList;
@@ -44,7 +45,9 @@ final class DecoPlacer {
         PLACED,
         /** The mod would not place it (no space, no support, no wall): silent like the mod. */
         INVALID,
-        CHUNK_BORDER, LOGOUT_SPOT, DENIED
+        CHUNK_BORDER, LOGOUT_SPOT, DENIED,
+        /** Another player within two blocks of an unsupported barrier deco ({@link DecoType#playerClearance}). */
+        PLAYER_NEAR
     }
 
     /** A planned placement: cells, record data, carrier data per cell. */
@@ -259,6 +262,14 @@ final class DecoPlacer {
                 }
             }
         }
+        if (plan.type().playerClearance()) {
+            for (Player other : w.getPlayers()) {
+                if (!other.equals(player) && other.getGameMode() != GameMode.SPECTATOR
+                        && MachineService.near(other.getBoundingBox(), plan.cells(), MachineService.PLAYER_CLEARANCE)) {
+                    return Result.PLAYER_NEAR;
+                }
+            }
+        }
         if (!player.isOp()) {
             for (Pos p : plan.cells()) {
                 if (underSpawnProtection(w, p)) {
@@ -340,6 +351,7 @@ final class DecoPlacer {
                 }
             }
             case LOGOUT_SPOT -> messages.actionBar(player, Msg.DECO_LOGOUT_SPOT);
+            case PLAYER_NEAR -> messages.actionBar(player, Msg.DECO_PLAYER_NEAR);
             case DENIED -> messages.actionBar(player, Msg.MACHINE_PLACE_DENIED);
             default -> {
             }

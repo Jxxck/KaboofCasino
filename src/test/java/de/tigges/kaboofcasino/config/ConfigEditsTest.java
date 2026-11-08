@@ -10,6 +10,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -134,6 +136,22 @@ class ConfigEditsTest {
         assertTrue(after.contains("idle-light-ticks: 8"), after);
         assertTrue(after.contains("bias: -5"), after);
         assertFalse(Files.exists(dir.resolve("config.yml.tmp")));
+    }
+
+    @Test
+    void theRewrittenFileKeepsItsModeOwnerAndGroup(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("config.yml");
+        Files.writeString(file, "slot:\n  win-chance: 12\n", StandardCharsets.UTF_8);
+        for (String mode : List.of("rw-rw-r--", "rw-------", "rw-r-----")) {
+            Files.setPosixFilePermissions(file, PosixFilePermissions.fromString(mode));
+            var before = Files.readAttributes(file, PosixFileAttributes.class);
+            ConfigEdits.write(file, Map.of("slot.win-chance", 40));
+            var after = Files.readAttributes(file, PosixFileAttributes.class);
+            assertEquals(mode, PosixFilePermissions.toString(after.permissions()));
+            assertEquals(before.owner(), after.owner());
+            assertEquals(before.group(), after.group());
+            assertTrue(Files.readString(file, StandardCharsets.UTF_8).contains("win-chance: 40"));
+        }
     }
 
     @Test

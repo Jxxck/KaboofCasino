@@ -28,13 +28,14 @@ import java.util.UUID;
  *                        Base64 (dropped when it is hired; the snapshot holds the same items for a restore)
  * @param uses            trades of the hiring card since the last restock (0..{@link CroupierTrade#MAX_USES})
  * @param xp              villager experience (2 per trade); above 0 it keeps its profession without a counter
- * @param restockDay      the Minecraft day ({@code fullTime / 24000}) of the last restock
+ * @param restock         vanilla's restock bookkeeping (last restock, last check's day, restocks today)
  * @param createdAt       epoch millis of the conversion
  * @param createdNear     the nearest player at the conversion (logs); null if none
  */
 public record CroupierRecord(UUID id, Pos stand, double lift, Facing facing, UUID counter, Pos counterPos,
                              UUID villager, String snapshot, String snapshotVersion, List<String> items, int uses,
-                             int xp, long restockDay, long createdAt, UUID createdNear) {
+                             int xp, CroupierTrade.RestockState restock, long createdAt,
+                             UUID createdNear) {
 
     public CroupierRecord {
         Objects.requireNonNull(id, "id");
@@ -52,6 +53,7 @@ public record CroupierRecord(UUID id, Pos stand, double lift, Facing facing, UUI
         items = items == null ? List.of() : List.copyOf(items);
         uses = Math.max(0, Math.min(CroupierTrade.MAX_USES, uses));
         xp = Math.max(0, xp);
+        restock = restock == null ? CroupierTrade.RestockState.NONE : restock;
     }
 
     public boolean hasCounter() {
@@ -65,24 +67,24 @@ public record CroupierRecord(UUID id, Pos stand, double lift, Facing facing, UUI
 
     public CroupierRecord withTrade(int newUses, int newXp) {
         return new CroupierRecord(id, stand, lift, facing, counter, counterPos, villager, snapshot, snapshotVersion,
-                items, newUses, newXp, restockDay, createdAt, createdNear);
+                items, newUses, newXp, restock, createdAt, createdNear);
     }
 
-    public CroupierRecord withRestock(int newUses, long day) {
+    public CroupierRecord withRestock(int newUses, CroupierTrade.RestockState state) {
         return new CroupierRecord(id, stand, lift, facing, counter, counterPos, villager, snapshot, snapshotVersion,
-                items, newUses, xp, day, createdAt, createdNear);
+                items, newUses, xp, state, createdAt, createdNear);
     }
 
     /** Without its counter (lost), standing where {@code where} says. */
     public CroupierRecord withoutCounter(CroupierPlacement.Stand where) {
         return new CroupierRecord(id, where.feet(), where.lift(), where.facing(), null, null, villager, snapshot,
-                snapshotVersion, items, uses, xp, restockDay, createdAt, createdNear);
+                snapshotVersion, items, uses, xp, restock, createdAt, createdNear);
     }
 
     /** Attached to the counter {@code station} at {@code counterAt}, standing where {@code where} says. */
     public CroupierRecord withCounter(UUID station, Pos counterAt, CroupierPlacement.Stand where) {
         return new CroupierRecord(id, where.feet(), where.lift(), where.facing(), station, counterAt, villager,
-                snapshot, snapshotVersion, items, uses, xp, restockDay, createdAt, createdNear);
+                snapshot, snapshotVersion, items, uses, xp, restock, createdAt, createdNear);
     }
 
     /** Where it stands now. */

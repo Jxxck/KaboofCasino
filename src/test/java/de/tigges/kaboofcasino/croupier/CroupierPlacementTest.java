@@ -132,7 +132,7 @@ class CroupierPlacementTest {
 
     private static CroupierRecord croupier(Pos stand, double lift, Facing facing, boolean counter) {
         return new CroupierRecord(UUID.randomUUID(), stand, lift, facing, counter ? UUID.randomUUID() : null,
-                counter ? COUNTER : null, null, null, null, List.of(), 0, 4, 0, 0, null);
+                counter ? COUNTER : null, null, null, null, List.of(), 0, 4, null, 0, null);
     }
 
     @Test

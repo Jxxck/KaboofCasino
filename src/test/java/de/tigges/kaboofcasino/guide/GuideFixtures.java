@@ -104,7 +104,8 @@ final class GuideFixtures {
     static GuideTexts texts() {
         return new GuideTexts(Component.text("Rezept"), Component.text(" (beliebige Sorte)"),
                 Component.text("CREDITS"), page -> Component.text("Zur Seite " + page),
-                id -> Component.translatable(id));
+                id -> Component.translatable(id), java.util.Map.of("guide.roulettecasino.text.043",
+                        Component.text("NOTE-043"), "guide.roulettecasino.text.213", Component.text("NOTE-213")));
     }
 
     static GuideView view(int page, boolean history) {

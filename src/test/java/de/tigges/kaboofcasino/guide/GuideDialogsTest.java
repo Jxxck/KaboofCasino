@@ -263,7 +263,8 @@ class GuideDialogsTest {
         String spread33 = GuideFixtures.describe(GuideFixtures.view(33, false));
         assertTrue(spread33.contains("item roulettecasino:croupier_hand | {guide.roulettecasino.text.248} / "
                 + "{guide.roulettecasino.text.249}"), spread33);
-        assertTrue(spread33.contains("item minecraft:emerald | {guide.roulettecasino.text.213}"), spread33);
+        assertTrue(spread33.contains("item minecraft:emerald | {guide.roulettecasino.text.213}\ntext(250) NOTE-213"),
+                spread33); // the plugin's note right under it: bet lists and payouts are not in the dialog here
         // spread 9: the roulette mechanism is a component here, its own spread is 4 (a link in the legend)
         String spread9 = GuideFixtures.describe(GuideFixtures.view(9, false));
         assertTrue(spread9.contains("[{item.roulettecasino.roulette_mechanism}](kaboofcasino:guide "
@@ -307,8 +308,18 @@ class GuideDialogsTest {
     }
 
     @Test
+    void pluginNotesHangOnModTextsOfTheirSpreads() {
+        // every mod text a plugin note amends is on the spread the note is written for
+        java.util.Map<String, Integer> where = java.util.Map.of(GuideService.NOTE_COUNTER, 3, GuideService.NOTE_HAND,
+                33, GuideService.NOTE_BETS, 33, GuideService.NOTE_NAMES, 34, GuideService.NOTE_NUMBER, 34);
+        where.forEach((key, spread) -> assertTrue(GuideFixtures.describe(GuideFixtures.view(spread, false))
+                .contains("{" + key + "}"), key + " on spread " + spread));
+    }
+
+    @Test
     void snapshotOfTheCroupierSpread() {
-        // spread 3 with a way back: villager -> croupier, the counter's recipe, links to blackjack and poker; right
+        // spread 3 with a way back: villager -> croupier, the plugin's note on how it works here, the counter's
+        // recipe, links to blackjack and poker; right
         // page: 24 emeralds -> hiring card, the hiring scene as the croupier, the badge with its label
         String expected = """
                 title {item.roulettecasino.casino_guide}
@@ -318,6 +329,7 @@ class GuideDialogsTest {
                 text(250) ↓
                 item minecraft:villager_spawn_egg | {entity.roulettecasino.villager.croupier}
                 text(250) {guide.roulettecasino.text.043}
+                text(250) NOTE-043
                 item roulettecasino:dealer_station | Rezept · {block.roulettecasino.dealer_station} / 1 1 1 / 2 3 2 / 4 4 4 / 1 {minecraft:green_wool} / 2 {minecraft:gold_ingot} / 3 {minecraft:red_wool} / 4 {minecraft:oak_planks} (beliebige Sorte)
                 item roulettecasino:blackjack_table | [{block.roulettecasino.blackjack_table}](kaboofcasino:guide {do:"link",to:"5"})
                 item roulettecasino:poker_table | [{block.roulettecasino.poker_table}](kaboofcasino:guide {do:"link",to:"6"})

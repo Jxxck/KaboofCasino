@@ -89,28 +89,71 @@ public final class CroupierTrade {
         return (random.nextFloat() - random.nextFloat()) * 0.2F + 1.0F;
     }
 
-    /** The result of a restock check. */
-    public record Restock(int uses, long day, boolean restocked) {
+    /** {@code WorkAtPoi}: a villager works at its job site at most every this many game ticks. */
+    public static final long WORK_CHECK_TICKS = 300L;
+    /** {@code Villager.allowedToRestock}: the second restock of a day waits this long after the first. */
+    public static final long RESTOCK_GAP_TICKS = 2400L;
+    /** {@code Villager.shouldRestock}: the restock count resets when this long passed since the last restock. */
+    public static final long RESTOCK_RESET_TICKS = 12000L;
+    /** {@code Villager.allowedToRestock}: at most this many restocks per day. */
+    public static final int RESTOCKS_PER_DAY = 2;
+    /** The villager schedule's WORK activity ({@code Schedule.VILLAGER_DEFAULT}): day time 2000 to 9000. */
+    public static final long WORK_START = 2000L;
+    public static final long WORK_END = 9000L;
+
+    /**
+     * Vanilla's restock bookkeeping of a villager ({@code Villager.lastRestockGameTime}, {@code lastRestockCheckDay},
+     * {@code numberOfRestocksToday}).
+     *
+     * @param lastGameTime game time of the last restock (or of the last daily reset)
+     * @param lastCheckDay the day of the last check ({@link #day})
+     * @param today        restocks since the last reset
+     */
+    public record RestockState(long lastGameTime, long lastCheckDay, int today) {
+
+        /** A new villager's (all zero). */
+        public static final RestockState NONE = new RestockState(0L, 0L, 0);
+
+        public RestockState {
+            today = Math.max(0, today);
+        }
+    }
+
+    /** The result of {@link #shouldRestock}: the state after the check and whether to restock now. */
+    public record RestockCheck(RestockState state, boolean restock) {
     }
 
     /**
-     * Once per Minecraft day while it has its counter (its job site) and nobody trades, the croupier restocks: uses
-     * back to 0. A day that went backwards ({@code /time set}) only moves the mark. Without a counter nothing changes.
+     * {@code Villager.shouldRestock} with {@code allowedToRestock} and {@code needsToRestock}: the restock count resets
+     * when more than {@value #RESTOCK_RESET_TICKS} game ticks passed since the last restock, or when the day is later
+     * than the last check's (only once a check has been made on a day above 0, as vanilla); then a restock is allowed
+     * if none was made since the reset, or one was and {@value #RESTOCK_GAP_TICKS} game ticks have passed; it is
+     * needed if the trade was used.
      */
-    public static Restock restock(int uses, long lastDay, long today, boolean hasCounter, boolean trading) {
-        if (!hasCounter || trading) {
-            return new Restock(uses, lastDay, false);
-        }
-        if (today < lastDay) {
-            return new Restock(uses, today, false);
-        }
-        if (today == lastDay) {
-            return new Restock(uses, lastDay, false);
-        }
-        return new Restock(0, today, uses > 0);
+    public static RestockCheck shouldRestock(RestockState s, long gameTime, long day, int uses) {
+        boolean reset = gameTime > s.lastGameTime() + RESTOCK_RESET_TICKS;
+        reset |= s.lastCheckDay() > 0 && day > s.lastCheckDay();
+        long last = reset ? gameTime : s.lastGameTime();
+        int today = reset ? 0 : s.today();
+        boolean allowed = today == 0 || today < RESTOCKS_PER_DAY && gameTime > last + RESTOCK_GAP_TICKS;
+        return new RestockCheck(new RestockState(last, day, today), allowed && uses > 0);
     }
 
-    /** {@code fullTime / 24000}, the day vanilla's restock counts in ({@code Villager.shouldRestock}). */
+    /** {@code Villager.restock}: the uses go back to 0 (done by the caller), the time is noted, one more today. */
+    public static RestockState restocked(RestockState s, long gameTime) {
+        return new RestockState(gameTime, s.lastCheckDay(), s.today() + 1);
+    }
+
+    /** Whether {@code dayTime} lies in the villagers' working hours ({@value #WORK_START} to {@value #WORK_END}). */
+    public static boolean workHours(long dayTime) {
+        long t = Math.floorMod(dayTime, 24000L);
+        return t >= WORK_START && t < WORK_END;
+    }
+
+    /**
+     * {@code fullTime / 24000}, the day vanilla's restock counts in ({@code Villager.shouldRestock}: the overworld day
+     * timeline's period count).
+     */
     public static long day(long fullTime) {
         return Math.floorDiv(fullTime, 24000L);
     }

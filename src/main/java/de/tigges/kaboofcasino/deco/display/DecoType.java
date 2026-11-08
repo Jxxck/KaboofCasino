@@ -308,6 +308,16 @@ public enum DecoType {
         };
     }
 
+    /**
+     * A barrier (collision) deco that does not stand on support below: the dealer station ({@link Place#FREE}) and the
+     * wall shelves ({@link Place#WALL}). Such a block could cap a player in a hole, so it keeps the machines' distance
+     * of {@code MachineService.PLAYER_CLEARANCE} blocks to other players (and, as every barrier deco, the logout-spot
+     * rule).
+     */
+    public boolean playerClearance() {
+        return carrier == Carrier.BARRIER && (place == Place.FREE || place == Place.WALL);
+    }
+
     /** True for chair, stool and sofa. */
     public boolean seat() {
         return place == Place.SEAT || place == Place.SOFA;

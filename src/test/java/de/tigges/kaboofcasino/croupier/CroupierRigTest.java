@@ -80,8 +80,8 @@ class CroupierRigTest {
                 CroupierPlacement.COUNTER_TOP, Facing.NORTH)));
         assertEquals(List.of(new Pos("minecraft:overworld", 3, 71, 3), new Pos("minecraft:overworld", 3, 72, 3)),
                 CroupierService.cells(new CroupierRecord(java.util.UUID.randomUUID(), feet,
-                        CroupierPlacement.COUNTER_TOP, Facing.NORTH, null, null, null, null, null, List.of(), 0, 0, 0,
-                        0, null)));
+                        CroupierPlacement.COUNTER_TOP, Facing.NORTH, null, null, null, null, null, List.of(), 0, 0,
+                        null, 0, null)));
     }
 
     @Test

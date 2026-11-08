@@ -152,6 +152,27 @@ class DecoRulesTest {
         assertFalse(DealerStationHook.NONE.onUse(null, near), "the mod's station has no use");
     }
 
+    @Test
+    void unsupportedBarrierDecoKeepsPlayersClear() {
+        // only barrier deco without support below could cap a player in a hole: the counter and the wall shelves
+        Set<DecoType> clear = new HashSet<>();
+        for (DecoType t : DecoType.values()) {
+            if (t.playerClearance()) {
+                clear.add(t);
+            }
+        }
+        assertEquals(Set.of(DecoType.DEALER_STATION, DecoType.BOTTLE_DISPLAY_SHELF, DecoType.GLASS_DISPLAY_SHELF),
+                clear);
+        // a player standing in a 1 x 2 hole at (0, 64, 0): a counter on top of the hole (y 66) is within the two blocks
+        org.bukkit.util.BoundingBox inHole = new org.bukkit.util.BoundingBox(0.2, 64, 0.2, 0.8, 65.8, 0.8);
+        Pos cap = new Pos("minecraft:overworld", 0, 66, 0);
+        assertTrue(de.tigges.kaboofcasino.machine.MachineService.near(inHole, java.util.List.of(cap),
+                de.tigges.kaboofcasino.machine.MachineService.PLAYER_CLEARANCE));
+        assertFalse(de.tigges.kaboofcasino.machine.MachineService.near(inHole,
+                java.util.List.of(new Pos("minecraft:overworld", 4, 66, 0)),
+                de.tigges.kaboofcasino.machine.MachineService.PLAYER_CLEARANCE));
+    }
+
     private static DecoRecord station(Pos at) {
         return new DecoRecord(UUID.randomUUID(), DecoType.DEALER_STATION, at, Facing.SOUTH, 0, new UUID(0, 0), 0);
     }
