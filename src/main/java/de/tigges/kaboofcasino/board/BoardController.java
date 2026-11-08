@@ -89,9 +89,9 @@ public final class BoardController implements MachineGame {
     void render() {
         BoardSnapshot s = service.snapshot();
         BoardRig.Layout l = rig.layout();
-        rig.show(BoardView.page(page, s == null ? List.of() : s.top(page.category(), page.period()),
+        rig.show(BoardView.page(page, s == null ? List.of() : service.visible(s.top(page.category(), page.period())),
                 s == null ? ctx.config().get().leaderboard().minStake() : s.minStake(), l.namePx(), l.leftPx(),
-                l.rightPx(), s == null, ctx.messages().get()));
+                l.rightPx(), l.compact(), s == null, ctx.messages().get()));
     }
 
     @Override

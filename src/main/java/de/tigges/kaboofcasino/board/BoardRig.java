@@ -37,7 +37,7 @@ final class BoardRig {
      */
     record Layout(List<Part> parts, float width, float height, double halfWidth, double z, double titleY,
                   float titleScale, double subtitleY, float subtitleScale, double rowsTop, float rowScale, int leftPx,
-                  int rightPx, int namePx) {
+                  int rightPx, int namePx, boolean compact) {
     }
 
     /** One text line at scale 1: 9 font pixels of 1/40 block (vanilla text displays). */
@@ -47,14 +47,14 @@ final class BoardRig {
     static final int ROWS = 10;
 
     static final Layout WALL = new Layout(List.of(new Part("kaboofcasino:leaderboard/wall", 0, 0.5, 0)), 3.2f, 2.2f,
-            1.30, -0.36, 1.40, 0.6f, 1.30, 0.4f, 1.28, 0.48f, 130, 80, 106);
+            1.30, -0.36, 1.40, 0.6f, 1.30, 0.4f, 1.28, 0.48f, 130, 80, 106, false);
     /**
      * The column: the post in cell 0, the sign board (model y -8..24 around its origin) from the bottom of cell 1 to
      * the top of cell 2, so its origin sits 2.0 above the anchor; felt text area y 1.125..2.5625, front at z 0.125.
      */
     static final Layout COLUMN = new Layout(List.of(new Part("kaboofcasino:leaderboard/column_post", 0, 0.5, 0),
             new Part("kaboofcasino:leaderboard/column_board", 0, 2.0, 0)), 1.6f, 3.2f, 0.58, 0.135, 2.45, 0.42f,
-            2.37, 0.3f, 2.35, 0.36f, 80, 50, 56);
+            2.37, 0.3f, 2.35, 0.32f, 100, 44, 80, true);
 
     static Layout layout(MachineType type) {
         return type == MachineType.LEADERBOARD_WALL ? WALL : COLUMN;

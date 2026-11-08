@@ -1020,8 +1020,9 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     `GuidePictures` + `GuideIcons`) draw the mod's recipe widget (`CasinoGuideScreen`: 3 x 3 slots of 18 px in its
     colours, the gold arrow from `book.png`, the 26 px output slot with its frame outline, the shapeless sign above
     the arrow, the result's count like an item stack's, right-aligned with the vanilla shadow) on a 128 x 68 felt
-    card in the book's frame colours, with the caption "Rezept · Name" / the mod's "Formloses Rezept · Name" right
-    above it. All 89 recipes are drawn horizontally (the mod draws 9 of them vertically for lack of room); shapeless
+    card in the book's frame colours, with the caption right above it: the result's name, for shapeless recipes
+    "Formlos · Name" (the mod's "Formloses Rezept" made long names too wide); a caption wider than 240 px is cut with
+    "…" (`GuideDialogs.caption`, by the German name), the result icon's tooltip has the full name. All 89 recipes are drawn horizontally (the mod draws 9 of them vertically for lack of room); shapeless
     ingredients fill the grid from the top left. Icons (`GuideIcons`): vanilla items by their vanilla texture's
     resource location (40 items in `GuideIcons.VANILLA`; nothing of Mojang's is copied into the pack), casino items
     from the pack's own item definition (the `gui` icon of the mod's display-context selects, `item/generated`
@@ -1036,7 +1037,7 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     runs of -8192 px (negative line width: still centred, never wraps), so recipes with many vanilla items (the
     nugget-heavy decoration, the TV) get up to two blank lines above the caption; every picture is 9 to 11 lines.
     The text box (9 px per line + padding) contains the card, so all tooltips work.
-  - Deviations: "Rezept" is the plugin's German text (the mod has only "Formloses Rezept"); recipe pictures show
+  - Deviations: the caption is only the name ("Formlos · Name" for shapeless recipes); recipe pictures show
     flat icons (block fronts instead of 3D renders) and no tag cycling (the first member, as before); scenes are
     16 px icons (dialog items are always 16 x 16); items
     without a label show their name (the mod only on hover); the added top navigation line; "Fertig" needs one round
@@ -1330,22 +1331,33 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
 
 ### Step 10 (part 2: the leaderboard; PLAN-2 C4)
 
-- **Data** (`board/BoardQueries`, schema 4 `V4__leaderboard.sql`): settled chip rounds of the round log
-  (`stake_item = kaboofcasino:chips`; ore rounds of 0.8.0 and older never match), by `settled_at`; index
-  `rounds_board (status, stake_item, settled_at)`. A round's win is payout minus stake; the multiplier is
-  payout / stake in hundredths (only rounds from `leaderboard.min-stake` chips, default 25, and only wins); net profit
-  is the sum of payout minus stake, listed only while positive. Ties: the latest name, alphabetically. Names: the
-  player's latest name in the log. Categories (`BoardCategory`, command words): `gewinn`, `multiplikator`, `netto`,
-  `einsatz`, `runden` and the biggest win per game (`spielautomat`, `gluecksrad`, `plinko`, `roulette`, `blackjack`,
-  `poker`, `entenrennen`). Periods (`BoardPeriod`): this week from Monday 00:00 Europe/Berlin (summer time included)
-  and all time.
-- **Computing** (`BoardService`): one `BoardSnapshot` of all 12 categories x 2 periods (top 10 each) on the DB thread,
-  at most every `leaderboard.refresh-seconds` (30..3600, default 30) and only when something changed (a settled round,
-  via `RoundLog.afterSettle`; a player hiding or showing himself; `/casino reload`; the week turning). Boards and
-  `/casino top` read the latest snapshot on MAIN and never wait for the database.
-- **Hiding**: `/casino bestenliste aus|an` sets the PDC flag `kaboofcasino:board_hidden`; the DB thread cannot read
-  player files, so the choice is mirrored into the table `board_hidden` at every change and every join (the PDC wins).
-  Hidden players are left out (no "anonym" line), from the next computation on.
+- **Data** (`board/BoardQueries`, schema 4 `V4__leaderboard.sql`): plays, not bet slots. A play is one bet commit of
+  one player (a three-slot wheel or roulette spin, a derby entry on three lanes, one blackjack or poker hand); its rows
+  share player, machine and creation time, which the round log also stores as `play` (`RoundLog.play`), so 0.9.x rows
+  without the column group the same way. One scan of the covering index
+  `rounds_board (status, stake_item, refund, player, machine, created_at, settled_at, game, stake_count,
+  payout_count)` reads every play of the settled chip rounds (`stake_item = kaboofcasino:chips`; ore rounds of 0.8.0
+  and older never match) with its summed stake and payout, then Java aggregates all 24 lists (`aggregate`, pure).
+  Refunds count nowhere (`refund = 1`, set from the detail: derby entries that never raced "refund until the start",
+  tables removed mid-hand "refund (table removed)"; V4 marks the old rows). Categories: the biggest win of one play
+  (payout minus stake), the highest payout / stake of one play in hundredths (from `leaderboard.min-stake` chips staked
+  on the play, default 25), net profit (sum, listed only while positive), staked chips (sum), plays ("Meiste Runden"),
+  and per game the biggest win of one play ("Spielautomat: größter Gewinn", ...). Ties: the latest name,
+  alphabetically. Names: the player's latest name in the log. Periods (`BoardPeriod`): this week from Monday 00:00
+  Europe/Berlin (summer time included) by a play's last settle time, and all time. A snapshot of 200 000 rows took
+  6.4 s with the first per-category queries, 1.0 s with the one scan (`BoardBenchmarkTest`, `KABOOF_BENCH=1`).
+- **Computing** (`BoardService`): one `BoardSnapshot` (15 places per list, 10 shown) on the DB thread, at most every
+  `leaderboard.refresh-seconds` (30..3600, default 30) and only when something changed (a settled round, via
+  `RoundLog.afterSettle`; a hide or show that changed the mirror; `/casino reload`; the week turning). Boards and
+  `/casino top` read the latest snapshot on MAIN and never wait for the database. A failed computation (an SQL error,
+  the DB executor refusing the job) always releases the "computing" mark and leaves the data dirty, so the next second
+  tries again.
+- **Hiding**: `/casino bestenliste aus|an` (at most every 3 s per player) sets or clears the PDC flag
+  `kaboofcasino:board_hidden` and its mirror, the table `board_hidden` (the DB thread cannot read player files).
+  Either one hides a player: a join with the mirror saying hidden sets the PDC flag again (a kill -9 before the save
+  lost it), a join with the flag writes the mirror; only "an" clears both. It takes effect at once: the boards and
+  `/casino top` drop hidden players from the lists they hold (on MAIN, from a set filled from the mirror at start), and
+  a computation starts right after the mirror changed. Hidden players are left out (no "anonym" line).
 - **`/casino top [kategorie] [woche|gesamt]`**: the same top 10 in chat (default: biggest win, this week; words in any
   order, "Glücksrad" also with umlaut); a hidden player is told he is hidden.
 - **Weekly summary** (`leaderboard.weekly-log`, default on): the first computation after Monday 00:00 logs last week's
@@ -1360,13 +1372,16 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     from the wall, the clicked cell's neighbour is the bottom middle), and every cell needs a block with a full face
     behind it (no panes, fences or other carriers); a click on a floor says "Häng die Tafel an eine Wand ...".
   - The column is 1x1x3 on support like the slot machine: a post in the bottom cell and a 1.5-wide sign board over the
-    upper two.
+    upper two. Its rows are smaller (scale 0.32: names up to about 13 characters) and its values compact ("12,3 Tsd.",
+    "123 Tsd.", "1,2 Mio.", never rounded up).
+  - A wall board is never placed while a player (the placer too) is below its bottom row: one block around the row
+    sideways, down to 24 blocks (`MachineService.shaft`), so it cannot become a lid over a shaft.
   - Look (`pack-tool/LeaderboardPack`): the mod's big-sign style, walnut and brass frame with warm bulbs, green felt,
     a header with red self-lit LED letters ("BESTENLISTE" / "TOP 10"; `light_emission`, no animation, no light
     blocks). Text (`BoardRig`, `BoardView`): four shared text displays on the felt (title, subtitle "Diese Woche · in
     Chips", the names column left-aligned, the values column right-aligned; each column ends in a line of spaces wider
     than any entry so the client aligns every line to one edge), ranks 1-3 in gold, silver and bronze, names cut to
-    fit with "…", full brightness, no background. No player heads: a skin needs a profile lookup per offline player.
+    fit with "…", full brightness, no background; places 1-3 in gold #F2C65A, silver #B9C3CE, bronze #D08A4B. No player heads: a skin needs a profile lookup per offline player.
   - Pages: every category, each for this week and all time; a board turns to the next page every
     `leaderboard.cycle-seconds` (default 15, 0 = off); a right click goes to the next category (with the category
     pinned: the other period; both pinned: "Diese Tafel ist fest eingestellt."), at most twice a second per board.
@@ -1374,6 +1389,22 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   - The croupier's hand on a board opens its pin dialog (`admin/BoardPins`): "Kategorie: automatisch" or one category,
     "Zeitraum: automatisch" or one period, the current choices marked; a click applies at once (machine record data
     `cat=<id>;period=<id>`, logged), "Fertig"/ESC closes.
+
+#### Step 10 ships as 0.10.0 (deploy and rollback)
+
+- **Schema 4** (`V4__leaderboard.sql`: columns `play` and `refund` on `rounds`, index `rounds_board`, tables
+  `board_hidden` and `board_weeks`) is applied at the first start. 0.9.1 refuses a newer schema ("casino.db schema 4 is
+  newer than this plugin; refusing to start"). Rollback: stop, restore `casino.db` from the backup, or run
+  `DELETE FROM schema_version WHERE version = 4;` (the new columns, index and tables stay and do no harm: 0.9.1 never
+  reads them, its inserts leave `play` empty and `refund` 0).
+- **Boards under 0.9.1**: their machine records are unknown kinds; 0.9.1 logs CRITICAL `MACHINE_RECORD_UNREADABLE` per
+  chunk, keeps the record and leaves the barriers standing (no rig, no drop). Break them with 0.10.0 before a rollback,
+  or remove the barriers by hand afterwards.
+- **Texts**: new keys (`board:`, the new `guide.*`) merge into the live `messages_de.yml`. Live already has
+  `command.info` and `command.usage`, which keep their old text; to get the new ones (with `/casino top` and
+  `/casino bestenliste`), delete these two keys from the live file before the start. The per-game board titles
+  ("Spielautomat: größter Gewinn") are new keys too.
+- **Config**: the `leaderboard:` section merges in (`craftable: false`).
 
 #### Hotfix 0.9.1 (deco stairs and slabs flickering)
 

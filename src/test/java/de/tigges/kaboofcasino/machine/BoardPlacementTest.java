@@ -45,6 +45,23 @@ class BoardPlacementTest {
     }
 
     @Test
+    void nobodyMayBeInTheShaftBelowAWallBoard() {
+        Pos anchor = new Pos("w", 8, 64, 8);
+        org.bukkit.util.BoundingBox shaft = MachineService.shaft(MachineType.LEADERBOARD_WALL.carriers(anchor,
+                Facing.SOUTH));
+        assertEquals(64, shaft.getMaxY(), 1e-9);
+        assertEquals(64 - MachineService.SHAFT_DEPTH, shaft.getMinY(), 1e-9);
+        // one block around the bottom row sideways: x 6..11 (cells 7..9), z 7..10 (cell 8)
+        assertEquals(6, shaft.getMinX(), 1e-9);
+        assertEquals(11, shaft.getMaxX(), 1e-9);
+        assertEquals(7, shaft.getMinZ(), 1e-9);
+        assertEquals(10, shaft.getMaxZ(), 1e-9);
+        // a player 20 blocks down a shaft under the board is in it, one standing on the floor in front is not
+        assertTrue(new org.bukkit.util.BoundingBox(8.2, 44, 8.2, 8.8, 45.8, 8.8).overlaps(shaft));
+        assertFalse(new org.bukkit.util.BoundingBox(8.2, 64, 10.2, 8.8, 65.8, 10.8).overlaps(shaft));
+    }
+
+    @Test
     void theColumnStandsLikeASlotMachine() {
         MachineType t = MachineType.LEADERBOARD_COLUMN;
         assertFalse(t.isGame());

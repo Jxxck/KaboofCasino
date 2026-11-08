@@ -49,7 +49,7 @@ public final class MachineService {
 
     /** Outcome of {@link #place}. */
     public enum PlaceResult {
-        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_BORDER, PLAYER_NEAR, LOGOUT_SPOT, NO_WALL
+        PLACED, NO_SPACE, NO_SUPPORT, CROWDED, DENIED, CHUNK_BORDER, PLAYER_NEAR, LOGOUT_SPOT, NO_WALL, PLAYER_BELOW
     }
 
     /** A refused placement and, for {@link PlaceResult#CHUNK_BORDER}, where to move the machine (player-relative). */
@@ -61,6 +61,8 @@ public final class MachineService {
 
     /** Other players must keep this distance (blocks, box to box) from every carrier while a machine is placed. */
     public static final double PLAYER_CLEARANCE = 2.0;
+    /** A wall board's shaft check: this deep below its bottom row, one block around it sideways. */
+    public static final int SHAFT_DEPTH = 24;
 
     private final Supplier<CasinoConfig> config;
     private final Supplier<Messages> messages;
@@ -233,6 +235,15 @@ public final class MachineService {
                 return Placement.of(PlaceResult.PLAYER_NEAR);
             }
         }
+        if (type.onWall()) {
+            // a board hung over a shaft would be a lid: nobody (the placer neither) may be below its bottom row
+            BoundingBox shaft = shaft(carriers);
+            for (Player p : world.getPlayers()) {
+                if (p.getGameMode() != org.bukkit.GameMode.SPECTATOR && p.getBoundingBox().overlaps(shaft)) {
+                    return Placement.of(PlaceResult.PLAYER_BELOW);
+                }
+            }
+        }
         List<BlockState> before = new ArrayList<>();
         for (Pos p : carriers) {
             Block b = p.block(world);
@@ -275,6 +286,26 @@ public final class MachineService {
     /** @param fluidState the cell's fluid state is not empty (seagrass, kelp, bubble columns, waterlogged blocks) */
     static boolean wet(boolean liquid, boolean waterlogged, boolean fluidState) {
         return liquid || waterlogged || fluidState;
+    }
+
+    /**
+     * The space under a wall board's bottom row: one block around the row sideways, {@link #SHAFT_DEPTH} blocks down
+     * to the row's bottom face (the row itself is checked as every machine's cells).
+     */
+    static BoundingBox shaft(List<Pos> carriers) {
+        int minX = Integer.MAX_VALUE;
+        int minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxZ = Integer.MIN_VALUE;
+        int bottom = Integer.MAX_VALUE;
+        for (Pos p : carriers) {
+            minX = Math.min(minX, p.x());
+            minZ = Math.min(minZ, p.z());
+            maxX = Math.max(maxX, p.x());
+            maxZ = Math.max(maxZ, p.z());
+            bottom = Math.min(bottom, p.y());
+        }
+        return new BoundingBox(minX - 1, bottom - SHAFT_DEPTH, minZ - 1, maxX + 2, bottom, maxZ + 2);
     }
 
     static boolean isHorizontal(BlockFace face) {
@@ -673,6 +704,7 @@ public final class MachineService {
             case PLAYER_NEAR -> Msg.MACHINE_PLAYER_NEAR;
             case LOGOUT_SPOT -> Msg.MACHINE_LOGOUT_SPOT;
             case NO_WALL -> Msg.BOARD_NO_WALL;
+            case PLAYER_BELOW -> Msg.BOARD_PLAYER_BELOW;
             case PLACED -> null;
         };
         if (msg == Msg.MACHINE_CHUNK_BORDER && placement.blocks() > 1) {

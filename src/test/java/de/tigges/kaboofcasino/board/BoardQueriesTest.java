@@ -114,6 +114,86 @@ class BoardQueriesTest {
         }
     }
 
+    /** A row of a play: explicit play key (null = 0.9.x, grouped by player, machine, created_at) and refund flag. */
+    static void row(Connection c, UUID player, String name, String game, UUID machine, String play, long created,
+                    long stake, long payout, String detail) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("INSERT INTO rounds (id, player, player_name, machine, game, "
+                + "stake_item, stake_count, payout_item, payout_count, detail, created_at, settled_at, reason, status, "
+                + "play, refund) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NORMAL', 'SETTLED', ?, ?)")) {
+            ps.setString(1, new UUID(8, ids++).toString());
+            ps.setString(2, player.toString());
+            ps.setString(3, name);
+            ps.setString(4, machine.toString());
+            ps.setString(5, game);
+            ps.setString(6, BoardQueries.CHIPS);
+            ps.setLong(7, stake);
+            ps.setString(8, payout == 0 ? null : BoardQueries.CHIPS);
+            ps.setLong(9, payout);
+            ps.setString(10, detail);
+            ps.setLong(11, created);
+            ps.setLong(12, created + 4000);
+            ps.setString(13, play);
+            ps.setInt(14, de.tigges.kaboofcasino.storage.RoundLog.refund(detail) ? 1 : 0);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * A play counts once, with its rows summed: a three-slot roulette spin, a three-slot wheel spin of 0.9.x (no play
+     * key: grouped by player, machine and time), a derby group entry with three lanes; blackjack hands are a play
+     * each; refunds (derby entries that never raced, a table removed mid-hand) count nowhere.
+     */
+    @Test
+    void playsCountOnceAndRefundsAreLeftOut(@TempDir Path dir) throws SQLException {
+        try (Database db = Database.open(dir.resolve("casino.db"), getClass().getClassLoader())) {
+            db.now(c -> {
+                UUID roulette = new UUID(5, 1);
+                UUID wheel = new UUID(5, 2);
+                UUID derby = new UUID(5, 3);
+                UUID blackjack = new UUID(5, 4);
+                UUID poker = new UUID(5, 5);
+                long t = MONDAY + 60_000;
+                // Alice: a roulette spin on three colours (-20 together), a 0.9.x wheel spin on three slots (+25)
+                row(c, ALICE, "Alice", "roulette", roulette, "a-roulette", t, 10, 0, "slot=0 colour=0");
+                row(c, ALICE, "Alice", "roulette", roulette, "a-roulette", t, 20, 40, "slot=1 colour=1");
+                row(c, ALICE, "Alice", "roulette", roulette, "a-roulette", t, 30, 0, "slot=2 colour=2");
+                row(c, ALICE, "Alice", "fortune_wheel", wheel, null, t + 1000, 10, 30, "seg=1 slot=0");
+                row(c, ALICE, "Alice", "fortune_wheel", wheel, null, t + 1000, 10, 0, "seg=1 slot=1");
+                row(c, ALICE, "Alice", "fortune_wheel", wheel, null, t + 1000, 10, 25, "seg=1 slot=2");
+                // Bob: a derby group race on three lanes (+10), and an entry that never raced (a refund)
+                row(c, BOB, "Bob", "derby", derby, "b-derby", t + 2000, 10, 30, "slot=0 lane=0 winner=0 group");
+                row(c, BOB, "Bob", "derby", derby, "b-derby", t + 2000, 10, 10, "slot=1 lane=1 winner=0 group");
+                row(c, BOB, "Bob", "derby", derby, "b-derby", t + 2000, 10, 0, "slot=2 lane=2 winner=0 group");
+                row(c, BOB, "Bob", "derby", derby, "b-derby-2", t + 3000, 50, 50,
+                        "slot=0 lane=0 group, refund until the start");
+                // Carl: two blackjack hands (+10, -10) and a poker hand refunded when the table was removed
+                row(c, CARL, "Carl", "blackjack", blackjack, "c-bj-1", t + 4000, 10, 20, "result WIN");
+                row(c, CARL, "Carl", "blackjack", blackjack, "c-bj-2", t + 5000, 10, 0, "result LOSE");
+                row(c, CARL, "Carl", "poker", poker, "c-poker", t + 6000, 40, 40, "refund (table removed)");
+                long week = MONDAY;
+                assertEquals(List.of("Alice=2", "Carl=2", "Bob=1"), top(c, BoardCategory.ROUNDS, week));
+                assertEquals(List.of("Alice=25", "Bob=10", "Carl=10"), top(c, BoardCategory.BIGGEST_WIN, week));
+                assertEquals(List.of("Alice=90", "Bob=30", "Carl=20"), top(c, BoardCategory.STAKED, week));
+                assertEquals(List.of("Alice=183", "Bob=133"), top(c, BoardCategory.MULTIPLIER, week),
+                        "summed per play; Carl's hands stake less than 25");
+                assertEquals(List.of("Bob=10", "Alice=5"), top(c, BoardCategory.NET, week));
+                assertEquals(List.of("Alice=25"), top(c, BoardCategory.FORTUNE_WHEEL, week));
+                assertEquals(List.of(), top(c, BoardCategory.ROULETTE, week));
+                assertEquals(List.of("Bob=10"), top(c, BoardCategory.DERBY, week));
+                assertEquals(List.of("Carl=10"), top(c, BoardCategory.BLACKJACK, week));
+                assertEquals(List.of(), top(c, BoardCategory.POKER, week));
+                // the round log's play key: a commit's records share it, a later hand gets its own
+                de.tigges.kaboofcasino.wager.RoundRecord r = new de.tigges.kaboofcasino.wager.RoundRecord(
+                        new UUID(1, 1), wheel, "fortune_wheel", de.tigges.kaboofcasino.wager.RoundState.DECIDED,
+                        new de.tigges.kaboofcasino.wager.ItemAmount(BoardQueries.CHIPS, 5), List.of(), 1234L, 2000L,
+                        "x");
+                assertEquals(ALICE + ":" + wheel + ":1234", de.tigges.kaboofcasino.storage.RoundLog.play(ALICE, r));
+                assertTrue(de.tigges.kaboofcasino.storage.RoundLog.refund("slot=0 lane=0 group, refund until the start"));
+                assertFalse(de.tigges.kaboofcasino.storage.RoundLog.refund("slot=0 lane=0 winner=0 group"));
+            });
+        }
+    }
+
     @Test
     void tenPlacesAtMostAndTiesByName(@TempDir Path dir) throws SQLException {
         try (Database db = Database.open(dir.resolve("casino.db"), getClass().getClassLoader())) {

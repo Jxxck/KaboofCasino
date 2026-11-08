@@ -83,6 +83,31 @@ class BoardViewTest {
     }
 
     @Test
+    void compactValuesForTheColumnAndHiddenPlayersDropOutAtOnce() {
+        assertEquals("9.999", BoardView.compact(9_999));
+        assertEquals("12,3 Tsd.", BoardView.compact(12_399));
+        assertEquals("123 Tsd.", BoardView.compact(123_999));
+        assertEquals("1,2 Mio.", BoardView.compact(1_299_999));
+        assertEquals("12,3 Mio.", BoardView.compact(12_345_678));
+        assertEquals("123 Mio.", BoardView.compact(123_456_789));
+        assertEquals("×12,5", BoardView.value(BoardCategory.MULTIPLIER, 1250, true));
+        assertEquals("12,3 Tsd.", BoardView.value(BoardCategory.BIGGEST_WIN, 12_345, true));
+        // a 16-character name in the column's name column (80 px) is cut to about 13 characters
+        String cut = BoardView.fit("Abcdefghijklmnop", BoardRig.COLUMN.namePx());
+        assertTrue(cut.length() >= 12 && cut.length() <= 15, cut);
+        List<BoardEntry> list = new ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            list.add(new BoardEntry(new UUID(0, i), "P" + i, 100 - i));
+        }
+        List<BoardEntry> shown = BoardService.visible(list, java.util.Set.of(new UUID(0, 0), new UUID(0, 3)), 10);
+        assertEquals(10, shown.size());
+        assertEquals("P1", shown.getFirst().name());
+        assertEquals("P11", shown.getLast().name());
+        assertEquals(BoardService.TOP, 10);
+        assertTrue(BoardService.STORED > BoardService.TOP);
+    }
+
+    @Test
     void thePinAndItsPages() {
         assertEquals(BoardPin.NONE, BoardPin.parse(""));
         assertEquals(BoardPin.NONE, BoardPin.parse(null));

@@ -42,7 +42,7 @@ class BoardPinsTest {
         assertTrue(v.buttons().stream().anyMatch(b -> b.current() && b.action().equals("period:auto")));
         assertEquals(BoardPins.DONE, v.exit().action());
         assertTrue(PlainTextComponentSerializer.plainText().serialize(v.body().getFirst())
-                .contains("Kategorie: Poker · Zeitraum: automatisch"));
+                .contains("Kategorie: Poker: größter Gewinn · Zeitraum: automatisch"));
     }
 
     @Test

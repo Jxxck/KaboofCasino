@@ -242,7 +242,7 @@ class GuideDialogsTest {
         // the guide's own recipe (spread 22): shapeless, its sign with the mod's tooltip, the ingredients from the
         // top left (the picture draws the known icons first, then the vanilla ones line by line)
         String spread22 = GuideFixtures.describe(GuideFixtures.view(22, false));
-        assertTrue(spread22.contains("recipe(250) {guide.roulettecasino.expansion.shapeless} · "
+        assertTrue(spread22.contains("recipe(250) Formlos · "
                 + "{item.roulettecasino.casino_guide} | <{guide.roulettecasino.expansion.shapeless}> "
                 + "<{minecraft:green_wool}> <{item.roulettecasino.casino_guide}> <{minecraft:leather}> "
                 + "<{minecraft:paper}>"), spread22);
@@ -257,12 +257,12 @@ class GuideDialogsTest {
         String spread9 = GuideFixtures.describe(GuideFixtures.view(9, false));
         assertTrue(spread9.contains("[<{item.roulettecasino.roulette_mechanism}>](kaboofcasino:guide "
                 + "{do:\"link\",to:\"4\"}) <{minecraft:gold_block}>"), spread9);
-        assertTrue(spread9.contains("recipe(250) Rezept · {item.roulettecasino.roulette_mechanism} | "
+        assertTrue(spread9.contains("recipe(250) {item.roulettecasino.roulette_mechanism} | "
                 + "<{minecraft:diamond_block}> [<{item.roulettecasino.roulette_mechanism}>](kaboofcasino:guide "
                 + "{do:\"link\",to:\"4\"})"), spread9);
         // results with counts, tags with their first member and "(beliebige Sorte)" as the tooltip
         String spread12 = GuideFixtures.describe(GuideFixtures.view(12, false));
-        assertTrue(spread12.contains("recipe(250) Rezept · {block.roulettecasino.casino_chair} | "
+        assertTrue(spread12.contains("recipe(250) {block.roulettecasino.casino_chair} | "
                 + "<{minecraft:oak_planks} (beliebige Sorte)> <{minecraft:red_wool}>"), spread12);
         assertTrue(spread12.contains("<{block.roulettecasino.casino_chair}> x2 <{minecraft:gold_nugget}> "
                 + "<{minecraft:gold_nugget}>"), spread12);
@@ -290,6 +290,13 @@ class GuideDialogsTest {
                 }
                 recipes++;
                 String where = page.number() + ":" + i;
+                // the caption (name, "Formlos · name") stays inside the 250 px text box
+                String caption = GuideFixtures.plain(dialogs.caption(r, texts));
+                String german = book.nameKey(r.result()) == null ? null : book.german(book.nameKey(r.result()));
+                String shown = caption.startsWith("{") || caption.startsWith("Formlos · {")
+                        ? (r.shapeless() ? "Formlos · " : "") + german : caption;
+                assertTrue(german == null || de.tigges.kaboofcasino.util.FontWidth.width(shown)
+                        <= GuideDialogs.CAPTION_PX, where + ": " + shown);
                 RecipePictures.Picture picture = pictures.picture(page.number(), i).orElseThrow(() ->
                         new AssertionError("no picture for " + where));
                 Component c = dialogs.recipe(r, page.number(), i, texts);
@@ -311,8 +318,10 @@ class GuideDialogsTest {
                             case CAPTION -> {
                                 captions++;
                                 assertFalse(GuideFixtures.picture(run), where);
-                                assertTrue(GuideFixtures.plain(run).endsWith(" · " + GuideFixtures.plain(
-                                        dialogs.name(r.result(), texts))), where);
+                                // the result's name; shapeless ones with the short "Formlos · " in front
+                                assertEquals(GuideFixtures.plain(dialogs.caption(r, texts)), GuideFixtures.plain(run),
+                                        where);
+                                assertEquals(r.shapeless(), GuideFixtures.plain(run).startsWith("Formlos · "), where);
                             }
                             case CELL -> {
                                 cells.add(seg.cell());
@@ -466,7 +475,7 @@ class GuideDialogsTest {
                 item minecraft:villager_spawn_egg | {entity.roulettecasino.villager.croupier}
                 text(250) {guide.roulettecasino.text.043}
                 text(250) NOTE-043
-                recipe(250) Rezept · {block.roulettecasino.dealer_station} | <{minecraft:green_wool}> <{minecraft:green_wool}> <{minecraft:green_wool}> <{minecraft:red_wool}> <{minecraft:oak_planks} (beliebige Sorte)> <{minecraft:oak_planks} (beliebige Sorte)> <{minecraft:oak_planks} (beliebige Sorte)> <{block.roulettecasino.dealer_station}> <{minecraft:gold_ingot}> <{minecraft:gold_ingot}>
+                recipe(250) {block.roulettecasino.dealer_station} | <{minecraft:green_wool}> <{minecraft:green_wool}> <{minecraft:green_wool}> <{minecraft:red_wool}> <{minecraft:oak_planks} (beliebige Sorte)> <{minecraft:oak_planks} (beliebige Sorte)> <{minecraft:oak_planks} (beliebige Sorte)> <{block.roulettecasino.dealer_station}> <{minecraft:gold_ingot}> <{minecraft:gold_ingot}>
                 item roulettecasino:blackjack_table | [{block.roulettecasino.blackjack_table}](kaboofcasino:guide {do:"link",to:"5"})
                 item roulettecasino:poker_table | [{block.roulettecasino.poker_table}](kaboofcasino:guide {do:"link",to:"6"})
                 text(250) *{guide.roulettecasino.text.046}*

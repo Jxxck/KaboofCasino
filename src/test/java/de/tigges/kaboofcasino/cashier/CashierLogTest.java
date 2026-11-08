@@ -72,6 +72,8 @@ class CashierLogTest {
                 try (Statement st = c.createStatement()) {
                     st.executeUpdate("DROP TABLE cashier");
                     st.executeUpdate("DROP INDEX rounds_board"); // schema 4 (step 10) as well
+                    st.executeUpdate("ALTER TABLE rounds DROP COLUMN play");
+                    st.executeUpdate("ALTER TABLE rounds DROP COLUMN refund");
                     st.executeUpdate("DROP TABLE board_hidden");
                     st.executeUpdate("DROP TABLE board_weeks");
                     st.executeUpdate("DELETE FROM schema_version WHERE version >= 3");

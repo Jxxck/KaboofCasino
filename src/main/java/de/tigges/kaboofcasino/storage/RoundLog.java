@@ -40,8 +40,8 @@ public final class RoundLog implements RoundSink {
         ItemAmount pay = r.payout().isEmpty() ? null : r.payout().getFirst();
         db.submit("round started " + r.id(), c -> {
             try (PreparedStatement ps = c.prepareStatement("INSERT OR IGNORE INTO rounds (id, player, player_name, "
-                    + "machine, game, stake_item, stake_count, payout_item, payout_count, detail, created_at, status) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN')")) {
+                    + "machine, game, stake_item, stake_count, payout_item, payout_count, detail, created_at, status, "
+                    + "play, refund) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?)")) {
                 ps.setString(1, r.id().toString());
                 ps.setString(2, player.toString());
                 ps.setString(3, playerName);
@@ -53,6 +53,8 @@ public final class RoundLog implements RoundSink {
                 ps.setLong(9, pay == null ? 0 : pay.count());
                 ps.setString(10, r.detail());
                 ps.setLong(11, r.created());
+                ps.setString(12, play(player, r));
+                ps.setInt(13, refund(r.detail()) ? 1 : 0);
                 ps.executeUpdate();
             }
         });
@@ -71,18 +73,37 @@ public final class RoundLog implements RoundSink {
         ItemAmount pay = r.payout().isEmpty() ? null : r.payout().getFirst();
         db.submit("round settled " + r.id(), c -> {
             try (PreparedStatement ps = c.prepareStatement("UPDATE rounds SET status = 'SETTLED', settled_at = ?, "
-                    + "reason = ?, stake_count = ?, payout_item = ?, payout_count = ?, detail = ? WHERE id = ?")) {
+                    + "reason = ?, stake_count = ?, payout_item = ?, payout_count = ?, detail = ?, refund = ? "
+                    + "WHERE id = ?")) {
                 ps.setLong(1, settledAt);
                 ps.setString(2, reason.name());
                 ps.setLong(3, r.stake().count());
                 ps.setString(4, pay == null ? null : pay.item());
                 ps.setLong(5, pay == null ? 0 : pay.count());
                 ps.setString(6, r.detail());
-                ps.setString(7, r.id().toString());
+                ps.setInt(7, refund(r.detail()) ? 1 : 0);
+                ps.setString(8, r.id().toString());
                 ps.executeUpdate();
             }
             afterSettle.run();
         });
+    }
+
+    /**
+     * The play a round belongs to (schema 4): every record of one bet commit shares its player, machine and creation
+     * time (a three-slot wheel spin, a derby entry with three lanes); a blackjack or poker hand is a play of its own.
+     */
+    public static String play(UUID player, RoundRecord r) {
+        return player + ":" + r.machine() + ":" + r.created();
+    }
+
+    /**
+     * True for a round that only gave the stake back: a derby group entry that never raced (withdrawn, countdown
+     * cancelled, quit or crash before the start: its detail still says "refund until the start") or a blackjack or
+     * poker hand whose table was removed ("refund (table removed)"). The boards leave such rows out.
+     */
+    public static boolean refund(String detail) {
+        return detail != null && detail.contains("refund");
     }
 
     /** Startup sweep: OPEN rows older than an hour belong to rounds a crash rolled back (server.md 1.3). */

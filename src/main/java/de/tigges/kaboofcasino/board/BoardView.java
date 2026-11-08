@@ -3,6 +3,7 @@ package de.tigges.kaboofcasino.board;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.util.ChipText;
+import de.tigges.kaboofcasino.util.FontWidth;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
@@ -18,7 +19,7 @@ public final class BoardView {
 
     /** The mod's gold, silver and bronze for places 1-3, cream for the rest. */
     static final TextColor GOLD = TextColor.color(0xF2C65A);
-    static final TextColor SILVER = TextColor.color(0xD4D8DE);
+    static final TextColor SILVER = TextColor.color(0xB9C3CE);
     static final TextColor BRONZE = TextColor.color(0xD08A4B);
     static final TextColor CREAM = TextColor.color(0xF3E7BF);
     static final TextColor MUTED = TextColor.color(0xA89F86);
@@ -62,13 +63,33 @@ public final class BoardView {
 
     /** A value as the board shows it: chips and rounds "1.250", the multiplier "×12,5" (hundredths, trimmed). */
     public static String value(BoardCategory c, long v) {
+        return value(c, v, false);
+    }
+
+    /** As {@link #value(BoardCategory, long)}; {@code compact} (the narrow column) shortens big numbers. */
+    public static String value(BoardCategory c, long v, boolean compact) {
         if (c != BoardCategory.MULTIPLIER) {
-            return ChipText.number(v);
+            return compact ? compact(v) : ChipText.number(v);
         }
         long whole = v / 100;
         long frac = v % 100;
         String f = frac == 0 ? "" : frac % 10 == 0 ? "," + frac / 10 : "," + (frac < 10 ? "0" : "") + frac;
         return "×" + ChipText.number(whole) + f;
+    }
+
+    /**
+     * A big number short, never rounded up: up to 9.999 as it is, then "12,3 Tsd.", "123 Tsd.", "1,2 Mio.",
+     * "123 Mio.".
+     */
+    public static String compact(long v) {
+        if (v < 10_000) {
+            return ChipText.number(v);
+        }
+        if (v < 1_000_000) {
+            return v < 100_000 ? (v / 1000) + "," + (v / 100 % 10) + " Tsd." : ChipText.number(v / 1000) + " Tsd.";
+        }
+        return v < 100_000_000 ? (v / 1_000_000) + "," + (v / 100_000 % 10) + " Mio."
+                : ChipText.number(v / 1_000_000) + " Mio.";
     }
 
     public static TextColor rankColor(int rank) {
@@ -80,45 +101,17 @@ public final class BoardView {
         };
     }
 
-    /**
-     * A name cut to {@code maxPx} pixels of the default font (approximate advances), with "…" when cut. Minecraft
-     * names are at most 16 characters.
-     */
+    /** A name cut to {@code maxPx} pixels of the default font, with "…" when cut ({@link FontWidth#fit}). */
     public static String fit(String name, int maxPx) {
-        if (width(name) <= maxPx) {
-            return name;
-        }
-        StringBuilder b = new StringBuilder();
-        int used = width("…");
-        for (int i = 0; i < name.length(); i++) {
-            int w = advance(name.charAt(i));
-            if (used + w > maxPx) {
-                break;
-            }
-            b.append(name.charAt(i));
-            used += w;
-        }
-        return b + "…";
+        return FontWidth.fit(name, maxPx);
     }
 
-    /** The default font's advance of a character (glyph width + 1), close enough for names and numbers. */
     static int advance(char ch) {
-        return switch (ch) {
-            case 'i', '!', '.', ',', ':', ';', '|', '\'' -> 2;
-            case 'l', '`' -> 3;
-            case 't', 'I', '[', ']', ' ' -> 4;
-            case 'f', 'k', '<', '>', '(', ')', '{', '}', '"', '*' -> 5;
-            case '@', '~', '…' -> 7;
-            default -> 6;
-        };
+        return FontWidth.advance(ch);
     }
 
     public static int width(String s) {
-        int w = 0;
-        for (int i = 0; i < s.length(); i++) {
-            w += advance(s.charAt(i));
-        }
-        return w;
+        return FontWidth.width(s);
     }
 
     /**
@@ -128,6 +121,12 @@ public final class BoardView {
      */
     public static Page page(BoardPin.Page page, List<BoardEntry> entries, int minStake, int namePx, int leftPx,
                             int rightPx, boolean loading, Messages m) {
+        return page(page, entries, minStake, namePx, leftPx, rightPx, false, loading, m);
+    }
+
+    /** As above; {@code compact} values for the narrow column. */
+    public static Page page(BoardPin.Page page, List<BoardEntry> entries, int minStake, int namePx, int leftPx,
+                            int rightPx, boolean compact, boolean loading, Messages m) {
         Component title = m.render(Msg.BOARD_TITLE, Messages.component("category", m.render(categoryMsg(
                 page.category()))));
         Component subtitle = m.render(Msg.BOARD_SUBTITLE, Messages.component("period", m.render(periodMsg(
@@ -143,7 +142,7 @@ public final class BoardView {
             TextColor color = rankColor(i + 1);
             left.add(Component.text().append(Component.text((i + 1) + ". ", i < 3 ? color : MUTED))
                     .append(Component.text(fit(e.name(), namePx), color)).build());
-            right.add(Component.text(value(page.category(), e.value()), color));
+            right.add(Component.text(value(page.category(), e.value(), compact), color));
         }
         while (left.size() < BoardRig.ROWS) {
             left.add(Component.empty());

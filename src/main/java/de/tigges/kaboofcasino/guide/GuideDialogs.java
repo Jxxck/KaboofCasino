@@ -21,6 +21,7 @@ import de.tigges.kaboofcasino.guide.GuideView.ItemBody;
 import de.tigges.kaboofcasino.guide.GuideView.TextBody;
 import de.tigges.kaboofcasino.guide.RecipePictures.Picture;
 import de.tigges.kaboofcasino.guide.RecipePictures.Segment;
+import de.tigges.kaboofcasino.util.FontWidth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -258,11 +259,28 @@ public final class GuideDialogs {
         return Component.join(JoinConfiguration.newlines(), lines);
     }
 
-    /** "Rezept · Name" or the mod's "Formloses Rezept · Name". */
-    private Component caption(Recipe r, GuideTexts texts) {
-        Component label = r.shapeless() ? tr(SHAPELESS_KEY) : texts.recipe();
-        return Component.text().append(label.color(GOLD)).append(Component.text(" · ", MUTED))
-                .append(name(r.result(), texts).color(CREAM)).build();
+    /** The widest caption (px): the dialog's text box is 250 px wide. */
+    static final int CAPTION_PX = 240;
+    /** The short shapeless marker in front of the name (the mod's "Formloses Rezept" made the long names too wide). */
+    static final String SHAPELESS_MARK = "Formlos";
+
+    /**
+     * The result's name, for a shapeless recipe "Formlos · Name". A caption wider than {@link #CAPTION_PX} (by its
+     * German name) is cut with "…"; the result icon's tooltip has the full name.
+     */
+    Component caption(Recipe r, GuideTexts texts) {
+        String mark = r.shapeless() ? SHAPELESS_MARK + " · " : "";
+        String key = book.nameKey(r.result());
+        String german = key != null ? book.german(key) : null;
+        Component name = name(r.result(), texts);
+        if (german != null && FontWidth.width(mark + german) > CAPTION_PX) {
+            name = Component.text(FontWidth.fit(german, CAPTION_PX - FontWidth.width(mark)));
+        }
+        if (mark.isEmpty()) {
+            return name.color(CREAM);
+        }
+        return Component.text().append(Component.text(SHAPELESS_MARK, GOLD)).append(Component.text(" · ", MUTED))
+                .append(name.color(CREAM)).build();
     }
 
     /**

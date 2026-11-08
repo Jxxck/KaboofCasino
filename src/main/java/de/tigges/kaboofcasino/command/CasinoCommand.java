@@ -156,6 +156,10 @@ public final class CasinoCommand implements BasicCommand {
             return;
         }
         boolean hide = what.equals("aus") || what.equals("off");
+        if (!boards.mayToggle(p)) {
+            m.send(p, Msg.BOARD_HIDE_WAIT);
+            return;
+        }
         boards.hide(p, hide);
         m.send(p, hide ? Msg.BOARD_HIDDEN : Msg.BOARD_SHOWN);
     }
