@@ -13,7 +13,6 @@ import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
-import de.tigges.kaboofcasino.wager.PlayerAccount;
 import de.tigges.kaboofcasino.wager.SettleReason;
 import de.tigges.kaboofcasino.wager.WagerEngine;
 import java.util.ArrayDeque;
@@ -263,7 +262,8 @@ public final class PlinkoController extends MachineController {
             long ballEnds = nowMillis + settleTick(plan.ball(b), paid[b] > 0) * 50L;
             ends = Math.max(ends, ballEnds);
             requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(), payout, ballEnds,
-                    "pocket=" + pocket + " " + PanelText.multiplier(quarters) + " slot=" + s.slot()));
+                    "pocket=" + pocket + " " + PanelText.multiplier(quarters) + " slot=" + s.slot())
+                    .withTake(s.chips()));
         }
         List<UUID> rounds = commit(player, requests, Msg.PLINKO_NO_BET);
         if (rounds == null) {
@@ -340,7 +340,7 @@ public final class PlinkoController extends MachineController {
             if (!b.coins.isEmpty()) {
                 int interval = b.coins.size() > 48 ? 1 : b.coins.size() > 16 ? 2 : 3;
                 if ((now + i) % interval == 0) {
-                    rig.coin(PlayerAccount.material(b.coins.poll()), coinTarget(world, d.player), now);
+                    rig.coin(b.coins.poll(), coinTarget(world, d.player), now);
                     if (interval > 1 || now % 2 == 0) {
                         sound(world, "plinko_payout", PAYOUT_MOUTH, 0.5f, 0.9f + ctx.random().nextFloat() * 0.25f);
                     }

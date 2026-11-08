@@ -307,7 +307,7 @@ public final class DerbyController extends MachineController {
         for (StakeMenu.Stake s : stakes) {
             requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(),
                     DerbyRules.payout(s.amount(), lane, drawn.winner(), second), ends,
-                    detail(s.slot(), lane, drawn, "solo"), RoundState.DECIDED));
+                    detail(s.slot(), lane, drawn, "solo"), RoundState.DECIDED).withTake(s.chips()));
         }
         List<UUID> rounds = commit(player, requests, Msg.DERBY_NO_BET);
         if (rounds == null) {
@@ -365,7 +365,8 @@ public final class DerbyController extends MachineController {
         List<WagerEngine.Request> requests = new ArrayList<>();
         for (StakeMenu.Stake s : stakes) {
             requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(), List.of(s.amount()), ends,
-                    "slot=" + s.slot() + " lane=" + lane + " group, refund until the start", RoundState.PLAYING));
+                    "slot=" + s.slot() + " lane=" + lane + " group, refund until the start", RoundState.PLAYING)
+                    .withTake(s.chips()));
         }
         List<UUID> rounds = commit(player, requests, Msg.DERBY_NO_BET);
         if (rounds == null) {

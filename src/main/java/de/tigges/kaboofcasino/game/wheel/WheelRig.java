@@ -13,7 +13,6 @@ import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
@@ -244,7 +243,7 @@ final class WheelRig {
         panel.hide();
     }
 
-    void coin(Material material, Location target, long now) {
+    void coin(String material, Location target, long now) {
         double[] at = facing().toBlock(COIN_MOUTH[0], COIN_MOUTH[1], COIN_MOUTH[2]);
         coins.spawn(world, new Location(world, record.anchor().x() + at[0], record.anchor().y() + at[1],
                 record.anchor().z() + at[2]), material, target, now);

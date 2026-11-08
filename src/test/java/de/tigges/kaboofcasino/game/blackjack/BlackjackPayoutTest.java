@@ -32,6 +32,25 @@ class BlackjackPayoutTest {
     }
 
     @Test
+    void chipValuesPayTheSameArithmeticInChips() {
+        // PLAN-2 C2: a stake is a chip value, the payout is a chip value; over both rolls a blackjack pays exactly
+        // 5/2 of every stake size (RTP unchanged), every other result its exact multiple
+        for (int stake : de.tigges.kaboofcasino.game.wheel.WheelOddsTest.stakes()) {
+            ItemAmount chips = new ItemAmount(de.tigges.kaboofcasino.wager.Chips.VALUE, stake);
+            long both = 0;
+            for (int roll = 0; roll < 2; roll++) {
+                List<ItemAmount> pay = BlackjackPayout.payout(chips, BlackjackRound.Result.BLACKJACK, roll);
+                assertEquals(de.tigges.kaboofcasino.wager.Chips.VALUE, pay.getFirst().item());
+                both += pay.getFirst().count();
+                assertEquals(List.of(new ItemAmount(chips.item(), 2L * stake)),
+                        BlackjackPayout.payout(chips, BlackjackRound.Result.WIN, roll));
+                assertEquals(List.of(chips), BlackjackPayout.payout(chips, BlackjackRound.Result.PUSH, roll));
+            }
+            assertEquals(5L * stake, both, "stake " + stake);
+        }
+    }
+
+    @Test
     void anOddBlackjackRoundsFairly() {
         // 1 diamond: 2 or 3 (roll 0 pays the extra half), 3 diamonds: 7 or 8
         assertEquals(3, paid(1, BlackjackRound.Result.BLACKJACK, 0));

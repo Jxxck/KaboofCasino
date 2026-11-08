@@ -130,7 +130,6 @@ class WagerEngineReviseTest {
         assertEquals(1, LedgerCodec.version(a.ledger()));
         deal(a, 3, 5);
         assertEquals(2, LedgerCodec.version(a.ledger()));
-        assertEquals(LedgerCodec.VERSION, LedgerCodec.version(a.ledger()));
         engine.settleAll(a, SettleReason.QUIT);
         assertEquals(1, LedgerCodec.version(new Ledger(List.of(), List.of(new ItemAmount(DIAMOND, 1)))));
     }

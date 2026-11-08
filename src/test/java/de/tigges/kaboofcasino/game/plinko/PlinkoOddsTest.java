@@ -19,7 +19,7 @@ class PlinkoOddsTest {
             total += PlinkoGame.quarters(PlinkoGame.pocketOf(path));
         }
         assertEquals(998, total / 1, "sum over 256 paths of quarters / 4 / 256 = 998/1024");
-        for (int stake = 1; stake <= 64; stake++) {
+        for (int stake : de.tigges.kaboofcasino.game.wheel.WheelOddsTest.stakes()) {
             long paid = 0;
             for (int path = 0; path < 256; path++) {
                 for (int roll = 0; roll < 4; roll++) {

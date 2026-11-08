@@ -6,8 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The casino part of a player's file: open rounds and owed items (what did not fit into the inventory). Immutable;
- * every change produces a new ledger that is written in one PDC write.
+ * The casino part of a player's file: open rounds and owed items (what did not fit into the inventory; chips as one
+ * {@link Chips#VALUE}). Immutable; every change produces a new ledger that is written in one PDC write.
  */
 public record Ledger(List<RoundRecord> rounds, List<ItemAmount> owed) {
 
@@ -15,7 +15,7 @@ public record Ledger(List<RoundRecord> rounds, List<ItemAmount> owed) {
 
     public Ledger {
         rounds = List.copyOf(rounds);
-        owed = ItemAmount.merge(owed);
+        owed = Chips.normalize(owed); // merged; chips of any denomination always as one chip value
     }
 
     public boolean isEmpty() {

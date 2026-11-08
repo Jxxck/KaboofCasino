@@ -10,6 +10,7 @@ import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.MachineGame;
 import de.tigges.kaboofcasino.util.ItemNames;
 import de.tigges.kaboofcasino.util.Log;
+import de.tigges.kaboofcasino.wager.Chips;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.LedgerCodec;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
@@ -216,10 +217,9 @@ public abstract class MachineController implements MachineGame {
             case NOT_ALLOWED -> m.actionBar(player, Msg.BET_NOT_ALLOWED, Messages.component("item",
                     ItemNames.name(item == null ? "minecraft:air" : item)));
             case BAD_COUNT -> m.actionBar(player, noBet);
-            case MAX_STAKE -> m.actionBar(player, Msg.BET_MAX, Messages.text("max",
-                    Integer.toString(ctx.config().get().bets().maxStake())));
+            case MAX_STAKE -> ChipStakes.tellMax(ctx, player);
             case NOT_ENOUGH -> m.actionBar(player, Msg.BET_NOT_ENOUGH, Messages.component("item",
-                    ItemNames.name(item == null ? "minecraft:air" : item)));
+                    ItemNames.name(item == null ? "minecraft:air" : Chips.isChips(item) ? Chips.VALUE : item)));
         }
     }
 
@@ -243,25 +243,33 @@ public abstract class MachineController implements MachineGame {
         }
     }
 
-    /** Number of stacks {@code payout} splits into (one coin per stack, at most 200). */
+    /** Number of stacks {@code payout} splits into (chips per denomination; one coin per stack, at most 200). */
     protected static int stacks(List<ItemAmount> payout) {
         long stacks = 0;
-        for (ItemAmount a : payout) {
-            int max = PlayerAccount.material(a.item()).getMaxStackSize();
+        for (ItemAmount a : Chips.expand(payout)) {
+            int max = Chips.isChips(a.item()) ? 64 : PlayerAccount.material(a.item()).getMaxStackSize();
             stacks += (a.count() + max - 1) / max;
         }
         return (int) Math.min(stacks, 200);
     }
 
-    /** Adds one entry per stack of {@code payout} (the stack's item) to a coin queue. */
+    /**
+     * Adds one entry per stack of {@code payout} (the stack's item; chips per denomination, largest first) to a coin
+     * queue.
+     */
     protected static void queueCoins(java.util.Collection<String> queue, List<ItemAmount> payout) {
-        for (ItemAmount a : payout) {
-            int max = PlayerAccount.material(a.item()).getMaxStackSize();
+        for (ItemAmount a : Chips.expand(payout)) {
+            int max = Chips.isChips(a.item()) ? 64 : PlayerAccount.material(a.item()).getMaxStackSize();
             long stacks = Math.min((a.count() + max - 1) / max, 200);
             for (long i = 0; i < stacks; i++) {
                 queue.add(a.item());
             }
         }
+    }
+
+    /** The coin item of a payout: its largest chip (or its first item, an ore record of 0.8.0). */
+    protected static String coinItem(List<ItemAmount> payout) {
+        return Chips.expand(payout).getFirst().item();
     }
 
     /** Where a payout coin flies: the winner if he is within 10 blocks, else 1.2 blocks in front of the machine. */

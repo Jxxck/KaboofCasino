@@ -15,11 +15,13 @@ import java.util.Objects;
  * @param gui      menu behaviour
  * @param slot     slot machine settings
  * @param music    the speakers' lounge music and its optional pack (render.md 6)
+ * @param cashier  the cashier: exchange rates, craftable, the prize shop (PLAN-2 C3)
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
                            Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker,
                            Slot derby,
-                           Lights lights, Music music) {
+                           Lights lights, Music music,
+                           de.tigges.kaboofcasino.cashier.CashierSettings cashier) {
 
     /**
      * @param enabled        send the pack at all
@@ -47,17 +49,15 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     }
 
     /**
-     * @param maxStake highest stake per unit ({@link #capPerRound}: per round, else per bet slot)
-     * @param items    material keys like {@code minecraft:diamond}
-     * @param capPer   {@code slot} (the mod: a stack per bet slot) or {@code round} (all slots of a round together)
+     * Stakes are chips (PLAN-2 C2): a stake is a chip value; ores are exchanged at the cashier ({@code cashier.rates}),
+     * the old {@code bets.items} list is gone.
+     *
+     * @param maxStake highest stake in chip value ({@link #capPerRound}: per round, else per bet slot)
+     * @param capPer   {@code slot} (per bet slot, as the mod) or {@code round} (all slots of a round together)
      */
-    public record Bets(int maxStake, List<String> items, String capPer) {
+    public record Bets(int maxStake, String capPer) {
         public static final String PER_SLOT = "slot";
         public static final String PER_ROUND = "round";
-
-        public Bets {
-            items = List.copyOf(items);
-        }
 
         public boolean capPerRound() {
             return PER_ROUND.equals(capPer);
@@ -139,6 +139,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
     public record Music(boolean enabled) {
     }
 
+    /** The mod's 18 bet items (ores and their blocks): before 0.9.0 the stakes, now what the cashier exchanges. */
     public static final List<String> DEFAULT_BET_ITEMS = List.of(
             "minecraft:coal", "minecraft:coal_block",
             "minecraft:copper_ingot", "minecraft:copper_block",
@@ -152,7 +153,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
 
     public static final CasinoConfig DEFAULTS = new CasinoConfig(
             new Pack(true, false, Pack.MINECRAFT_PORT, "5.9.137.26", 25565, 25580, "0.0.0.0", 300),
-            new Bets(64, DEFAULT_BET_ITEMS, Bets.PER_SLOT),
+            new Bets(2000, Bets.PER_SLOT),
             new Rounds(8),
             new Owed(20),
             new Machines("owner", 100, true, true),
@@ -166,5 +167,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Poker(0, true),
             new Slot(-1, 4, 16, true),
             new Lights(4),
-            new Music(true));
+            new Music(true),
+            de.tigges.kaboofcasino.cashier.CashierSettings.DEFAULTS);
 }

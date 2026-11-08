@@ -138,6 +138,9 @@ public final class AdminTexts {
 
     /** {@code CasinoMachine.typeName}: the machine's block name ({@code block.roulettecasino.<id>}). */
     public static Component typeName(MachineType type) {
+        if (type == MachineType.CASHIER) {
+            return Component.translatable("item.kaboofcasino.cashier", "Kasse"); // the plugin's own: no mod text
+        }
         return t("block.roulettecasino." + type.id());
     }
 

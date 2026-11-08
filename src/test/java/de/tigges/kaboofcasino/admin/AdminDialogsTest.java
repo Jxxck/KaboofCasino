@@ -186,7 +186,7 @@ class AdminDialogsTest {
     void untouchedDialogsChangeNothing() {
         MachineSettings.Own[] owns = {MachineSettings.Own.NONE, new MachineSettings.Own("Tisch 4", 0, -100),
                 new MachineSettings.Own("x", 100, 100), new MachineSettings.Own("", -1, 35)};
-        for (MachineType type : MachineType.values()) {
+        for (MachineType type : MachineSettings.MOD_ORDER) {
             for (MachineSettings.Own own : owns) {
                 for (int typeValue : MachineSettings.usesBias(type) ? new int[] {-100, 0, 40} : new int[] {-1, 0, 77}) {
                     AdminView view = AdminDialogs.machine(new MachineData(type, 9, own, typeValue, 1, 2, 3, "", true,

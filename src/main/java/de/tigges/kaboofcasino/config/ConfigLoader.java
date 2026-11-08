@@ -17,6 +17,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
  */
 public final class ConfigLoader {
 
+    /** Highest allowed {@code bets.max-stake} (a chip value; a slot's payout is at most 100 times it). */
+    static final int MAX_STAKE_LIMIT = 1_000_000;
+
     public static final String FILE = "config.yml";
     private static final Pattern KEY = Pattern.compile("[a-z0-9_.\\-]+:[a-z0-9_./\\-]+");
 
@@ -47,12 +50,8 @@ public final class ConfigLoader {
                 r.integer("pack.port", d.pack().port(), 1, 65535),
                 r.string("pack.bind", d.pack().bind(), s -> !s.isBlank()),
                 r.integer("pack.timeout-seconds", d.pack().timeoutSeconds(), 5, 3600));
-        List<String> items = r.keys("bets.items", d.bets().items());
-        if (items.isEmpty()) {
-            warnings.add(FILE + ": bets.items is empty; using the mod's 18 bet items");
-            items = d.bets().items();
-        }
-        CasinoConfig.Bets bets = new CasinoConfig.Bets(r.integer("bets.max-stake", d.bets().maxStake(), 1, 64), items,
+        CasinoConfig.Bets bets = new CasinoConfig.Bets(
+                r.integer("bets.max-stake", d.bets().maxStake(), 1, MAX_STAKE_LIMIT),
                 r.string("bets.cap-per", d.bets().capPer(), s -> s.equals(CasinoConfig.Bets.PER_SLOT)
                         || s.equals(CasinoConfig.Bets.PER_ROUND)));
         String mode = r.string("machines.break", d.machines().breakMode(),
@@ -78,7 +77,8 @@ public final class ConfigLoader {
                 game(r, "derby", d.derby()),
                 new CasinoConfig.Lights(r.integer("lights.max-updates-per-tick", d.lights().maxUpdatesPerTick(), 1,
                         100)),
-                new CasinoConfig.Music(r.bool("music.enabled", d.music().enabled())));
+                new CasinoConfig.Music(r.bool("music.enabled", d.music().enabled())),
+                de.tigges.kaboofcasino.cashier.CashierSettings.read(y, warnings));
     }
 
     private static CasinoConfig.Slot game(Reader r, String section, CasinoConfig.Slot d) {

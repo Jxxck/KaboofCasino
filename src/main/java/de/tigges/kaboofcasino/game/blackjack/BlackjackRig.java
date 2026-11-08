@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.Set;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
@@ -461,7 +460,7 @@ public final class BlackjackRig {
     // ---- coins ------------------------------------------------------------------------------------------------------
 
     /** One payout coin from player spot {@code spot} ({@code eject}: spot centre, 15.5 px) towards {@code target}. */
-    public void coin(Material item, int spot, Location target, long now) {
+    public void coin(String item, int spot, Location target, long now) {
         double[] c = BlackjackLayout.spotCenter(Math.max(0, Math.min(BlackjackLayout.SPOTS - 1, spot)));
         coins.spawn(world, at(c[0], 15.5, c[1]), item, target, now);
     }

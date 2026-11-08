@@ -14,13 +14,19 @@ import org.bukkit.persistence.PersistentDataType;
  * Player PDC <-> {@link Ledger}. One key {@code kaboofcasino:ledger} holds a container
  * {@code {v, rounds: [..], owed: [{item, count}]}}; it is written in one {@code set} and removed when empty.
  * Every release must still read records written by older versions ({@code v}; version 1 had only DECIDED records,
- * version 2 adds PLAYING). A record that cannot be decoded is
- * never guessed: {@link CorruptLedgerException} stops all casino actions for that player.
+ * version 2 adds PLAYING, version 3 chip values: {@code item = kaboofcasino:chips}, {@code count} = a value in chips,
+ * C2). The layout is the same in all versions; a ledger is written with the lowest version that can hold it, so a
+ * ledger with ore records and owed ores only stays readable by 0.8.0. A record that cannot be decoded is never
+ * guessed: {@link CorruptLedgerException} stops all casino actions for that player (0.8.0 does exactly that with a
+ * version-3 ledger and leaves it untouched).
  */
 public final class LedgerCodec {
 
-    /** 2: {@link RoundState#PLAYING} (blackjack); records of version 1 read unchanged. */
-    public static final int VERSION = 2;
+    /**
+     * 3: chip values ({@link Chips#VALUE}) in stakes, payouts and the owed list; 2: {@link RoundState#PLAYING}
+     * (blackjack); records of versions 1 and 2 read unchanged.
+     */
+    public static final int VERSION = 3;
     private static final NamespacedKey V = Keys.key("v");
     private static final NamespacedKey ROUNDS = Keys.key("rounds");
     private static final NamespacedKey OWED = Keys.key("owed");
@@ -110,10 +116,17 @@ public final class LedgerCodec {
     }
 
     /**
-     * The lowest version that can hold {@code ledger}: 2 only while a PLAYING record is open, so a ledger without one
-     * stays readable by 0.3.x (a rollback blocks only players with an open blackjack hand from a crash).
+     * The lowest version that can hold {@code ledger}: 3 while it holds a chip value (a round staked or paid in chips,
+     * owed chips), else 2 while a PLAYING record is open, else 1. So a rollback to 0.8.0 after a clean stop blocks only
+     * players with owed chips (their ledger stays untouched until 0.9.0 is back); ore ledgers stay readable by 0.3.x.
      */
     static int version(Ledger ledger) {
+        boolean chips = ledger.owed().stream().anyMatch(a -> Chips.isValue(a.item()))
+                || ledger.rounds().stream().anyMatch(r -> Chips.isValue(r.stake().item())
+                        || r.payout().stream().anyMatch(a -> Chips.isValue(a.item())));
+        if (chips) {
+            return 3;
+        }
         return ledger.rounds().stream().anyMatch(r -> r.state() == RoundState.PLAYING) ? 2 : 1;
     }
 

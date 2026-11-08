@@ -36,7 +36,7 @@ final class SlotPanel {
         Component text = Component.text()
                 .append(head).append(Component.text(" " + name, NAME)).append(nl)
                 .append(messages.render(Msg.PANEL_BET).color(TITLE)).append(nl)
-                .append(sprite(stake.item())).append(Component.text(" ×" + stake.count(), WHITE))
+                .append(de.tigges.kaboofcasino.game.PanelText.stakes(java.util.List.of(stake)))
                 .build();
         if (result == null) {
             return text;

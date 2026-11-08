@@ -20,7 +20,7 @@ class PokerPayoutTest {
     @Test
     void everyResultAndEveryPaytableLine() {
         int[] k = {100, 20, 10, 3, 2, 1};
-        for (long ante = 1; ante <= 64; ante++) {
+        for (long ante : de.tigges.kaboofcasino.game.wheel.WheelOddsTest.stakes()) {
             long called = ante * 3;
             for (int roll = 0; roll < 3; roll++) {
                 for (int pays : k) {

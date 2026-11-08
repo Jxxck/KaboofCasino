@@ -1,4 +1,4 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker; step 7: duck derby; step 8: croupier, guide, TVs, dealer station)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker; step 7: duck derby; step 8: croupier, guide, TVs, dealer station; part 2 (`PLAN-2.md`) step 9: chips, cashier, chip stakes)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
 GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
@@ -42,7 +42,7 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `KaboofCasinoPlugin`, `CasinoContext` | wiring only; the context hands games the shared services |
 | `config` | `config.yml` → `CasinoConfig` (validated, defaults merged into the live file), `messages_de.yml` → `Messages`/`Msg` |
 | `pack` | `PackFile` (embedded zip, re-hashed), `GamePortPack` + `PackSniffer` + `HttpSniff` (HTTP on the game port), `PackHttpServer` (own port), `PackListener` (configuration phase), `PackSessions` |
-| `wager` | the bet engine: `WagerEngine` (pure), `Ledger`/`RoundRecord`/`ItemAmount`, `Account` (port) + `PlayerAccount` (Bukkit), `LedgerCodec` (player PDC), `LedgerListener` (quit/death/join/timer/disable) |
+| `wager` | the bet engine: `WagerEngine` (pure), `Ledger`/`RoundRecord`/`ItemAmount`, `Account` (port) + `PlayerAccount` (Bukkit), `LedgerCodec` (player PDC), `LedgerListener` (quit/death/join/timer/disable); chips (PLAN-2 C1/C2): `Chips` (pure: denominations, the chip-value pseudo item `kaboofcasino:chips`, breakdown, selections, paying a value with change), `ChipItems` (the chip items) |
 | `machine` | `MachineType` (footprints), `Facing`, `MachineRecord` + `ChunkRecords` (chunk PDC), `MachineService` (index, place, remove, verify, tick), listeners for interaction, breaking, protection, chunks, item vetoes; `CasinoItem(s)`, `Recipes` (from `pack/recipes.json`), `Heartbeat` |
 | `visual` | `RigMath` (display transformations), `Displays` (non-persistent spawn helpers), `Coins` (payout coin displays), `FloatingPanel` (bet/result panel) |
 | `gui` | PostMarkt's selection-model framework (`Menu`, `MenuService`, `MenuListener`, `ClickRoute`, `ClickRules`, `OpenRules`, `DisplayCopies`, `DisplayPurge`), `MenuSafety` (copied) + `DangerSweep` (5-tick), `GuiLayout` + `TitleBuilder` (font-glyph titles) |
@@ -58,6 +58,7 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `deco.display` | the 45 display-entity deco types (`DecoType`): chunk-PDC records (`kaboofcasino:deco`), carriers (barrier / light + interaction / vanilla stairs and slabs), rigs, placement and support rules, connections (tables, bars, rope posts, the sofa's verbatim `SofaLayout`), protection, candle flames, TV channels, the dealer station's `DealerStationHook` and lookup |
 | `croupier` | the croupier villager as a display NPC at a counter (step 8, option A): `CroupierService` (index, chunk lifecycle, trade screen, hiring, counter loss), `CroupierSpawnTrigger` + `VillagerOnCounterTrigger`, `CroupierEligibility`, `CroupierPlacement`, `CroupierRig`, `CroupierTrade`, `CroupierHiring`, records in chunk PDC `kaboofcasino:croupiers` |
 | `guide` | the casino guide book (step 8): `GuideBook` (the mod's `casino_guide.json`, embedded as `pack/guide.json`), `GuideDialogs` (spread → dialog model, pure), `GuidePaper` (Paper dialogs), `GuideSessions` (navigation, history, click rate), `GuideService` + `GuideListener` |
+| `cashier` | the cashier (step 9, PLAN-2 C3): `CashierService` + `CashierController` (the machine kind `CASHIER`, one player at a time), `CashierRig`, the three tab menus (`ExchangeMenu`, `ChangeMenu`, `ShopMenu` on `CashierMenu`/`CashierView`), `Cashbox` (the atomic exchange, change and buy), `CashierMath`, `ShopEntry`/`Prizes`, `DailyLimits` (player PDC), `CashierLog` (DB table `cashier`); the shop editor of the croupier's hand is `admin/Shop*` |
 | `admin` | the croupier's hand (step 8, partial port of the mod's settings): `AdminService` (dialog sessions, clicks, edits, labels), `AdminDialogs`/`AdminPaper` (machine and whole-casino dialogs), `AdminClick` (payload parsing), `HandCopy` + `Clipboard` (copy/paste), `EditRate`, `AdminLabels` (floating names); `machine.MachineSettings` (own values over type values), `config.ConfigEdits` (comment-keeping `config.yml` edits) |
 | `seat` | sitting on chairs, stools and sofas: a non-persistent item-display vehicle, the mod's dismount search, forced stand-up on danger/combat/damage/quit/death/teleport, rescue of players found inside deco barriers |
 | `music` | `MusicTimeline` (verbatim), the station per world (world PDC), playback per player who loaded the music pack, note particles; second pack delivery in `pack/`; `MusicOptOut` (`/casino musik aus|an`, player PDC) |
@@ -1148,6 +1149,114 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     against the mod's arithmetic, colours), `CroupierRigTest` (feet offset = the dealer's placement, pack keys and
     texts); pack tool `CroupierPackTest` (the mod's trade JSON = the plugin's constants).
 
+### Step 9 (part 2: chips, cashier, chip stakes; PLAN-2 C1-C4)
+
+- **Chips** (`wager/Chips`, `wager/ChipItems`): six items, denominations 1, 5, 25, 100, 500, 1000 (white, red, green,
+  black, purple, gold). Each is `minecraft:paper` with `item_model kaboofcasino:chip_<n>`, the item name translatable
+  `item.kaboofcasino.chip_<n>` (German fallback "25er-Chip"; fixed in code, not from `messages_de.yml`, so chips made
+  before and after a text change still stack) and the PDC id `kaboofcasino:item = kaboofcasino:chip_<n>`; identity
+  only by that tag on paper (a plain paper, a display copy, a payout coin's look are never chips). Stack 64. Registered
+  in `ItemCatalog` (`/casino give chip_25 <player> <n>`); no recipe makes them, only the cashier, payouts or give.
+- **Two kinds of chip amounts in one `ItemAmount`**: `kaboofcasino:chips` with `count` = a chip value (what round
+  records, payouts and the owed list hold) and `kaboofcasino:chip_<n>` with `count` = a number of chips (what an
+  inventory gives or takes; never stored in a ledger: `Ledger` normalizes owed chips to one value). `Chips.breakdown`
+  pays a value in the largest denominations first; `Chips.pay` picks chips worth exactly a value whenever possible,
+  else the chips of the smallest total above it, i.e. the least change (for a total largest first: with
+  denominations that divide each other this finds an exact combination whenever one exists, so the fewest chips;
+  `ChipsTest` against brute force: exact when possible, least change otherwise).
+- **Accounts** (`Account`, `PlayerAccount`): `countPlain` counts a material's plain stacks, a denomination's chips (by
+  tag, renamed ones too) or the total chip value; `planTake` takes materials or denomination keys (pristine chips
+  first); `give` gives materials, chips, or a chip value in the largest denominations, returning what did not fit as a
+  chip value; `planPay`/`applyPay` pay a value with change (the change that does not fit is returned for the owed
+  list).
+- **Stakes** (`WagerEngine`): only chip values are bet items (`Limits.betItems = {kaboofcasino:chips}`); a `Request`
+  carries the chips its stake takes (`withTake`, the bet slot's selection). `checkAll`: max stake in chip value,
+  the take worth exactly the stake and only chips (else `BAD_COUNT`, a forged request), enough of every taken chip;
+  the commit takes exactly the selected chips. `revise` (blackjack double, poker call) pays a chip value with
+  `planPay`: exact chips or one larger chip and the change back as chips, change that does not fit owed in the same
+  ledger write. Payouts are value x multiplier with the existing fair rounding on whole value units (the games'
+  arithmetic is unchanged, only the unit; RTP tests now enumerate every stake 1..2000 and sparse sizes up to
+  1 000 000). Settling gives chips in the largest denominations; what does not fit stays owed as a value; new rounds
+  wait for owed chips as before.
+- **Ledger version 3** (`LedgerCodec`): same layout, `kaboofcasino:chips` amounts allowed. A ledger is written with
+  the lowest version that holds it: 3 only with a chip value in it, else 2 (a PLAYING hand) or 1. Records and owed
+  items of 0.8.0 (ores) stay valid and are paid in ores (`LedgerMigrationTest`: a ledger built key by key as 0.8.0
+  wrote it, with a slot round, a crash-left PLAYING blackjack hand and owed ores, read and settled by 0.9.0; the
+  rewrite of an ore ledger is key by key the old layout). **Rollback to 0.8.0** after a clean stop: every round is
+  settled, so a ledger holds at most owed items; ore-only ledgers stay version 1/2 and 0.8.0 delivers them; a ledger
+  with owed chips is version 3, which 0.8.0's codec refuses (`CorruptLedgerException`): it logs CRITICAL, refuses
+  casino actions for that player and never writes the ledger, so the chips wait untouched until 0.9.0 is back. Chip
+  items themselves stay in inventories; 0.8.0 has no model for them (missing-model look), does not accept them as
+  stakes (not plain) and still blocks them in recipes (casino tag).
+- **Bet slots** (`StakeMenu` for wheel, Plinko, roulette, blackjack, poker, derby; `SlotMenu`; `ChipStakes`): a slot
+  holds a `Chips.Selection` from the player's own chips (nothing moves until the commit): left on a chip stack adds
+  that stack, right one chip, shift-left all unselected chips of that kind; never more than unselected and never past
+  `bets.max-stake` (chip value per slot, or per round with `cap-per: round`); right on a slot takes the smallest chip
+  away, left on the active slot clears it. A click on anything but a chip: "Hier wird mit Chips gespielt. Erze tauschst
+  du an der Kasse in Chips." The slot shows the largest chip (a display copy) named "1.250 Chips" with one lore line
+  per chip kind. The bettable-items book became "Mit Chips spielen" (the six chips, the cashier hint).
+- **Everywhere a stake or payout is shown**: floating panels (`PanelText.stakes`: the largest chip's sprite
+  `kaboofcasino:item/chip_<n>` from the items atlas and the value), the blackjack/poker round menus' stake and net
+  cells (largest chip, named with the value), the derby's confirmed stake, payout coins (`Coins` with a chip's look,
+  never a chip: one per stack per denomination), owed and delivery messages ("1.250 Chips"), `/casino stats` ("Chips").
+- **Death**: winnings and owed chips go into the death drops as chip stacks (largest first, topping up pristine chip
+  stacks), what the grave does not hold stays owed as a value; a cancelled death takes back exactly what is still
+  there.
+- **Dupe surface** (C1): no recipe makes chips; a chip in any crafting grid or crafter, a villager trade (paper sells
+  to librarians and cartographers) or the cartography table is vetoed as for every casino item; anvil, smithing table
+  and grindstone give no result with a chip in them (`ItemVetoListener.onPrepareResult`: no renamed "1000er-Chip" made
+  of a 1); paper is not compostable, no fuel, no loom input; casino menus are no block inventories, so no hopper reaches
+  them; display copies and coin looks carry no casino tag. Creative players can copy any stack (vanilla, admins only).
+- **Config**: `bets.max-stake` is a chip value (default 2000, 1..1 000 000); `bets.items` is gone (ores are exchanged at
+  the cashier, `cashier.rates`). New texts in `chips:` of `messages_de.yml` (new keys, so they merge into the live
+  file); the old item texts (`bet.not-allowed`, `bet.not-plain`, `bet.max`, `gui.stake.*-lore`, `gui.slot.spin-lore`,
+  `gui.slot.stake-lore`, `gui.bets.*`) are removed from the jar's file.
+- **Cashier** ("Kasse", C3; package `cashier`): machine kind `CASHIER`, 2 wide x 1 deep x 2 tall, barrier carriers in
+  all four cells, the clicked cell is the anchor and the second cell lies to the placer's right; both bottom cells need
+  support; chunk fit, 2-block player clearance, logout spots, spawn protection, breaking rules (`machines.break`,
+  `machines.breakable`, `/casino remove`), verify and chunk records are MachineService's. No rounds, never busy,
+  `MachineType.isGame()` false (every switch over the type handles it; the hand's machine dialog refuses it, the
+  whole-casino dialog lists only the seven games). Item `CasinoItem.CASHIER` ("Kasse"), placed by admins via
+  `/casino give cashier`; `cashier.craftable: false` by default, true registers the recipe `kaboofcasino:cashier`
+  (glass pane, small casino sign, glass pane over black marble bar, cash register, black marble bar; unlocks with a
+  cash register; switches on `/casino reload`).
+  - Look (`CashierRig`, pack `CashierPack`): seven item displays: two `black_marble_bar_end` counter pieces with their
+    marble tops, the mod's `cash_register` and a `casino_chip_pile` on top, a new `kaboofcasino:cashier/screen` (the
+    mod's clear glass in a brass frame) at the customer's edge with a sign like the mod's small sign (walnut, panel,
+    brass, warm bulbs) and self-lit red LEDs spelling KASSE in its 7-row letters.
+  - Menu (`CashierGui` art, derby felt style, "KASSE" brand, a receipt panel; 9 x 6 chest with font title, one tab per
+    menu because the title is the art; one player per cashier; idle close after `gui.idle-close-seconds`; danger
+    sweep, MenuSafety and range as the games): **Wechseln** (inventory clicks select plain ores that have a rate:
+    left the stack, right +1, shift all; selection in 9-26, the chips you get in 30-35, rates book 45, clear 46,
+    WECHSELN 48-51, value 53), **Kleingeld** (selected chips 12-17, target 21-26: 1000 ... 1, default one step below
+    the largest selected chip; result 30-35), **Preise** (36 prizes a page in 9-44 with price and "Heute noch x von y",
+    pages 45/46, KAUFEN 48-51, the player's chips 53, the price 52). Receipt numbers are 10-digit picture items.
+  - Atomic (`Cashbox`, on MAIN inside the click, every check and plan before the first change): **exchange** = rates,
+    ledger read, counts, `planTake`; then take the ores, give the chip value largest first, one ledger write only if
+    something did not fit (owed chips, WARN log; delivered by the owed timer); **change** = `planTake`, room check
+    (`Account.spareSlots`, Bukkit's `addItem` rules) or refused; then take and give (value-neutral; the rest of a value
+    not divisible by the target comes in the next smaller chips); **buy** = daily limit, ledger read, `planPay`, room
+    for the prize and the change or refused ("Kein Platz im Inventar für den Preis und das Wechselgeld."); then pay,
+    give the prize, write the day's count. Inventory, ledger and daily counts are all in the player file: a crash rolls
+    the whole transaction back or keeps it. No way from chips back to ores; prizes are never owed or dropped.
+  - Shop (`shop.items`, a list so a deleted entry never comes back): `item` = a casino id (built fresh, names follow
+    the messages) or `id[components]` (`ItemFactory.createItemStack`, written with `ItemMeta.getAsComponentString`),
+    `count` 1-64, `price` 1-100 000 000 chips, `limit` 0-1000 per player and Berlin day (0 = none; counts in the
+    player PDC `kaboofcasino:shop_limits`, keyed by item and count so a new price keeps the day's count). Chips are
+    never prizes. Default: chair 64, stool 48, chip pile 32, small sign 96, bottles 24, coupes 24.
+  - Admin (croupier's hand on a cashier, creative + `kaboofcasino.admin`): a dialog with six prizes a page (icon, price,
+    limit, remove), the off-hand item as a new prize with its own price and limit, Speichern / Nebenhand hinzufügen /
+    pages / Fertig (ESC applies valid inputs); one click per tick, the hand's 20 edits a second; if the list changed
+    since the dialog opened nothing is written. Written with `ConfigEdits` (comments, mode and owner kept), then
+    reloaded; every old -> new value logged.
+  - Rates (`cashier.rates`, a list): coal, copper ingot, redstone 1; lapis 2; iron 4; gold 8; emerald 16; diamond 32;
+    netherite ingot 256; each block x 9.
+  - Log: every exchange, change and purchase at INFO (WARN with owed chips) and in `casino.db` table `cashier`
+    (`V3__cashier.sql`: player, name, kind, machine, items in/out, chip value, owed, detail, time), written on the DB
+    thread (not authoritative).
+- **RoundLog** (C4 data): chip rounds are rows with `stake_item = payout_item = kaboofcasino:chips` and the values in
+  `stake_count`/`payout_count`, with game, player and times as before; ore rounds of 0.8.0 keep their items.
+
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
@@ -1176,7 +1285,19 @@ independent transcription, invariants), `DerbyRtpSimulationTest`, `DerbyPlacemen
 ducks, gates, sign against an independent evaluation of the renderer, culling box, rotation steps, traffic),
 `DerbyPanelTest` (including: no result line before `resultTick` for any winner, solo and group), `DerbyPackKeysTest`,
 `DerbyPackTest`, `DerbyBetMenuTest`, `DerbyGuiTest` and `DerbyGuiPreviewTest`
-(`build/reports/gui/derby-*-preview-<W>x<H>.png`). Step 8 adds the croupier tests (`CroupierEligibilityTest`,
+(`build/reports/gui/derby-*-preview-<W>x<H>.png`). Step 9 adds `ChipsTest` (denominations, breakdown, selections,
+paying a value: exact against brute force, else value-neutral change), `WagerEngineChipsTest` (selected chips leave,
+value checks, forged takes, owed chips as a value, double down paid with change, change that does not fit owed, ore
+records next to chips, death), `LedgerMigrationTest` (a 0.8.0 ledger built key by key: read, settled in ores, owed
+ores, version choice, 0.8.0's refusal of version 3), the chip rules in `StakeMenuRulesTest`, the RTP enumerations of
+wheel, Plinko, roulette, poker and derby over every chip value 1..2000 and sparse values up to 1 000 000, a blackjack
+chip payout test, `PackKeysTest.everyChipHasItsModelAndPanelSprite` and the pack tool's `ChipPackTest`. Chips on the
+test instance: `testing/chips-test.sh slot|wheel|plinko|roulette|blackjack|poker|derby` (one round each with chips;
+the wheel spins until a quarter segment, blackjack deals until a natural). The cashier: `CashboxTest` (exchange,
+change, buy against `FakeAccount`: nothing changes on any refusal, owed chips, room checks, limits), `CashierMathTest`,
+`ShopEntryTest`, `CashierLogTest`, `CashierGuiTest` + `CashierGuiPreviewTest`
+(`build/reports/gui/cashier-*-preview-*.png`), `CashierConfigTest`, `ShopDialogsTest`, `CashierPlacementTest`, pack
+tool `CashierPackTest`; `ConfigLoaderTest.theMergeKeepsTheFileMode`. Step 8 adds the croupier tests (`CroupierEligibilityTest`,
 `CroupierPlacementTest`, `CroupierCodecTest`, `CroupierTradeTest`, `CroupierHiringTest`, `CroupierRigTest`, pack tool
 `CroupierPackTest`), the guide tests (`GuideBookTest`, `GuideDialogsTest`, `GuideSessionsTest`, `GuideActionTest`,
 pack tool `GuideDataTest`), the croupier's-hand tests (`MachineRecordCodecTest`, `MachineSettingsTest`,
@@ -1229,12 +1350,12 @@ testing/craft-test.sh                                                    # craft
 Duck derby on the test instance (#1 placed at 81 -58 58 from 81.5 -57 60.5; open with `place 81 -57 58 south`; bet
 slots row 1 = 9/12/14/17 for lanes 0-3 (click to select, right-click an inventory item for +1), SOLO 37, GROUP /
 CONFIRM / WITHDRAW 42; `derby.win-chance: 100` or `0` + `/casino reload` force a solo win or a loss/push; helper
-`scratchpad/casino/dk.sh open|bet|group|solo|withdraw|ledger|over`).
+`testing/dk.sh open|bet|group|solo|withdraw|ledger|over`).
 
 Poker on the test instance (table #1 placed at 90 -58 41 from 90.5 -57 44.5; bet slots 29/31/33 (click a slot to
 select it, right-click an inventory item for +1), AUSTEILEN 49, MITGEHEN 46, AUSSTEIGEN 51; the decision opens 10.5 s
 after the deal; `poker.bias: 100` + `/casino reload` makes winning hands likely; helper
-`scratchpad/casino/pk.sh open|deal|call|fold|ends|ledger`):
+`testing/pk.sh open|deal|call|fold|ends|ledger`):
 
 ```bash
 $T/ptest.sh rcon "casino give poker_table Alice" "give Alice diamond 20" "tp Alice 90.5 -57 44.5 180 20"
@@ -1266,6 +1387,23 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
   the live `messages_de.yml` so the new credits text is merged in. `config.yml` gets `music.enabled: true`. The casino
   pack grows to ~4.7 MB; the music pack (~22 MB) is offered after it, optional; clients that accepted the casino pack
   usually accept it silently (a second resource reload at login).
+- Step 9 ships as `KaboofCasino-0.9.0.jar`: remove `KaboofCasino-0.8.0.jar`. Before the start, in the live
+  `config.yml` delete `bets.max-stake` (the old value 64 meant items; deleted, the new default 2000 chips is merged in
+  with its comment; keep a number if Jack wants another chip limit) and the `bets.items` list (gone; else one
+  "unknown setting" warning per start); in the live `messages_de.yml` delete `bet.not-plain`, `bet.max`,
+  `gui.slot.spin-lore`, `gui.slot.stake-lore`, `gui.stake.lore`, `gui.stake.active-lore`,
+  `gui.stake.active-lore-round`, `gui.stake.play-lore`, `gui.stake.play-lore-round` and `gui.bets` (else one warning
+  each). New keys merge in by themselves (`cashier.craftable`, `cashier.rates`, `shop.items` in `config.yml`;
+  `chips:`, `cashier:`, `shop:` in `messages_de.yml`); the merge now keeps the files' mode, owner and group (like the
+  hand's edits). The cashier is placed by an admin (`/casino give cashier`). The casino pack grows to 5,999,215 bytes
+  (the 300 s hard cap then asks for 19.5 KiB/s on average; unchanged policy). Ledgers: no migration step; 0.8.0
+  records and owed ores are paid in ores by 0.9.0 (tested on a crashed 0.8.0 world: an open blackjack hand and owed
+  diamonds were settled at the join, the diamonds delivered once there was room). A clean stop before the deploy
+  settles everything as always. **Rollback to 0.8.0**: see "Ledger version 3" above (owed chips wait untouched, chip
+  items keep their tag but lose their look; cashiers' chunk records are kept, logged CRITICAL as an unknown machine
+  kind, their barriers stay); `casino.db` gets schema 3 (the cashier log), which 0.8.0 refuses at
+  start: put back `casino.db` from the deploy backup, or remove the version row
+  (`sqlite3 casino.db "DELETE FROM schema_version WHERE version = 3"`; the extra table does not bother 0.8.0).
 - Step 8 ships as `KaboofCasino-0.8.0.jar`: remove `KaboofCasino-0.7.0.jar`. Before the start delete the
   `command.credits` block (`credits: |-` and its indented lines) from the live `messages_de.yml` so the new credits text
   with the `/casino musik aus|an` hint is merged in (optionally `command.usage` too, which now names `musik`).

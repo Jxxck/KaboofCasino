@@ -4,19 +4,20 @@ import de.tigges.kaboofcasino.CasinoContext;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.gui.Button;
 import de.tigges.kaboofcasino.gui.DisplayCopies;
+import de.tigges.kaboofcasino.game.ChipStakes;
 import de.tigges.kaboofcasino.game.GameMenu;
 import de.tigges.kaboofcasino.gui.TitleBuilder;
+import de.tigges.kaboofcasino.wager.ChipItems;
+import de.tigges.kaboofcasino.wager.Chips;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.Ledger;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
 import de.tigges.kaboofcasino.util.ItemNames;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
@@ -41,7 +42,7 @@ final class SlotMenu extends GameMenu {
 
     private final SlotController controller;
     private final CasinoContext ctx;
-    private ItemAmount selection;
+    private Chips.Selection selection;
 
     SlotMenu(UUID viewer, Component title, SlotController controller, CasinoContext ctx) {
         super(viewer, title);
@@ -73,7 +74,8 @@ final class SlotMenu extends GameMenu {
         return t.build();
     }
 
-    ItemAmount selection() {
+    /** The chips on the bet slot (null = none). */
+    Chips.Selection selection() {
         return selection;
     }
 
@@ -86,14 +88,10 @@ final class SlotMenu extends GameMenu {
         clear();
         var m = ctx.messages().get();
         if (selection != null) {
-            Material mat = PlayerAccount.material(selection.item());
-            set(STAKE_SLOT, Button.of(DisplayCopies.of(mat, (int) selection.count(), null,
-                    m.lines(Msg.GUI_SLOT_STAKE_LORE)), (p, click) -> {
-                        if (click == ClickType.RIGHT && selection.count() > 1) {
-                            selection = new ItemAmount(selection.item(), selection.count() - 1);
-                        } else {
-                            selection = null;
-                        }
+            set(STAKE_SLOT, Button.of(ChipStakes.icon(ctx, selection, m.lines(Msg.CHIPS_SLOT_STAKE_LORE), false),
+                    (p, click) -> {
+                        Chips.Selection less = selection.minusSmallest();
+                        selection = click == ClickType.RIGHT && !less.isEmpty() ? less : null;
                         render();
                     }));
         }
@@ -104,9 +102,9 @@ final class SlotMenu extends GameMenu {
                     m.lines(Msg.GUI_SLOT_COLLECT_LORE));
         } else {
             button = DisplayCopies.model(selection == null ? "kaboofcasino:gui/spin_off" : "kaboofcasino:gui/spin_on",
-                    m.render(Msg.GUI_SLOT_SPIN), m.lines(Msg.GUI_SLOT_SPIN_LORE,
+                    m.render(Msg.GUI_SLOT_SPIN), m.lines(Msg.CHIPS_SLOT_SPIN_LORE,
                             de.tigges.kaboofcasino.config.Messages.text("max",
-                                    Integer.toString(ctx.config().get().bets().maxStake()))));
+                                    ItemNames.value(ctx.config().get().bets().maxStake()))));
         }
         ItemStack blank = DisplayCopies.model("kaboofcasino:gui/blank", m.render(owed ? Msg.GUI_SLOT_COLLECT
                 : Msg.GUI_SLOT_SPIN), List.of());
@@ -117,13 +115,7 @@ final class SlotMenu extends GameMenu {
                 render();
             }) : Button.commit(icon, (p, click) -> controller.spin(p, this)));
         }
-        List<Component> lore = new ArrayList<>();
-        for (String item : ctx.config().get().bets().items()) {
-            lore.add(Component.text("• ", NamedTextColor.GRAY).append(ItemNames.name(item)
-                    .color(NamedTextColor.YELLOW)));
-        }
-        lore.addAll(m.lines(Msg.GUI_BETS_LORE));
-        set(BETS_SLOT, Button.display(DisplayCopies.of(Material.BOOK, 1, m.render(Msg.GUI_BETS_TITLE), lore)));
+        set(BETS_SLOT, Button.display(ChipStakes.book(ctx)));
     }
 
     private List<ItemAmount> owedNow() {
@@ -139,36 +131,29 @@ final class SlotMenu extends GameMenu {
         }
     }
 
+    /** A click on chips in the own inventory adds them to the bet slot ({@link ChipStakes#add}). */
     @Override
     public void onBottomClick(Player player, int index, ClickType click, ItemStack clicked) {
         if (clicked == null || clicked.isEmpty()) {
             return;
         }
         var m = ctx.messages().get();
-        String key = clicked.getType().getKey().asString();
-        if (!ctx.config().get().bets().items().contains(key)) {
-            m.actionBar(player, Msg.BET_NOT_ALLOWED, de.tigges.kaboofcasino.config.Messages.component("item",
-                    Component.translatable(clicked.getType())));
+        OptionalInt chip = ChipItems.denomination(clicked);
+        if (chip.isEmpty()) {
+            m.actionBar(player, Msg.CHIPS_ONLY);
             return;
         }
-        if (!PlayerAccount.isPlain(clicked)) {
-            m.actionBar(player, Msg.BET_NOT_PLAIN);
-            return;
+        int d = chip.getAsInt();
+        long max = ctx.config().get().bets().maxStake();
+        long current = selection == null ? 0 : selection.value();
+        long ownedFree = new PlayerAccount(player).countPlain(Chips.key(d))
+                - (selection == null ? 0 : selection.count(d));
+        long add = ChipStakes.add(click, d, clicked.getAmount(), ownedFree, current, 0, max);
+        if (ChipStakes.capped(click, d, clicked.getAmount(), ownedFree, current, 0, max)) {
+            ChipStakes.tellMax(ctx, player);
         }
-        int max = ctx.config().get().bets().maxStake();
-        long owned = new PlayerAccount(player).countPlain(key);
-        long count = switch (click) {
-            case RIGHT -> selection != null && selection.item().equals(key) ? selection.count() + 1 : 1;
-            case SHIFT_LEFT -> owned;
-            default -> clicked.getAmount();
-        };
-        if (count > max) {
-            m.actionBar(player, Msg.BET_MAX, de.tigges.kaboofcasino.config.Messages.text("max",
-                    Integer.toString(max)));
-        }
-        count = Math.min(Math.min(count, max), owned);
-        if (count >= 1) {
-            selection = new ItemAmount(key, count);
+        if (add >= 1) {
+            selection = (selection == null ? Chips.Selection.EMPTY : selection).plus(d, add);
             player.playSound(player, org.bukkit.Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
         }
         render();

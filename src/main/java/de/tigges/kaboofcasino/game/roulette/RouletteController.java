@@ -10,7 +10,6 @@ import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
-import de.tigges.kaboofcasino.wager.PlayerAccount;
 import de.tigges.kaboofcasino.wager.SettleReason;
 import de.tigges.kaboofcasino.wager.WagerEngine;
 import java.util.ArrayDeque;
@@ -198,7 +197,7 @@ public final class RouletteController extends MachineController {
             List<ItemAmount> payout = n > 0 ? List.of(new ItemAmount(s.amount().item(), n)) : List.of();
             payouts.add(payout);
             requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(), payout, ends,
-                    "pocket=" + pocket + " colour=" + colour + " slot=" + s.slot()));
+                    "pocket=" + pocket + " colour=" + colour + " slot=" + s.slot()).withTake(s.chips()));
         }
         List<UUID> rounds = commit(player, requests, Msg.ROULETTE_NO_BET);
         if (rounds == null) {
@@ -282,7 +281,7 @@ public final class RouletteController extends MachineController {
         if (s.decided) {
             if (!s.coins.isEmpty()) {
                 if (now % 3 == 0) {
-                    rig.coin(PlayerAccount.material(s.coins.poll()), coinTarget(world, s.player), now);
+                    rig.coin(s.coins.poll(), coinTarget(world, s.player), now);
                     sound(world, "payout", ORIGIN, 0.43f, 0.95f + ctx.random().nextFloat() * 0.2f);
                 }
             } else {

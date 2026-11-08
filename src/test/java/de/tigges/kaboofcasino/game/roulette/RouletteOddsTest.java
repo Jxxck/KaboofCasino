@@ -21,7 +21,7 @@ class RouletteOddsTest {
         assertEquals(18, pockets[RouletteGame.BLACK]);
         assertEquals(1, pockets[RouletteGame.GREEN]);
         for (int c = 0; c < 3; c++) {
-            for (long stake = 1; stake <= 64; stake++) {
+            for (long stake : de.tigges.kaboofcasino.game.wheel.WheelOddsTest.stakes()) {
                 long paid = 0;
                 for (int p = 0; p < 37; p++) {
                     paid += RouletteGame.payout(c, stake, p);

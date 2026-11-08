@@ -6,41 +6,47 @@ import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.gui.Button;
 import de.tigges.kaboofcasino.gui.DisplayCopies;
 import de.tigges.kaboofcasino.util.ItemNames;
+import de.tigges.kaboofcasino.wager.ChipItems;
+import de.tigges.kaboofcasino.wager.Chips;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.Ledger;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
-import io.papermc.paper.datacomponent.DataComponentTypes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * The three bet slots of the fortune wheel and Plinko (games.md 8/9 "Bets") as a selection: nothing moves until the
- * round is committed. One slot is active (gold frame when empty, glint when filled); clicks on the own inventory set
- * the active slot (left: that stack, right: +1, shift-left: all of that item); filling an empty slot moves the
- * marker to the next empty one. A slot click selects it, a left click on the active slot clears it, a right click
- * takes one away. Each slot holds at most {@code bets.max-stake} items (the mod: a stack per slot), or with
- * {@code bets.cap-per: round} all slots together. Each slot is its own stake, paid in its own item (the mod: one
- * ball per slot in Plinko).
+ * The bet slots of a game (games.md "Bets") as a chip selection (PLAN-2 C2, {@link ChipStakes}): nothing moves until
+ * the round is committed. One slot is active (gold frame when empty, glint when filled); clicks on chips in the own
+ * inventory add to the active slot (left: that stack, right: one chip, shift-left: all chips of that kind); filling
+ * an empty slot moves the marker to the next empty one. A slot click selects it, a left click on the active slot
+ * clears it, a right click takes one chip (the smallest) away. Each slot holds at most {@code bets.max-stake} in chip
+ * value, or with {@code bets.cap-per: round} all slots together. Each slot is its own stake (the mod: one ball per
+ * slot in Plinko), paid in chips.
  */
 public abstract class StakeMenu extends GameMenu {
 
     /** The wheel's and Plinko's three bet slots. */
     public static final int SLOTS = 3;
 
-    /** A filled slot: its index (the mod's slot number, which the fair-rounding roll uses) and the stake. */
-    public record Stake(int slot, ItemAmount amount) {
+    /**
+     * A filled slot: its index (the mod's slot number, which the fair-rounding roll uses), the stake (a chip value,
+     * {@link Chips#VALUE}) and the chips that leave the inventory for it (denomination keys).
+     */
+    public record Stake(int slot, ItemAmount amount, List<ItemAmount> chips) {
+        public Stake {
+            chips = List.copyOf(chips);
+        }
     }
 
     protected final CasinoContext ctx;
-    private final ItemAmount[] stakes;
+    private final Chips.Selection[] stakes;
     private int active;
 
     protected StakeMenu(UUID viewer, Component title, CasinoContext ctx) {
@@ -51,7 +57,7 @@ public abstract class StakeMenu extends GameMenu {
     protected StakeMenu(UUID viewer, Component title, CasinoContext ctx, int slots) {
         super(viewer, title);
         this.ctx = ctx;
-        this.stakes = new ItemAmount[slots];
+        this.stakes = new Chips.Selection[slots];
     }
 
     /** True if {@code slot} may be chosen now (the roulette: only the colour already staked). */
@@ -79,9 +85,9 @@ public abstract class StakeMenu extends GameMenu {
         return filled;
     }
 
-    /** The current stake of a slot (null = empty). */
+    /** The current stake of a slot as a chip value (null = empty). */
     protected ItemAmount stake(int slot) {
-        return stakes[slot];
+        return stakes[slot] == null ? null : stakes[slot].asValue();
     }
 
     // ---- per game --------------------------------------------------------------------------------------------------
@@ -94,7 +100,7 @@ public abstract class StakeMenu extends GameMenu {
 
     protected abstract int buttonArtSlot();
 
-    /** Grid index of the bettable-items book. */
+    /** Grid index of the "play with chips" book (the mod's bettable-items list). */
     protected abstract int betsSlot();
 
     /** Button model and texts: {@code kaboofcasino:gui/<game>_on|off}. */
@@ -116,7 +122,7 @@ public abstract class StakeMenu extends GameMenu {
         List<Stake> out = new ArrayList<>();
         for (int i = 0; i < stakes.length; i++) {
             if (stakes[i] != null) {
-                out.add(new Stake(i, stakes[i]));
+                out.add(new Stake(i, stakes[i].asValue(), stakes[i].amounts()));
             }
         }
         return out;
@@ -132,45 +138,26 @@ public abstract class StakeMenu extends GameMenu {
         return active;
     }
 
-    /** Sum of the other slots' counts. */
+    /** Value of the other slots. */
     private long others(int slot) {
         long n = 0;
         for (int i = 0; i < stakes.length; i++) {
             if (i != slot && stakes[i] != null) {
-                n += stakes[i].count();
+                n += stakes[i].value();
             }
         }
         return n;
     }
 
-    /** Items of {@code item} already staked in the other slots. */
-    private long othersOf(int slot, String item) {
+    /** Chips of {@code denomination} already selected in any slot. */
+    private long selected(int denomination) {
         long n = 0;
-        for (int i = 0; i < stakes.length; i++) {
-            if (i != slot && stakes[i] != null && stakes[i].item().equals(item)) {
-                n += stakes[i].count();
+        for (Chips.Selection sel : stakes) {
+            if (sel != null) {
+                n += sel.count(denomination);
             }
         }
         return n;
-    }
-
-    /**
-     * The new count of the active slot for a click on {@code owned} plain items of {@code item} (pure).
-     *
-     * @param current the active slot's stake (null if empty)
-     * @param stack   the clicked stack's size
-     * @param others  items in the other slots (all items) that count against {@code max} (0 with the cap per slot)
-     * @param ownedFree owned plain items of this item minus those in the other slots
-     */
-    static long countFor(ClickType click, ItemAmount current, String item, int stack, long others, long ownedFree,
-                         int max) {
-        boolean same = current != null && current.item().equals(item);
-        long want = switch (click) {
-            case RIGHT -> same ? current.count() + 1 : 1;
-            case SHIFT_LEFT -> ownedFree;
-            default -> stack;
-        };
-        return Math.min(Math.min(want, max - others), ownedFree);
     }
 
     // ---- rendering -------------------------------------------------------------------------------------------------
@@ -191,9 +178,9 @@ public abstract class StakeMenu extends GameMenu {
                     m.lines(Msg.GUI_SLOT_COLLECT_LORE));
         } else {
             button = DisplayCopies.model(buttonModel(!stakes().isEmpty()), m.render(buttonName()),
-                    m.lines(ctx.config().get().bets().capPerRound() ? Msg.GUI_STAKES_PLAY_LORE_ROUND
-                            : Msg.GUI_STAKES_PLAY_LORE, Messages.text("max",
-                            Integer.toString(ctx.config().get().bets().maxStake()))));
+                    m.lines(ctx.config().get().bets().capPerRound() ? Msg.CHIPS_PLAY_LORE_ROUND
+                            : Msg.CHIPS_PLAY_LORE, Messages.text("max",
+                            ItemNames.value(ctx.config().get().bets().maxStake()))));
         }
         ItemStack blank = DisplayCopies.model("kaboofcasino:gui/blank", m.render(owed ? Msg.GUI_SLOT_COLLECT
                 : buttonName()), List.of());
@@ -204,20 +191,15 @@ public abstract class StakeMenu extends GameMenu {
                 render();
             }) : Button.commit(icon, (p, click) -> play(p)));
         }
-        set(betsSlot(), Button.display(betsBook(ctx)));
+        set(betsSlot(), Button.display(ChipStakes.book(ctx)));
         decorate();
     }
 
-    /** The icon of bet slot {@code i}: its stake (glint if active), the active marker, an empty or a locked slot. */
+    /** The icon of bet slot {@code i}: its chips (glint if active), the active marker, an empty or a locked slot. */
     protected ItemStack stakeIcon(int i) {
         var m = ctx.messages().get();
         if (stakes[i] != null) {
-            ItemStack icon = DisplayCopies.of(PlayerAccount.material(stakes[i].item()), (int) stakes[i].count(), null,
-                    m.lines(Msg.GUI_STAKE_LORE));
-            if (i == active) {
-                icon.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
-            }
-            return icon;
+            return ChipStakes.icon(ctx, stakes[i], m.lines(Msg.CHIPS_STAKE_LORE), i == active);
         }
         if (!selectable(i)) {
             ItemStack locked = lockedIcon(i);
@@ -226,24 +208,12 @@ public abstract class StakeMenu extends GameMenu {
         }
         if (i == active) {
             return DisplayCopies.model("kaboofcasino:gui/stake_active", m.render(Msg.GUI_STAKE_ACTIVE),
-                    m.lines(ctx.config().get().bets().capPerRound() ? Msg.GUI_STAKE_ACTIVE_LORE_ROUND
-                            : Msg.GUI_STAKE_ACTIVE_LORE, Messages.text("max",
-                            Integer.toString(ctx.config().get().bets().maxStake()))));
+                    m.lines(ctx.config().get().bets().capPerRound() ? Msg.CHIPS_ACTIVE_LORE_ROUND
+                            : Msg.CHIPS_ACTIVE_LORE, Messages.text("max",
+                            ItemNames.value(ctx.config().get().bets().maxStake()))));
         }
         return DisplayCopies.model("kaboofcasino:gui/blank", m.render(Msg.GUI_STAKE_EMPTY),
                 m.lines(Msg.GUI_STAKE_EMPTY_LORE));
-    }
-
-    /** The bettable-items list (the mod's {@code CasinoBetList}, drawn left of its window) as a book tooltip. */
-    public static ItemStack betsBook(CasinoContext ctx) {
-        var m = ctx.messages().get();
-        List<Component> lore = new ArrayList<>();
-        for (String item : ctx.config().get().bets().items()) {
-            lore.add(Component.text("• ", NamedTextColor.GRAY).append(ItemNames.name(item)
-                    .color(NamedTextColor.YELLOW)));
-        }
-        lore.addAll(m.lines(Msg.GUI_BETS_LORE));
-        return DisplayCopies.of(Material.BOOK, 1, m.render(Msg.GUI_BETS_TITLE), lore);
     }
 
     private List<ItemAmount> owedNow() {
@@ -269,8 +239,8 @@ public abstract class StakeMenu extends GameMenu {
         }
         if (click == ClickType.RIGHT) {
             if (stakes[slot] != null) {
-                stakes[slot] = stakes[slot].count() > 1
-                        ? new ItemAmount(stakes[slot].item(), stakes[slot].count() - 1) : null;
+                Chips.Selection less = stakes[slot].minusSmallest();
+                stakes[slot] = less.isEmpty() ? null : less;
             }
         } else if (click == ClickType.SHIFT_LEFT || slot == active) {
             stakes[slot] = null;
@@ -286,30 +256,27 @@ public abstract class StakeMenu extends GameMenu {
             return;
         }
         var m = ctx.messages().get();
-        String key = clicked.getType().getKey().asString();
-        if (!ctx.config().get().bets().items().contains(key)) {
-            m.actionBar(player, Msg.BET_NOT_ALLOWED, Messages.component("item",
-                    Component.translatable(clicked.getType())));
-            return;
-        }
-        if (!PlayerAccount.isPlain(clicked)) {
-            m.actionBar(player, Msg.BET_NOT_PLAIN);
+        OptionalInt chip = ChipItems.denomination(clicked);
+        if (chip.isEmpty()) {
+            m.actionBar(player, Msg.CHIPS_ONLY);
             return;
         }
         if (!selectable(active)) {
             refused(player, active);
             return;
         }
-        int max = ctx.config().get().bets().maxStake();
+        int d = chip.getAsInt();
+        long max = ctx.config().get().bets().maxStake();
         long others = ctx.config().get().bets().capPerRound() ? others(active) : 0;
-        long ownedFree = new PlayerAccount(player).countPlain(key) - othersOf(active, key);
-        long count = countFor(click, stakes[active], key, clicked.getAmount(), others, ownedFree, max);
-        if (count < (click == ClickType.SHIFT_LEFT ? ownedFree : 1) && others + count >= max) {
-            m.actionBar(player, Msg.BET_MAX, Messages.text("max", Integer.toString(max)));
+        long ownedFree = new PlayerAccount(player).countPlain(Chips.key(d)) - selected(d);
+        long current = stakes[active] == null ? 0 : stakes[active].value();
+        long add = ChipStakes.add(click, d, clicked.getAmount(), ownedFree, current, others, max);
+        if (ChipStakes.capped(click, d, clicked.getAmount(), ownedFree, current, others, max)) {
+            ChipStakes.tellMax(ctx, player);
         }
-        if (count >= 1) {
+        if (add >= 1) {
             boolean wasEmpty = stakes[active] == null;
-            stakes[active] = new ItemAmount(key, count);
+            stakes[active] = (wasEmpty ? Chips.Selection.EMPTY : stakes[active]).plus(d, add);
             player.playSound(player, Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
             if (wasEmpty && click != ClickType.RIGHT) {
                 active = next(active);

@@ -150,11 +150,22 @@ public final class DerbyBetMenu extends StakeMenu {
         return switch (c.kind()) {
             case PICTURE -> Button.display(picture(c.model(), c.strings()));
             case BET -> Button.of(stakeIcon(c.index()), (p, click) -> slotClicked(p, c.index(), click));
-            case ESCROW -> Button.display(DisplayCopies.of(PlayerAccount.material(c.stake().item()),
-                    (int) Math.min(99, c.stake().count()), null, m.lines(Msg.GUI_DERBY_CONFIRMED)));
+            case ESCROW -> Button.display(escrowIcon(c.stake(), m));
             case HEAD -> Button.display(head(c.member()));
             case BUTTON -> actionButton(c);
         };
+    }
+
+    /** A confirmed group stake: chips (a chip value, the largest chip shown) or, from an older record, ores. */
+    private static ItemStack escrowIcon(de.tigges.kaboofcasino.wager.ItemAmount stake,
+                                        de.tigges.kaboofcasino.config.Messages m) {
+        if (de.tigges.kaboofcasino.wager.Chips.isValue(stake.item())) {
+            return de.tigges.kaboofcasino.game.ChipStakes.valueIcon(stake.count(), m.render(Msg.CHIPS_ESCROW,
+                    de.tigges.kaboofcasino.config.Messages.text("value",
+                            de.tigges.kaboofcasino.util.ItemNames.value(stake.count()))), List.of());
+        }
+        return DisplayCopies.of(PlayerAccount.material(stake.item()), (int) Math.min(99, stake.count()), null,
+                m.lines(Msg.GUI_DERBY_CONFIRMED));
     }
 
     private static ItemStack picture(String model, List<String> strings) {
@@ -210,8 +221,8 @@ public final class DerbyBetMenu extends StakeMenu {
                 name = Msg.GUI_DERBY_HELP;
                 lore.addAll(m.lines(Msg.GUI_DERBY_HELP_LORE));
                 lore.add(Component.empty());
-                lore.add(m.render(Msg.GUI_BETS_TITLE));
-                ItemStack book = betsBook(ctx);
+                lore.add(m.render(Msg.CHIPS_BOOK_TITLE));
+                ItemStack book = de.tigges.kaboofcasino.game.ChipStakes.book(ctx);
                 var bookLore = book.getData(DataComponentTypes.LORE);
                 if (bookLore != null) {
                     lore.addAll(bookLore.lines());

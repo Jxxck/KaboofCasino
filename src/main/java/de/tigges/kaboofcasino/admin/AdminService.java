@@ -53,6 +53,7 @@ import org.bukkit.scheduler.BukkitTask;
  * <ul>
  *   <li>Use on a machine: its dialog; sneaking: paste the copy onto it ("Einstellungen auf %s eingefügt", or "Keine
  *       Kopie in der Hand ...").</li>
+ *   <li>Use on a cashier (sneaking or not): its prize shop's dialog ({@link ShopEditor}).</li>
  *   <li>Use in the air or on a plain block: the whole casino's dialog; sneaking in the air: forget the copy
  *       ("Kopierte Einstellungen vergessen."); sneaking on a plain block: nothing.</li>
  *   <li>Outside creative every use only says "Die Hand des Croupiers funktioniert nur im Kreativmodus."; in creative
@@ -79,6 +80,8 @@ public final class AdminService {
     private Clipboard clipboard = new Clipboard();
     private AdminLabels labels;
     private BukkitTask task;
+    /** The cashier's shop dialog (step 9): the hand on a cashier opens it instead of the machine dialog. */
+    private ShopEditor shop;
 
     /** @param reload {@code /casino reload} (config and texts); returns the number of warnings */
     public AdminService(CasinoContext ctx, IntSupplier reload) {
@@ -90,6 +93,8 @@ public final class AdminService {
         World overworld = Bukkit.getWorlds().getFirst();
         clipboard = Clipboard.decode(overworld.getPersistentDataContainer().get(CLIPBOARD, PersistentDataType.STRING));
         labels = new AdminLabels(ctx, this::allowed);
+        shop = new ShopEditor(ctx, reload, this::allowed, this::limited);
+        shop.enable();
         Bukkit.getPluginManager().registerEvents(new HandListener(this, ctx.machines()), ctx.plugin());
         task = Bukkit.getScheduler().runTaskTimer(ctx.plugin(), this::tick, TICKS, TICKS);
         Log.get().info("KaboofCasino croupier's hand: {} copied setting(s) kept", clipboard.size());
@@ -111,6 +116,9 @@ public final class AdminService {
         usedTick.clear();
         if (labels != null) {
             labels.clear();
+        }
+        if (shop != null) {
+            shop.disable();
         }
     }
 
@@ -195,6 +203,11 @@ public final class AdminService {
     void useOnMachine(Player player, Machine machine, boolean sneaking) {
         Threads.requireMain();
         if (!mayUse(player)) {
+            return;
+        }
+        if (machine.type() == MachineType.CASHIER) {
+            sessions.forget(player.getUniqueId()); // the cashier has no settings: its prize shop instead
+            shop.open(player, machine);
             return;
         }
         if (sneaking) {
@@ -287,6 +300,7 @@ public final class AdminService {
     // ---- showing ---------------------------------------------------------------------------------------------------
 
     private void open(Player player, AdminSessions.Target target) {
+        shop.forget(player);
         sessions.open(player.getUniqueId(), target, Bukkit.getCurrentTick());
         show(player, target, false, false);
     }
@@ -545,10 +559,12 @@ public final class AdminService {
     /** The client closed the dialog itself (death screen, world change) or the player left. */
     void forget(Player player) {
         sessions.forget(player.getUniqueId());
+        shop.forget(player);
     }
 
     void quit(Player player) {
         sessions.forget(player.getUniqueId());
+        shop.forget(player);
         rate.forget(player.getUniqueId());
         usedTick.remove(player.getUniqueId());
     }

@@ -8,7 +8,23 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Fortune wheel odds (games.md 8 "RTP"): exact enumeration and 10^7-round simulations of the shipped code path. */
-class WheelOddsTest {
+public class WheelOddsTest {
+
+    /**
+     * The stake sizes the RTP tests enumerate: every chip value 1..2000 (bets.max-stake's default), then up to the
+     * config's limit (1 000 000) in steps that hit both odd and round values.
+     */
+    public static int[] stakes() {
+        java.util.List<Integer> out = new java.util.ArrayList<>();
+        for (int s = 1; s <= 2000; s++) {
+            out.add(s);
+        }
+        for (int s = 2001; s <= 1_000_000; s += 997) {
+            out.add(s);
+        }
+        out.add(1_000_000);
+        return out.stream().mapToInt(Integer::intValue).toArray();
+    }
 
     @Test
     void naturalReturnIs250Of256ForEveryStakeSize() {
@@ -20,8 +36,9 @@ class WheelOddsTest {
         }
         assertEquals(64, weights);
         assertEquals(250, total, "sum of quarters x weight: RTP = 250 x 4 / (4 x 64 x 4) = 250/256");
-        // fair rounding: over the 4 equally likely rolls every stake gets exactly stake x quarters / 4
-        for (int stake = 1; stake <= 64; stake++) {
+        // fair rounding: over the 4 equally likely rolls every stake gets exactly stake x quarters / 4; stakes are
+        // chip values now (up to bets.max-stake 2000, and the config's limit), the arithmetic is the same
+        for (int stake : stakes()) {
             long paid = 0;
             for (int s = 0; s < 16; s++) {
                 for (int roll = 0; roll < 4; roll++) {

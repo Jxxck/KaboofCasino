@@ -14,10 +14,11 @@ import java.util.Set;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 /**
- * Writes values the croupier's hand sets for the whole casino (the type win chances and biases, "breakable") into the
- * live {@code config.yml}: parsed with Bukkit's comment-aware {@link YamlConfiguration} (as {@link YamlFiles} merges
- * new keys), the existing keys set in place so their comments stay, written with a temp file and an atomic move. Only
- * the paths in {@link #EDITABLE} can be written. The caller applies the file like {@code /casino reload}. Thread:
+ * Writes values the croupier's hand sets for the whole casino (the type win chances and biases, "breakable", the
+ * cashier's prize list) into the live {@code config.yml}: parsed with Bukkit's comment-aware
+ * {@link YamlConfiguration} (as {@link YamlFiles} merges new keys), the existing keys set in place so their comments
+ * stay, written with a temp file and an atomic move. Only the paths in {@link #EDITABLE} and
+ * {@link #EDITABLE_LISTS} can be written. The caller applies the file like {@code /casino reload}. Thread:
  * MAIN.
  */
 public final class ConfigEdits {
@@ -25,6 +26,8 @@ public final class ConfigEdits {
     /** The keys the croupier's hand edits. */
     public static final Set<String> EDITABLE = Set.of("roulette.win-chance", "blackjack.bias", "poker.bias",
             "derby.win-chance", "slot.win-chance", "wheel.win-chance", "plinko.win-chance", "machines.breakable");
+    /** The lists the croupier's hand edits: the cashier's prizes (a list of maps, written whole). */
+    public static final Set<String> EDITABLE_LISTS = Set.of("shop.items");
 
     private ConfigEdits() {
     }
@@ -32,15 +35,17 @@ public final class ConfigEdits {
     /** The text of {@code config.yml} with {@code values} set; everything else (comments included) kept. Pure. */
     public static String apply(String text, Map<String, Object> values) {
         for (String path : values.keySet()) {
-            if (!EDITABLE.contains(path)) {
+            if (!EDITABLE.contains(path) && !EDITABLE_LISTS.contains(path)) {
                 throw new IllegalArgumentException("not editable here: " + path);
             }
         }
         YamlConfiguration yaml = YamlFiles.parse(text, ConfigLoader.FILE);
         for (Map.Entry<String, Object> e : values.entrySet()) {
             Object value = e.getValue();
-            if (!(value instanceof Integer || value instanceof Boolean)) {
-                throw new IllegalArgumentException(e.getKey() + " must be a number or true/false");
+            if (EDITABLE_LISTS.contains(e.getKey()) ? !(value instanceof java.util.List<?>)
+                    : !(value instanceof Integer || value instanceof Boolean)) {
+                throw new IllegalArgumentException(e.getKey() + " must be " + (EDITABLE_LISTS.contains(e.getKey())
+                        ? "a list" : "a number or true/false"));
             }
             yaml.set(e.getKey(), value);
         }

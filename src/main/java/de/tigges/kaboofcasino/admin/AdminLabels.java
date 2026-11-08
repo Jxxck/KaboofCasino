@@ -70,6 +70,7 @@ final class AdminLabels {
             case BLACKJACK_TABLE, POKER_TABLE -> new double[] {0.5, 3.4, 0.5};
             case SLOT_MACHINE -> new double[] {0.5, 4.1, 0.5};
             case FORTUNE_WHEEL, PLINKO, DUCK_DERBY -> new double[] {0.5, 3.5, 0.5};
+            case CASHIER -> new double[] {0.5, 2.6, 0.5};
         };
     }
 

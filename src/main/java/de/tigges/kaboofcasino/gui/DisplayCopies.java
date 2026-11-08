@@ -41,6 +41,26 @@ public final class DisplayCopies {
         return stack;
     }
 
+    /**
+     * A display copy of a real stack (the cashier's prizes): cloned with {@code amount} shown (at most its own stack
+     * size, so tools stay tools), {@code extraLore} after its own lore, marked.
+     */
+    public static ItemStack copyOf(ItemStack real, int amount, List<Component> extraLore) {
+        ItemStack stack = real.clone();
+        stack.setAmount(Math.max(1, Math.min(amount, stack.getMaxStackSize())));
+        List<Component> lore = new java.util.ArrayList<>();
+        ItemLore old = stack.getData(DataComponentTypes.LORE);
+        if (old != null) {
+            lore.addAll(old.lines());
+        }
+        lore.addAll(extraLore);
+        if (!lore.isEmpty()) {
+            stack.setData(DataComponentTypes.LORE, ItemLore.lore(lore));
+        }
+        mark(stack);
+        return stack;
+    }
+
     static void mark(ItemStack stack) {
         stack.editPersistentDataContainer(pdc -> pdc.set(Keys.DISPLAY, PersistentDataType.BOOLEAN, true));
     }

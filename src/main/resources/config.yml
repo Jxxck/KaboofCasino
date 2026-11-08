@@ -22,31 +22,12 @@ pack:
   timeout-seconds: 300
 
 bets:
-  # Höchsteinsatz in Items (PLAN Entscheidung 1), je Einsatzfeld oder je Runde (siehe cap-per).
-  max-stake: 64
-  # slot: max-stake gilt je Einsatzfeld wie im Mod (Glücksrad/Plinko: 3 Felder, also bis 3 × 64 pro Runde).
+  # Höchsteinsatz in Chip-Wert (PLAN-2 C2), je Einsatzfeld oder je Runde (siehe cap-per). Eingesetzt wird nur mit
+  # Chips; Erze tauscht man an der Kasse (cashier.rates).
+  max-stake: 2000
+  # slot: max-stake gilt je Einsatzfeld wie im Mod (Glücksrad/Plinko: 3 Felder, also bis 3 × max-stake pro Runde).
   # round: alle Felder einer Runde zusammen höchstens max-stake.
   cap-per: slot
-  # Erlaubte Einsätze: die 18 Items des Mods. Ausgezahlt wird dasselbe Item × Multiplikator.
-  items:
-    - minecraft:coal
-    - minecraft:coal_block
-    - minecraft:copper_ingot
-    - minecraft:copper_block
-    - minecraft:iron_ingot
-    - minecraft:iron_block
-    - minecraft:gold_ingot
-    - minecraft:gold_block
-    - minecraft:redstone
-    - minecraft:redstone_block
-    - minecraft:lapis_lazuli
-    - minecraft:lapis_block
-    - minecraft:emerald
-    - minecraft:emerald_block
-    - minecraft:diamond
-    - minecraft:diamond_block
-    - minecraft:netherite_ingot
-    - minecraft:netherite_block
 
 rounds:
   # Höchstens so viele offene Einsätze pro Spieler (im Spieler-PDC). Jedes Einsatzfeld zählt einzeln:
@@ -161,3 +142,81 @@ music:
   # false: kein Musikpaket, keine Musik, keine Noten-Partikel (die Lautsprecher leuchten weiter).
   # Für das Paket gilt eine Änderung ab dem nächsten Login, für die Musik sofort nach /casino reload.
   enabled: true
+
+cashier:
+  # Die Kasse (Schritt 9): Erze in Chips wechseln, Kleingeld, Preis-Shop. Aufstellen: /casino give cashier.
+  # true: auch craftbar (Rezept kaboofcasino:cashier, schaltet mit einer Registrierkasse frei:
+  #   Glasscheibe | kleines Casino-Schild | Glasscheibe
+  #   Theke aus schwarzem Marmor | Registrierkasse | Theke aus schwarzem Marmor).
+  craftable: false
+  # Kurse beim Wechseln: Chip-Wert pro Item. Nur normale Stapel (ohne Namen, Verzauberung oder Daten) zählen.
+  # Chips lassen sich nicht in Erze zurücktauschen. Eine Liste: Einträge, die du löschst, kommen nicht wieder.
+  rates:
+  - item: minecraft:coal
+    value: 1
+  - item: minecraft:coal_block
+    value: 9
+  - item: minecraft:copper_ingot
+    value: 1
+  - item: minecraft:copper_block
+    value: 9
+  - item: minecraft:redstone
+    value: 1
+  - item: minecraft:redstone_block
+    value: 9
+  - item: minecraft:lapis_lazuli
+    value: 2
+  - item: minecraft:lapis_block
+    value: 18
+  - item: minecraft:iron_ingot
+    value: 4
+  - item: minecraft:iron_block
+    value: 36
+  - item: minecraft:gold_ingot
+    value: 8
+  - item: minecraft:gold_block
+    value: 72
+  - item: minecraft:emerald
+    value: 16
+  - item: minecraft:emerald_block
+    value: 144
+  - item: minecraft:diamond
+    value: 32
+  - item: minecraft:diamond_block
+    value: 288
+  - item: minecraft:netherite_ingot
+    value: 256
+  - item: minecraft:netherite_block
+    value: 2304
+
+shop:
+  # Preis-Shop der Kasse. Je Preis: item = ein Casino-Item (z. B. roulettecasino:casino_chair, casinodeco:...) oder
+  # ein Vanilla-Item, auch mit Komponenten wie bei /give (z. B. "minecraft:diamond_sword[enchantments={sharpness:5}]");
+  # count = Anzahl pro Kauf (1-64); price = Preis in Chips; limit = Käufe pro Spieler und Tag (Datum in Berlin),
+  # 0 = unbegrenzt. Chips selbst sind kein Preis. Bearbeiten: hier (danach /casino reload) oder in Kreativ mit der
+  # Hand des Croupiers an einer Kasse. Eine Liste: Einträge, die du löschst, kommen nicht wieder.
+  items:
+  - item: roulettecasino:casino_chair
+    count: 1
+    price: 64
+    limit: 0
+  - item: roulettecasino:casino_stool
+    count: 1
+    price: 48
+    limit: 0
+  - item: casinodeco:casino_chip_pile
+    count: 1
+    price: 32
+    limit: 0
+  - item: casinodeco:small_casino_sign
+    count: 1
+    price: 96
+    limit: 0
+  - item: casinodeco:casino_bottles
+    count: 1
+    price: 24
+    limit: 0
+  - item: casinodeco:champagne_coupes
+    count: 1
+    price: 24
+    limit: 0

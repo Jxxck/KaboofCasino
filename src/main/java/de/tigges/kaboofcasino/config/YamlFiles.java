@@ -17,7 +17,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 /**
  * Shared file handling of config.yml and messages_de.yml (PostMarkt pitfall "Paper config"): create the live file
  * byte-identical from the jar, merge keys the live file lacks (with the jar's comments), rewrite only when something
- * was merged (temp file + atomic move). Leaves unknown to the jar are reported.
+ * was merged (temp file + atomic move, keeping the file's mode, owner and group). Leaves unknown to the jar are
+ * reported.
  */
 final class YamlFiles {
 
@@ -64,6 +65,7 @@ final class YamlFiles {
             if (added > 0) {
                 Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
                 Files.writeString(tmp, live.saveToString(), StandardCharsets.UTF_8);
+                ConfigEdits.copyAttributes(file, tmp); // the merged file keeps its mode, owner and group
                 try {
                     Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                 } catch (AtomicMoveNotSupportedException e) {

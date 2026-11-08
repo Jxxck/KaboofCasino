@@ -8,8 +8,9 @@ import java.util.UUID;
 
 /**
  * An in-memory player: inventory as item counts with a capacity in stacks of 64 (36 storage slots by default), and
- * the ledger. {@link #save()} / {@link #restore(Saved)} model the player file: inventory and PDC are always saved and
- * rolled back together (server.md F5).
+ * the ledger. Chips are counted per denomination key ({@code kaboofcasino:chip_25}); a chip value is given in the
+ * largest denominations first, what does not fit comes back as a value. {@link #save()} / {@link #restore(Saved)}
+ * model the player file: inventory and PDC are always saved and rolled back together (server.md F5).
  */
 final class FakeAccount implements Account {
 
@@ -50,6 +51,17 @@ final class FakeAccount implements Account {
         return inventory.values().stream().mapToLong(c -> (c + 63) / 64).sum();
     }
 
+    /** The cashier's room check: stacks of 64 per item key after the take and the give (as {@link #give} fills). */
+    @Override
+    public int spareSlots(TakePlan take, List<ItemAmount> items) {
+        Map<String, Long> after = new LinkedHashMap<>(take == null ? inventory : ((Plan) take).after());
+        for (ItemAmount a : Chips.expand(items)) {
+            after.merge(a.item(), a.count(), Long::sum);
+        }
+        long used = after.values().stream().mapToLong(c -> (c + 63) / 64).sum();
+        return (int) (capacityStacks - used);
+    }
+
     @Override
     public UUID id() {
         return id;
@@ -73,6 +85,13 @@ final class FakeAccount implements Account {
 
     @Override
     public long countPlain(String item) {
+        if (Chips.isValue(item)) {
+            long v = 0;
+            for (int d : Chips.DENOMINATIONS) {
+                v += count(Chips.key(d)) * d;
+            }
+            return v;
+        }
         return count(item);
     }
 
@@ -80,6 +99,9 @@ final class FakeAccount implements Account {
     public TakePlan planTake(List<ItemAmount> items) {
         Map<String, Long> after = new LinkedHashMap<>(inventory);
         for (ItemAmount need : ItemAmount.merge(items)) {
+            if (Chips.isValue(need.item())) {
+                throw new IllegalArgumentException("a chip value is paid, not taken");
+            }
             if (need.item().equals(failPlanOn)) {
                 throw new IllegalStateException("planning failure for " + need.item());
             }
@@ -109,7 +131,7 @@ final class FakeAccount implements Account {
     @Override
     public List<ItemAmount> give(List<ItemAmount> items) {
         List<ItemAmount> left = new ArrayList<>();
-        for (ItemAmount a : items) {
+        for (ItemAmount a : Chips.expand(items)) {
             if (a.item().equals(failOn)) {
                 throw new IllegalStateException("give fails for " + failOn);
             }
@@ -130,6 +152,6 @@ final class FakeAccount implements Account {
                 left.add(new ItemAmount(a.item(), rest));
             }
         }
-        return left;
+        return Chips.normalize(left);
     }
 }

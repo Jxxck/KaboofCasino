@@ -64,6 +64,8 @@ public final class Recipes {
     }
 
     private static volatile List<Def> defs = List.of();
+    /** The plugin's own recipes (not the mod's): the cashier's while {@code cashier.craftable} is on (step 9). */
+    private static volatile List<Def> own = List.of();
     /** The registered recipes by key (only those whose items all exist). */
     private static volatile Map<NamespacedKey, Def> registered = Map.of();
     /** The result stack of every registered recipe. */
@@ -125,6 +127,11 @@ public final class Recipes {
         return defs;
     }
 
+    /** Sets the plugin's own recipes; they are registered (or dropped) with the mod's at the next {@link #register}. */
+    public static void own(List<Def> recipes) {
+        own = List.copyOf(recipes);
+    }
+
     /** A casino stack: a machine item ({@link CasinoItems}) or a registered deco/seat/speaker item. */
     public static Optional<ItemStack> casinoStack(String id, Messages messages, int amount) {
         if (id.startsWith("roulettecasino:")) {
@@ -153,7 +160,9 @@ public final class Recipes {
         unregister();
         Map<NamespacedKey, Def> done = new LinkedHashMap<>();
         Map<NamespacedKey, ItemStack> made = new LinkedHashMap<>();
-        for (Def d : defs) {
+        List<Def> every = new ArrayList<>(defs);
+        every.addAll(own);
+        for (Def d : every) {
             try {
                 ItemStack result = casinoId(d.result()) ? casinoStack(d.result(), messages, d.count())
                         .orElseThrow(() -> new IllegalStateException("unknown casino item " + d.result()))
@@ -221,6 +230,9 @@ public final class Recipes {
     public static void unregister() {
         for (Def d : defs) {
             Bukkit.removeRecipe(d.namespaced());
+        }
+        for (NamespacedKey key : registered.keySet()) {
+            Bukkit.removeRecipe(key); // the plugin's own ones too (dropped from own since)
         }
         registered = Map.of();
         results = Map.of();

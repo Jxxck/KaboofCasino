@@ -14,7 +14,6 @@ import de.tigges.kaboofcasino.util.ItemNames;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.LedgerCodec;
-import de.tigges.kaboofcasino.wager.PlayerAccount;
 import de.tigges.kaboofcasino.wager.SettleReason;
 import de.tigges.kaboofcasino.wager.WagerEngine;
 import java.util.List;
@@ -177,11 +176,12 @@ public final class SlotController extends MachineController {
         if (!mayCommit(player)) {
             return;
         }
-        ItemAmount stake = menu.selection();
-        if (stake == null) {
+        de.tigges.kaboofcasino.wager.Chips.Selection chips = menu.selection();
+        if (chips == null || chips.isEmpty()) {
             m.actionBar(player, Msg.SLOT_NO_BET);
             return;
         }
+        ItemAmount stake = chips.asValue();
         int[] next = SlotGame.draw(MachineSettings.winChance(ctx.config().get(), machine), ctx.random()::nextInt);
         SlotGame.Result result = SlotGame.evaluate(next);
         List<ItemAmount> payout = result.multiplier() > 0
@@ -192,7 +192,7 @@ public final class SlotController extends MachineController {
         long ends = ctx.clock().getAsLong() + settleTick(plan, payout) * 50L;
         String detail = "stops=" + next[0] + "," + next[1] + "," + next[2] + " x" + result.multiplier();
         List<UUID> rounds = commit(player, List.of(new WagerEngine.Request(machine.id(), GAME, stake, payout, ends,
-                detail)), Msg.SLOT_NO_BET);
+                detail).withTake(chips.amounts())), Msg.SLOT_NO_BET);
         if (rounds == null) {
             menu.render();
             return;
@@ -277,7 +277,7 @@ public final class SlotController extends MachineController {
             int interval = s.coins > 48 ? 1 : s.coins > 16 ? 2 : 3;
             if (now % interval == 0) {
                 s.coins--;
-                rig.coin(PlayerAccount.material(s.payout.getFirst().item()), coinTarget(world, s.player), now);
+                rig.coin(coinItem(s.payout), coinTarget(world, s.player), now);
                 if (interval > 1 || now % 2 == 0) {
                     sound(world, "slot_payout", SlotGeometry.MOUTH_SOUND, 0.5f,
                             0.9f + ctx.random().nextFloat() * 0.25f);

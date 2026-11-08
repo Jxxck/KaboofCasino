@@ -43,7 +43,9 @@ public enum CasinoItem {
     DERBY_DUCK_BLACK("derby_duck_black", "roulettecasino:derby_duck_black", Msg.ITEM_DERBY_DUCK_BLACK, null),
     DUCK_DERBY_MECHANISM("duck_derby_mechanism", "roulettecasino:duck_derby_mechanism", Msg.ITEM_DERBY_MECHANISM,
             null),
-    DUCK_DERBY("duck_derby", "roulettecasino:duck_derby", Msg.ITEM_DUCK_DERBY, MachineType.DUCK_DERBY);
+    DUCK_DERBY("duck_derby", "roulettecasino:duck_derby", Msg.ITEM_DUCK_DERBY, MachineType.DUCK_DERBY),
+    /** The cashier ("Kasse", step 9): placed by admins ({@code /casino give cashier}); a recipe only if configured. */
+    CASHIER("cashier", "kaboofcasino:cashier", Msg.CASHIER_ITEM, MachineType.CASHIER);
 
     private final String id;
     private final String model;

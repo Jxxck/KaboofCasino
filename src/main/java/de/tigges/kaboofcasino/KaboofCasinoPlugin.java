@@ -39,7 +39,6 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.bukkit.Bukkit;
@@ -73,6 +72,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private de.tigges.kaboofcasino.croupier.CroupierService croupiers;
     private de.tigges.kaboofcasino.guide.GuideService guide;
     private de.tigges.kaboofcasino.admin.AdminService admin;
+    private de.tigges.kaboofcasino.cashier.CashierService cashier;
     private LedgerListener ledger;
     private MenuService menus;
 
@@ -133,7 +133,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
 
             @Override
             public Set<String> betItems() {
-                return new HashSet<>(config.bets().items());
+                return Set.of(de.tigges.kaboofcasino.wager.Chips.VALUE); // stakes are chips only (PLAN-2 C2)
             }
         }, roundLog, System::currentTimeMillis);
 
@@ -149,6 +149,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         CasinoContext ctx = new CasinoContext(this, () -> config, () -> messages, engine, new CasinoRandom(), layout,
                 menus, sessions, ledger, machines, System::currentTimeMillis,
                 new de.tigges.kaboofcasino.visual.LightBudget(() -> this.config.lights().maxUpdatesPerTick()));
+        cashier = new de.tigges.kaboofcasino.cashier.CashierService(ctx,
+                new de.tigges.kaboofcasino.cashier.CashierLog(db));
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
             case FORTUNE_WHEEL -> new WheelController(machine, ctx);
@@ -157,6 +159,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             case BLACKJACK_TABLE -> new de.tigges.kaboofcasino.game.blackjack.BlackjackController(machine, ctx);
             case POKER_TABLE -> new de.tigges.kaboofcasino.game.poker.PokerController(machine, ctx);
             case DUCK_DERBY -> new de.tigges.kaboofcasino.game.derby.DerbyController(machine, ctx);
+            case CASHIER -> cashier.controller(machine);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         de.tigges.kaboofcasino.music.MusicOptOut musicOptOut = new de.tigges.kaboofcasino.music.MusicOptOut(this);
@@ -181,7 +184,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         // the croupier's hand: machine and casino settings; type values are written into config.yml and reloaded
         admin = new de.tigges.kaboofcasino.admin.AdminService(ctx, this::reload);
         admin.enable();
+        de.tigges.kaboofcasino.wager.ChipItems.register();
         Recipes.load(getClassLoader());
+        cashier.enable();
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload, () -> fullDeco.status());
         command.musicOptOut(musicOptOut);
@@ -258,6 +263,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private int reload() {
         try {
             int warnings = loadSettings();
+            if (cashier != null) {
+                cashier.reloaded();
+            }
             return fullDeco == null ? warnings : warnings + fullDeco.reloaded();
         } catch (RuntimeException e) {
             Log.get().error("reload failed; the old settings stay", e);

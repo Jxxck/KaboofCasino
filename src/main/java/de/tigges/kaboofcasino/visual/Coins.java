@@ -6,7 +6,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.inventory.ItemStack;
@@ -42,11 +41,15 @@ public final class Coins {
         this.machine = machine;
     }
 
-    /** A stack of {@code material} flying from {@code from} to {@code target} over 10 ticks. */
-    public void spawn(World world, Location from, Material material, Location target, long now) {
+    /**
+     * A stack of {@code item} (a material key, or a chip denomination key: the chip's look, never a real chip) flying
+     * from {@code from} to {@code target} over 10 ticks.
+     */
+    public void spawn(World world, Location from, String item, Location target, long now) {
+        ItemStack look = de.tigges.kaboofcasino.wager.ChipItems.lookOf(item);
         ItemDisplay d = world.spawn(from, ItemDisplay.class, x -> {
             x.setPersistent(false);
-            x.setItemStack(ItemStack.of(material));
+            x.setItemStack(look);
             x.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.GROUND);
             x.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
                     new Vector3f(0.6f, 0.6f, 0.6f), new Quaternionf()));

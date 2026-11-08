@@ -185,8 +185,9 @@ class DerbyRulesTest {
 
     @Test
     void payoutIsThreeTimesForTheWinnerAndTheStakeForSecond() {
-        for (String item : List.of("minecraft:diamond", "minecraft:iron_block", "minecraft:netherite_ingot")) {
-            for (long count = 1; count <= 64; count++) {
+        for (String item : List.of("minecraft:diamond", "minecraft:iron_block",
+                de.tigges.kaboofcasino.wager.Chips.VALUE)) {
+            for (long count : de.tigges.kaboofcasino.game.wheel.WheelOddsTest.stakes()) {
                 ItemAmount stake = new ItemAmount(item, count);
                 for (int winner = 0; winner < 4; winner++) {
                     for (int second = 0; second < 4; second++) {

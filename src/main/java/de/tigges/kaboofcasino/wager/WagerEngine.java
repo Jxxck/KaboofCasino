@@ -56,17 +56,30 @@ public final class WagerEngine {
     /**
      * What a game asks to commit. DECIDED: the outcome is already drawn and the payout fixed. PLAYING: the payout is
      * what the hand pays if it is settled now ({@link RoundState#PLAYING}); the game revises it with {@link #revise}.
+     * A chip stake is a {@link Chips#VALUE}; {@code take} names the chips that leave the inventory for it (the bet
+     * slot's selection, denomination keys worth exactly the stake). Without one the stake itself is taken (ores).
      */
     public record Request(UUID machine, String game, ItemAmount stake, List<ItemAmount> payout, long endsMillis,
-                          String detail, RoundState state) {
+                          String detail, RoundState state, List<ItemAmount> take) {
         public Request {
             payout = List.copyOf(payout);
             Objects.requireNonNull(state, "state");
+            take = take == null ? List.of(stake) : List.copyOf(take);
+        }
+
+        public Request(UUID machine, String game, ItemAmount stake, List<ItemAmount> payout, long endsMillis,
+                       String detail, RoundState state) {
+            this(machine, game, stake, payout, endsMillis, detail, state, null);
         }
 
         public Request(UUID machine, String game, ItemAmount stake, List<ItemAmount> payout, long endsMillis,
                        String detail) {
-            this(machine, game, stake, payout, endsMillis, detail, RoundState.DECIDED);
+            this(machine, game, stake, payout, endsMillis, detail, RoundState.DECIDED, null);
+        }
+
+        /** The same request taking these chips (denomination keys) for its chip value stake. */
+        public Request withTake(List<ItemAmount> chips) {
+            return new Request(machine, game, stake, payout, endsMillis, detail, state, chips);
         }
     }
 
@@ -82,7 +95,7 @@ public final class WagerEngine {
 
     /** Settings the engine reads per call (config reloads apply to the next round). */
     public interface Limits {
-        /** Highest stake per bet slot, or per round if {@link #capPerRound()}. */
+        /** Highest stake (a chip value) per bet slot, or per round if {@link #capPerRound()}. */
         int maxStake();
 
         /** true: {@link #maxStake} covers all stakes of a round together; false: each stake (the mod). */
@@ -107,17 +120,17 @@ public final class WagerEngine {
 
     /** The checks of {@link #commit} without mutating anything (GUI hints). */
     public Refusal check(Account account, ItemAmount stake) {
-        Refused r = checkAll(account, List.of(stake));
+        Refused r = checkAll(account, List.of(stake), List.of(List.of(stake)));
         return r == null ? null : r.refusal();
     }
 
     /**
-     * The checks of {@link #commitAll}: owed list empty, room for one open record per stake, every item a bet item,
-     * every count >= 1, every stake (or, with {@code bets.cap-per: round}, all together) at most
-     * {@code bets.max-stake}, and enough plain items of every item in the storage slots (stakes of the same item
-     * add up).
+     * The checks of {@link #commitAll}: owed list empty, room for one open record per stake, every item a bet item
+     * (now {@link Chips#VALUE}), every count >= 1, every stake (or, with {@code bets.cap-per: round}, all together)
+     * at most {@code bets.max-stake}, every chip stake's chips worth exactly the stake, and enough of every item to
+     * take in the storage slots (takes of the same item add up).
      */
-    public Refused checkAll(Account account, List<ItemAmount> stakes) {
+    public Refused checkAll(Account account, List<ItemAmount> stakes, List<List<ItemAmount>> takes) {
         Ledger ledger = account.ledger();
         if (!ledger.owed().isEmpty()) {
             return new Refused(Refusal.OWED_PENDING);
@@ -144,12 +157,26 @@ public final class WagerEngine {
         if (limits.capPerRound() && total > limits.maxStake()) {
             return new Refused(Refusal.MAX_STAKE);
         }
-        for (ItemAmount need : ItemAmount.merge(stakes)) {
+        List<ItemAmount> all = new ArrayList<>();
+        for (int i = 0; i < stakes.size(); i++) {
+            List<ItemAmount> take = takes.get(i);
+            if (Chips.isValue(stakes.get(i).item()) && (Chips.valueOf(take) != stakes.get(i).count()
+                    || take.stream().anyMatch(t -> Chips.denomination(t.item()).isEmpty()))) {
+                return new Refused(Refusal.BAD_COUNT, stakes.get(i).item());
+            }
+            all.addAll(take);
+        }
+        for (ItemAmount need : ItemAmount.merge(all)) {
             if (account.countPlain(need.item()) < need.count()) {
                 return new Refused(Refusal.NOT_ENOUGH, need.item());
             }
         }
         return null;
+    }
+
+    /** The checks of a single selection (GUI hints): one stake and the chips it takes. */
+    public Refused checkAll(Account account, List<ItemAmount> stakes) {
+        return checkAll(account, stakes, stakes.stream().map(a -> List.of(a)).toList());
     }
 
     /** Takes the stake and writes the round in one tick, or refuses without changing anything. */
@@ -163,7 +190,8 @@ public final class WagerEngine {
      */
     public Commit commitAll(Account account, List<Request> requests) {
         Threads.requireMain();
-        Refused refused = checkAll(account, requests.stream().map(Request::stake).toList());
+        Refused refused = checkAll(account, requests.stream().map(Request::stake).toList(),
+                requests.stream().map(Request::take).toList());
         if (refused != null) {
             return refused;
         }
@@ -178,7 +206,7 @@ public final class WagerEngine {
             next = next.withRound(round);
         }
         // plan every take first (merged per item, nothing changes if planning fails), then apply and write the ledger
-        Account.TakePlan takes = account.planTake(requests.stream().map(Request::stake).toList());
+        Account.TakePlan takes = account.planTake(requests.stream().flatMap(r -> r.take().stream()).toList());
         account.applyTake(takes);
         account.ledger(next);
         for (RoundRecord round : rounds) {
@@ -188,11 +216,13 @@ public final class WagerEngine {
     }
 
     /**
-     * Replaces open records (same ids) and takes {@code extra} plain items in one tick and one ledger write, or
-     * changes nothing: a PLAYING hand's new stand payout after a decision, and the blackjack double down (the same
-     * stakes again, server.md 1.2 "any mid-round stake is the same atomic step"). The double is the game's rule, so
-     * neither {@code bets.max-stake} nor the owed list applies to it (the mod checks neither,
-     * {@code BlackjackTableBlockEntity.takeExtraStake}).
+     * Replaces open records (same ids) and takes {@code extra} in one tick and one ledger write, or changes nothing:
+     * a PLAYING hand's new stand payout after a decision, and the blackjack double down / poker call (the same stakes
+     * again, server.md 1.2 "any mid-round stake is the same atomic step"). The double is the game's rule, so neither
+     * {@code bets.max-stake} nor the owed list applies to it (the mod checks neither,
+     * {@code BlackjackTableBlockEntity.takeExtraStake}). Ores are taken as plain items; a {@link Chips#VALUE} is paid
+     * with chips ({@link Account#planPay}: exact chips, or one chip more and the change back as chips, what does not
+     * fit owed in the same ledger write).
      */
     public Revision revise(Account account, List<RoundRecord> revised, List<ItemAmount> extra) {
         Threads.requireMain();
@@ -204,14 +234,27 @@ public final class WagerEngine {
             next = next.withoutRound(r.id()).withRound(r);
         }
         List<ItemAmount> merged = ItemAmount.merge(extra);
-        for (ItemAmount need : merged) {
+        List<ItemAmount> items = merged.stream().filter(a -> !Chips.isValue(a.item())).toList();
+        long value = ItemAmount.total(merged, Chips.VALUE);
+        for (ItemAmount need : items) {
             if (account.countPlain(need.item()) < need.count()) {
                 return Revision.NOT_ENOUGH;
             }
         }
-        if (!merged.isEmpty()) {
-            Account.TakePlan takes = account.planTake(merged);
+        Account.PayPlan pay = null;
+        if (value > 0) {
+            pay = account.planPay(value);
+            if (pay == null) {
+                return Revision.NOT_ENOUGH;
+            }
+        }
+        Account.TakePlan takes = items.isEmpty() ? null : account.planTake(items);
+        if (takes != null) {
             account.applyTake(takes);
+        }
+        if (pay != null) {
+            List<ItemAmount> unfitted = account.applyPay(pay);
+            next = next.plusOwed(unfitted);
         }
         account.ledger(next);
         return Revision.DONE;
@@ -399,8 +442,8 @@ public final class WagerEngine {
         for (RoundRecord round : ledger.rounds()) {
             all.addAll(round.payout());
         }
-        all = ItemAmount.merge(all);
-        List<ItemAmount> kept = ItemAmount.merge(drops.put(all));
+        all = Chips.normalize(all);
+        List<ItemAmount> kept = Chips.normalize(drops.put(all));
         account.ledger(new Ledger(List.of(), kept));
         long now = clock.getAsLong();
         for (RoundRecord round : ledger.rounds()) {

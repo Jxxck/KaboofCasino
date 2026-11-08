@@ -2,6 +2,7 @@ package de.tigges.kaboofcasino.game.poker;
 
 import de.tigges.kaboofcasino.CasinoContext;
 import de.tigges.kaboofcasino.config.Msg;
+import de.tigges.kaboofcasino.game.ChipStakes;
 import de.tigges.kaboofcasino.game.GameMenu;
 import de.tigges.kaboofcasino.game.blackjack.BlackjackCards;
 import de.tigges.kaboofcasino.gui.Button;
@@ -9,7 +10,6 @@ import de.tigges.kaboofcasino.gui.DisplayCopies;
 import de.tigges.kaboofcasino.gui.GuiLayout;
 import de.tigges.kaboofcasino.gui.TitleBuilder;
 import de.tigges.kaboofcasino.wager.ItemAmount;
-import de.tigges.kaboofcasino.wager.PlayerAccount;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.CustomModelData;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
@@ -123,12 +123,18 @@ public final class PokerRoundMenu extends GameMenu {
      * and whether it is clickable. Equal cells are not sent again.
      */
     record Cell(String model, String item, int amount, List<String> strings, List<Integer> colors, List<Float> floats,
-                Action action, boolean enabled) {
+                Action action, boolean enabled, long chips) {
 
         Cell {
             strings = List.copyOf(strings);
             colors = List.copyOf(colors);
             floats = List.copyOf(floats);
+        }
+
+        /** {@code chips}: a stake cell's chip value (its name shows it), 0 for everything else. */
+        Cell(String model, String item, int amount, List<String> strings, List<Integer> colors, List<Float> floats,
+             Action action, boolean enabled) {
+            this(model, item, amount, strings, colors, floats, action, enabled, 0L);
         }
 
         static Cell model(String name) {
@@ -146,8 +152,11 @@ public final class PokerRoundMenu extends GameMenu {
                     List.of(), null, false);
         }
 
-        static Cell stake(String item, int amount) {
-            return new Cell(null, item, amount, List.of(), List.of(), List.of(), null, false);
+        /** A stake or net cell: ores as the item; chips (a chip value) as the largest chip of {@code chips}. */
+        static Cell stake(String item, int amount, long chips) {
+            boolean value = de.tigges.kaboofcasino.wager.Chips.isValue(item);
+            return new Cell(null, value ? ChipStakes.cellItem(new ItemAmount(item, Math.max(1, Math.abs(chips))))
+                    : item, amount, List.of(), List.of(), List.of(), null, false, value ? Math.abs(chips) : 0L);
         }
     }
 
@@ -330,7 +339,8 @@ public final class PokerRoundMenu extends GameMenu {
             out[STAKE_LABEL] = Cell.model("label_stake");
             List<ItemAmount> stakes = s.stakes();
             for (int i = 0; i < stakes.size() && i < 3; i++) {
-                out[STAKE_ROW + i] = Cell.stake(stakes.get(i).item(), anteShown(stakes.get(i).count(), s.called()));
+                out[STAKE_ROW + i] = Cell.stake(stakes.get(i).item(), anteShown(stakes.get(i).count(), s.called()),
+                        stakes.get(i).count());
             }
             if (s.called()) {
                 out[TRIPLED] = Cell.model("tripled");
@@ -349,7 +359,7 @@ public final class PokerRoundMenu extends GameMenu {
             String label = netLabel(delta, wide ? NET_CHARS : COMPACT_CHARS);
             int colour = delta > 0 ? GREEN : delta == 0 ? WHITE : RED;
             int slot = STAKE_ROW + columns[i];
-            out[slot] = Cell.stake(net.get(i).item(), 1);
+            out[slot] = Cell.stake(net.get(i).item(), 1, delta);
             List<String> chars = new ArrayList<>();
             for (int c = 0; c < label.length(); c++) {
                 chars.add(label.substring(c, c + 1));
@@ -483,7 +493,7 @@ public final class PokerRoundMenu extends GameMenu {
         var m = ctx.messages().get();
         ItemStack stack;
         if (c.item() != null) {
-            stack = DisplayCopies.of(PlayerAccount.material(c.item()), c.amount(), null, List.of());
+            stack = ChipStakes.cellIcon(c.item(), c.amount(), c.chips());
         } else if (c.action() != null) {
             stack = DisplayCopies.model(c.model(), m.render(c.action().name), m.lines(c.action().lore));
         } else {

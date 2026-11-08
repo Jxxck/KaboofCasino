@@ -28,7 +28,8 @@ import io.papermc.paper.event.player.PlayerPurchaseEvent;
  *       picked;</li>
  *   <li>villager trades (librarians and cartographers buy paper): a casino item in the merchant slots cancels the
  *       purchase;</li>
- *   <li>the cartography table (map extension with paper): taking the result is cancelled.</li>
+ *   <li>the cartography table (map extension with paper): taking the result is cancelled;</li>
+ *   <li>anvil, smithing table, grindstone: no result with a chip in them (no renamed chips).</li>
  * </ul>
  * Also unlocks the recipes in the recipe book along the mod's chain on first possession (at join and on every slot
  * change). Thread: MAIN.
@@ -90,6 +91,21 @@ public final class ItemVetoListener implements Listener {
         for (ItemStack stack : event.getInventory().getContents()) {
             if (CasinoItems.isCasinoItem(stack)) {
                 event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Chips are never an anvil, smithing or grindstone ingredient (PLAN-2 C1): no renamed "1000er-Chip" made of a
+     * 1. Paper has no use there anyway; this covers every result screen sharing the event (anvil, smithing,
+     * grindstone).
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPrepareResult(com.destroystokyo.paper.event.inventory.PrepareResultEvent event) {
+        for (ItemStack stack : event.getInventory().getContents()) {
+            if (de.tigges.kaboofcasino.wager.ChipItems.isChip(stack)) {
+                event.setResult(null);
                 return;
             }
         }

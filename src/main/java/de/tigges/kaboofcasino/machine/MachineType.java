@@ -39,7 +39,12 @@ public enum MachineType {
      * anchor = the placed cell = part 10 (front centre); rows -3..-1 run away from the player toward the sign. The mod
      * needs no support below.
      */
-    DUCK_DERBY("duck_derby", derby(), 0, false, false);
+    DUCK_DERBY("duck_derby", derby(), 0, false, false),
+    /**
+     * The cashier (step 9, PLAN-2 C3; no game): 2 wide x 1 deep x 2 tall, the counter (part 0 = the placed cell =
+     * anchor, part 1 to the viewer's right) and its glass and sign above (parts 2, 3); both bottom cells need support.
+     */
+    CASHIER("cashier", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 0, false, true);
 
     private final String id;
     private final int[][] footprint;
@@ -53,6 +58,11 @@ public enum MachineType {
         this.rise = rise;
         this.fixedFacing = fixedFacing;
         this.support = support;
+    }
+
+    /** True for the seven games; false for the cashier (no rounds, no win chance or bias). */
+    public boolean isGame() {
+        return this != CASHIER;
     }
 
     /** True if the machine has no facing (always the SOUTH frame, footprint not rotated). */

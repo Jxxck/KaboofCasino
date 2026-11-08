@@ -14,7 +14,6 @@ import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
@@ -217,7 +216,7 @@ final class SlotRig {
     // ---- payout coins --------------------------------------------------------------------------------------------
 
     /** A won stack flying out of the mouth towards {@code target} (cosmetic; the items are already credited). */
-    void coin(Material material, Location target, long now) {
+    void coin(String material, Location target, long now) {
         double[] m = SlotGeometry.COIN_MOUTH;
         double[] at = facing().toBlock(m[0], m[1], m[2]);
         coins.spawn(world, new Location(world, record.anchor().x() + at[0], record.anchor().y() + at[1],

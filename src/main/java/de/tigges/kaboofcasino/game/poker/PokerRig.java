@@ -23,7 +23,6 @@ import java.util.Set;
 import java.util.function.LongPredicate;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
@@ -510,7 +509,7 @@ public final class PokerRig {
     // ---- coins ------------------------------------------------------------------------------------------------------
 
     /** One payout coin from {@code seat}'s bet spot ({@code eject}: seat centre, 15.5 px) towards {@code target}. */
-    public void coin(Material item, int seat, Location target, long now) {
+    public void coin(String item, int seat, Location target, long now) {
         double[] c = coinPoint(facing, PokerLayout.clampSeat(seat));
         coins.spawn(world, new Location(world, record.anchor().x() + c[0], record.anchor().y() + c[1],
                 record.anchor().z() + c[2]), item, target, now);

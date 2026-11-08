@@ -410,7 +410,8 @@ public final class BlackjackController extends MachineController {
         for (StakeMenu.Stake s : stakes) {
             requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(),
                     BlackjackPayout.payout(s.amount(), stand, BlackjackPayout.roll(seed, s.slot())), ends,
-                    detail(s.slot(), List.of(), List.of(), false, stand, "deal"), RoundState.PLAYING));
+                    detail(s.slot(), List.of(), List.of(), false, stand, "deal"), RoundState.PLAYING)
+                    .withTake(s.chips()));
         }
         List<UUID> rounds = commit(player, requests, Msg.BLACKJACK_NO_BET);
         if (rounds == null) {
@@ -479,7 +480,9 @@ public final class BlackjackController extends MachineController {
         WagerEngine.Revision r = revise(player, h, doubled, s -> BlackjackPayout.payout(s.stake(), next,
                 BlackjackPayout.roll(h.seed, s.slot())), "double, then stand=" + next, extra);
         if (r == WagerEngine.Revision.NOT_ENOUGH) {
-            ctx.messages().get().actionBar(player, Msg.BLACKJACK_CANNOT_DOUBLE);
+            boolean chips = h.seats.stream()
+                    .anyMatch(s -> de.tigges.kaboofcasino.wager.Chips.isValue(s.stake().item()));
+            ctx.messages().get().actionBar(player, chips ? Msg.CHIPS_CANNOT_DOUBLE : Msg.BLACKJACK_CANNOT_DOUBLE);
             return;
         }
         if (r == WagerEngine.Revision.DONE) {
@@ -662,7 +665,7 @@ public final class BlackjackController extends MachineController {
                 }
             }
             if (!h.coins.isEmpty()) {
-                rig.coin(PlayerAccount.material(h.coins.poll()), h.spot, coinTarget(world, h.player), now);
+                rig.coin(h.coins.poll(), h.spot, coinTarget(world, h.player), now);
                 sound(world, "payout", ANCHOR_CENTRE, 0.43f, 0.95f + ctx.random().nextFloat() * 0.2f);
             }
             h.payoutWait = PAYOUT_STEP;

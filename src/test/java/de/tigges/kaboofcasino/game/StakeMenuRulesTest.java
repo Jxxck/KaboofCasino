@@ -1,40 +1,50 @@
 package de.tigges.kaboofcasino.game;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.tigges.kaboofcasino.wager.ItemAmount;
 import org.bukkit.event.inventory.ClickType;
 import org.junit.jupiter.api.Test;
 
-/** The three-slot selection: counts per click, capped by the round's total and by what the player owns. */
+/**
+ * The bet slots' chip selection ({@link ChipStakes#add}): chips per click, capped by what the player has unselected
+ * and by {@code bets.max-stake} in chip value (per slot, or the round's total).
+ */
 class StakeMenuRulesTest {
 
-    private static final String D = "minecraft:diamond";
-
     @Test
-    void clicksSetTheActiveSlot() {
-        // left: the clicked stack; right: +1 of the same item, else 1; shift-left: everything still free
-        assertEquals(20, StakeMenu.countFor(ClickType.LEFT, null, D, 20, 0, 50, 64));
-        assertEquals(6, StakeMenu.countFor(ClickType.RIGHT, new ItemAmount(D, 5), D, 20, 0, 50, 64));
-        assertEquals(1, StakeMenu.countFor(ClickType.RIGHT, new ItemAmount("minecraft:iron_ingot", 5), D, 20, 0, 50,
-                64));
-        assertEquals(50, StakeMenu.countFor(ClickType.SHIFT_LEFT, null, D, 20, 0, 50, 64));
+    void clicksAddChipsToTheActiveSlot() {
+        // left: the clicked stack; right: one chip; shift-left: every unselected chip of that kind
+        assertEquals(20, ChipStakes.add(ClickType.LEFT, 25, 20, 50, 0, 0, 2000));
+        assertEquals(1, ChipStakes.add(ClickType.RIGHT, 25, 20, 50, 125, 0, 2000));
+        assertEquals(50, ChipStakes.add(ClickType.SHIFT_LEFT, 5, 20, 50, 0, 0, 2000));
+        // never more than the unselected chips
+        assertEquals(7, ChipStakes.add(ClickType.LEFT, 1, 64, 7, 0, 0, 2000));
+        assertEquals(0, ChipStakes.add(ClickType.RIGHT, 100, 1, 0, 0, 0, 2000));
     }
 
     @Test
-    void perSlotCapIgnoresTheOtherSlots() {
-        // cap per slot (default): the menu passes others = 0, so every slot can hold a full 64
-        assertEquals(64, StakeMenu.countFor(ClickType.LEFT, null, D, 64, 0, 192, 64));
-        assertEquals(64, StakeMenu.countFor(ClickType.SHIFT_LEFT, null, D, 64, 0, 128, 64));
+    void theValueCapCountsWholeChips() {
+        // 1 950 in the slot: room for 50 = two 25s, no 100
+        assertEquals(2, ChipStakes.add(ClickType.SHIFT_LEFT, 25, 10, 10, 1950, 0, 2000));
+        assertEquals(0, ChipStakes.add(ClickType.RIGHT, 100, 3, 3, 1950, 0, 2000));
+        assertTrue(ChipStakes.capped(ClickType.RIGHT, 100, 3, 3, 1950, 0, 2000));
+        assertFalse(ChipStakes.capped(ClickType.LEFT, 25, 2, 2, 1950, 0, 2000), "exactly fits");
+        // a full slot takes nothing more
+        assertEquals(0, ChipStakes.add(ClickType.RIGHT, 1, 64, 64, 2000, 0, 2000));
+        // two 1000s fill a slot of 2000
+        assertEquals(2, ChipStakes.add(ClickType.LEFT, 1000, 5, 5, 0, 0, 2000));
     }
 
     @Test
-    void theRoundTotalAndTheOwnedItemsCap() {
-        // cap per round: 40 items in the other slots, at most 24 more in this one
-        assertEquals(24, StakeMenu.countFor(ClickType.SHIFT_LEFT, null, D, 64, 40, 100, 64));
-        assertEquals(24, StakeMenu.countFor(ClickType.LEFT, null, D, 64, 40, 100, 64));
-        // only 7 diamonds not already staked in another slot
-        assertEquals(7, StakeMenu.countFor(ClickType.LEFT, null, D, 64, 0, 7, 64));
-        assertEquals(0, StakeMenu.countFor(ClickType.RIGHT, null, D, 1, 64, 10, 64));
+    void perSlotCapIgnoresTheOtherSlotsTheRoundCapDoesNot() {
+        // cap per slot (default): the menu passes others = 0, so every slot can hold the full maximum
+        assertEquals(20, ChipStakes.add(ClickType.LEFT, 100, 20, 64, 0, 0, 2000));
+        // cap per round: 1 500 in the other slots, at most 500 more here
+        assertEquals(5, ChipStakes.add(ClickType.LEFT, 100, 20, 64, 0, 1500, 2000));
+        assertEquals(0, ChipStakes.add(ClickType.LEFT, 1000, 20, 64, 0, 1500, 2000));
+        // others already past the maximum (config lowered): nothing, never negative
+        assertEquals(0, ChipStakes.add(ClickType.LEFT, 1, 20, 64, 0, 2500, 2000));
     }
 }

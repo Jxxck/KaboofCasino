@@ -2,13 +2,13 @@ package de.tigges.kaboofcasino.game.blackjack;
 
 import de.tigges.kaboofcasino.CasinoContext;
 import de.tigges.kaboofcasino.config.Msg;
+import de.tigges.kaboofcasino.game.ChipStakes;
 import de.tigges.kaboofcasino.game.GameMenu;
 import de.tigges.kaboofcasino.gui.Button;
 import de.tigges.kaboofcasino.gui.DisplayCopies;
 import de.tigges.kaboofcasino.gui.GuiLayout;
 import de.tigges.kaboofcasino.gui.TitleBuilder;
 import de.tigges.kaboofcasino.wager.ItemAmount;
-import de.tigges.kaboofcasino.wager.PlayerAccount;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.CustomModelData;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
@@ -104,7 +104,7 @@ public final class BlackjackRoundMenu extends GameMenu {
      * action and whether it is clickable. Equal cells are not sent again.
      */
     record Cell(String model, String item, int amount, List<String> strings, List<Integer> colors, List<Float> floats,
-                Action action, boolean enabled) {
+                Action action, boolean enabled, long chips) {
 
         Cell {
             strings = List.copyOf(strings);
@@ -112,12 +112,20 @@ public final class BlackjackRoundMenu extends GameMenu {
             floats = List.copyOf(floats);
         }
 
+        /** {@code chips}: a stake cell's chip value (its name shows it), 0 for everything else. */
+        Cell(String model, String item, int amount, List<String> strings, List<Integer> colors, List<Float> floats,
+             Action action, boolean enabled) {
+            this(model, item, amount, strings, colors, floats, action, enabled, 0L);
+        }
+
         static Cell model(String name) {
             return new Cell(MODEL + name, null, 1, List.of(), List.of(), List.of(), null, false);
         }
 
+        /** A stake: ores as the item; chips (a chip value) as the largest chip it holds, named with the value. */
         static Cell stake(ItemAmount stake, int amount) {
-            return new Cell(null, stake.item(), amount, List.of(), List.of(), List.of(), null, false);
+            return new Cell(null, ChipStakes.cellItem(stake), amount, List.of(), List.of(), List.of(), null, false,
+                    de.tigges.kaboofcasino.wager.Chips.isValue(stake.item()) ? stake.count() : 0L);
         }
     }
 
@@ -436,7 +444,7 @@ public final class BlackjackRoundMenu extends GameMenu {
         var m = ctx.messages().get();
         ItemStack stack;
         if (c.item() != null) {
-            stack = DisplayCopies.of(PlayerAccount.material(c.item()), c.amount(), null, List.of());
+            stack = ChipStakes.cellIcon(c.item(), c.amount(), c.chips());
         } else if (c.action() != null) {
             stack = DisplayCopies.model(c.model(), m.render(c.action().name), m.lines(c.action().lore));
         } else {

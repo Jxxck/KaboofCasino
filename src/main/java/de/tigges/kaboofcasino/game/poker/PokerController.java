@@ -417,7 +417,8 @@ public final class PokerController extends MachineController {
         List<WagerEngine.Request> requests = new ArrayList<>();
         for (StakeMenu.Stake s : stakes) {
             requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(), List.of(), ends,
-                    detail(s.slot(), List.of(), List.of(), List.of(), false, "deal, then fold"), RoundState.PLAYING));
+                    detail(s.slot(), List.of(), List.of(), List.of(), false, "deal, then fold"), RoundState.PLAYING)
+                    .withTake(s.chips()));
         }
         List<UUID> rounds = commit(player, requests, Msg.POKER_NO_BET);
         if (rounds == null) {
@@ -461,7 +462,9 @@ public final class PokerController extends MachineController {
         WagerEngine.Revision r = revise(player, h, called, s -> PokerPayout.payout(s.stake(), next.result(),
                 next.thirds(), PokerPayout.roll(h.seed, s.slot())), "call, then " + next.result(), extra);
         if (r == WagerEngine.Revision.NOT_ENOUGH) {
-            ctx.messages().get().actionBar(player, Msg.POKER_CANNOT_CALL);
+            boolean chips = h.seats.stream()
+                    .anyMatch(s -> de.tigges.kaboofcasino.wager.Chips.isValue(s.stake().item()));
+            ctx.messages().get().actionBar(player, chips ? Msg.CHIPS_CANNOT_CALL : Msg.POKER_CANNOT_CALL);
             return;
         }
         if (r == WagerEngine.Revision.GONE) {
@@ -721,7 +724,7 @@ public final class PokerController extends MachineController {
                 }
             }
             if (!h.coins.isEmpty()) {
-                rig.coin(PlayerAccount.material(h.coins.poll()), h.seat, coinTarget(world, h.player), now);
+                rig.coin(h.coins.poll(), h.seat, coinTarget(world, h.player), now);
                 sound(world, "poker_payout", ANCHOR_CENTRE, 0.43f, 0.95f + ctx.random().nextFloat() * 0.2f);
             }
             h.payoutWait = PAYOUT_STEP;

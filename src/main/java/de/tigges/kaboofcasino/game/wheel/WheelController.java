@@ -14,7 +14,6 @@ import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
-import de.tigges.kaboofcasino.wager.PlayerAccount;
 import de.tigges.kaboofcasino.wager.SettleReason;
 import de.tigges.kaboofcasino.wager.WagerEngine;
 import java.util.ArrayList;
@@ -259,7 +258,7 @@ public final class WheelController extends MachineController {
             long slipEnds = nowMillis + settleTick(plan, n > 0) * 50L;
             ends = Math.max(ends, slipEnds);
             requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(), payout, slipEnds,
-                    "seg=" + next + " " + PanelText.multiplier(quarters) + " slot=" + s.slot()));
+                    "seg=" + next + " " + PanelText.multiplier(quarters) + " slot=" + s.slot()).withTake(s.chips()));
         }
         List<UUID> rounds = commit(player, requests, Msg.WHEEL_NO_BET);
         if (rounds == null) {
@@ -344,7 +343,7 @@ public final class WheelController extends MachineController {
         if (!s.coins.isEmpty()) {
             int interval = s.coins.size() > 48 ? 1 : s.coins.size() > 16 ? 2 : 3;
             if (now % interval == 0) {
-                rig.coin(PlayerAccount.material(s.coins.poll()), coinTarget(world, s.player), now);
+                rig.coin(s.coins.poll(), coinTarget(world, s.player), now);
                 if (interval > 1 || now % 2 == 0) {
                     sound(world, "wheel_payout", MOUTH, 0.5f, 0.9f + ctx.random().nextFloat() * 0.25f);
                 }

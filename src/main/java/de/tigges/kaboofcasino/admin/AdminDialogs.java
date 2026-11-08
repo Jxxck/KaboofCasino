@@ -79,6 +79,9 @@ final class AdminDialogs {
 
     static AdminView machine(MachineData d) {
         MachineType type = d.type();
+        if (!type.isGame()) {
+            throw new IllegalArgumentException(type + " has no machine settings (the cashier opens its shop dialog)");
+        }
         boolean bias = MachineSettings.usesBias(type);
         MachineSettings.Own own = d.own();
         List<Text> body = new ArrayList<>();

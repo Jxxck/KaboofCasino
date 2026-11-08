@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.util.Transformation;
@@ -164,7 +163,7 @@ final class RouletteRig {
         panel.hide();
     }
 
-    void coin(Material material, Location target, long now) {
+    void coin(String material, Location target, long now) {
         coins.spawn(world, new Location(world, record.anchor().x() + 1.0, record.anchor().y() + 1.0,
                 record.anchor().z() + 1.0), material, target, now);
     }

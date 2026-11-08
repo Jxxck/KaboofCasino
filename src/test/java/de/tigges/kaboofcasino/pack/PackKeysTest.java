@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
  */
 class PackKeysTest {
 
-    /** Literal keys that are not item models (fonts, prefixes in parsing code). */
-    private static final Set<String> NOT_MODELS = Set.of("kaboofcasino:gui");
+    /** Literal keys that are not item models: the GUI font, the chip value pseudo item ({@code Chips.VALUE}). */
+    private static final Set<String> NOT_MODELS = Set.of("kaboofcasino:gui", "kaboofcasino:chips");
 
     private static List<String> sources() throws IOException {
         List<String> out = new ArrayList<>();
@@ -56,6 +56,17 @@ class PackKeysTest {
         }
         assertTrue(checked > 10, "found only " + checked + " keys");
         assertTrue(missing.isEmpty(), "item models missing from the pack: " + missing);
+    }
+
+    @Test
+    void everyChipHasItsModelAndPanelSprite() throws IOException {
+        // the chips' item_model is built from the denomination (not a literal), and the panels draw their texture
+        // as a sprite of the items atlas
+        for (int d : de.tigges.kaboofcasino.wager.Chips.DENOMINATIONS) {
+            String key = de.tigges.kaboofcasino.wager.Chips.key(d);
+            assertTrue(PackFiles.hasItemModel(key), key);
+            assertTrue(PackFiles.all().containsKey("assets/kaboofcasino/textures/item/chip_" + d + ".png"), key);
+        }
     }
 
     @Test

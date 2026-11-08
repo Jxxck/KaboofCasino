@@ -138,7 +138,11 @@ public final class LedgerListener implements Listener {
         });
     }
 
-    /** The Bukkit drop target: plan on a snapshot, build every stack, then change the drops. */
+    /**
+     * The Bukkit drop target: plan on a snapshot, build every stack, then change the drops. Chips (a chip value) go in
+     * as chip stacks, largest denominations first, topping up pristine chip stacks of the same denomination; what does
+     * not fit comes back as a chip value.
+     */
     static List<ItemAmount> putIntoDrops(List<ItemStack> drops, List<ItemAmount> items,
                                          DeathDrops.Applied<ItemStack> applied) {
         List<ItemStack> current = new ArrayList<>();
@@ -148,13 +152,13 @@ public final class LedgerListener implements Listener {
             }
         }
         List<DeathDrops.Existing> existing = current.stream().map(s -> new DeathDrops.Existing(
-                s.getType().getKey().asString(), s.getAmount(), s.getMaxStackSize(), PlayerAccount.isPlain(s)))
-                .toList();
-        DeathDrops.Plan plan = DeathDrops.plan(existing, items, k -> PlayerAccount.material(k).getMaxStackSize(),
-                DeathDrops.GRAVE_SLOTS);
+                ChipItems.keyOf(s), s.getAmount(), s.getMaxStackSize(),
+                ChipItems.isChip(s) ? ChipItems.pristine(s) : PlayerAccount.isPlain(s))).toList();
+        DeathDrops.Plan plan = DeathDrops.plan(existing, Chips.expand(items),
+                k -> ChipItems.stackOf(k, 1).getMaxStackSize(), DeathDrops.GRAVE_SLOTS);
         List<ItemStack> fresh = new ArrayList<>();
         for (ItemAmount n : plan.newStacks()) {
-            fresh.add(ItemStack.of(PlayerAccount.material(n.item()), (int) n.count()));
+            fresh.add(ChipItems.stackOf(n.item(), (int) n.count()));
         }
         for (Map.Entry<Integer, Integer> e : plan.topUps().entrySet()) {
             ItemStack s = current.get(e.getKey());
@@ -165,13 +169,13 @@ public final class LedgerListener implements Listener {
             drops.add(f);
             applied.added(f);
         }
-        return plan.kept();
+        return Chips.normalize(plan.kept());
     }
 
     static final DeathDrops.StackOps<ItemStack> STACKS = new DeathDrops.StackOps<>() {
         @Override
         public String item(ItemStack stack) {
-            return stack.getType().getKey().asString();
+            return ChipItems.keyOf(stack);
         }
 
         @Override
