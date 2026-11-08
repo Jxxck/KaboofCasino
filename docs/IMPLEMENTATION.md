@@ -535,7 +535,9 @@ Look:
   displays rebuilt at chunk load, a round-robin verifier. Carriers: barrier (full collision, broken with the machine
   break timer; the item goes into the breaker's inventory), light blocks with the mod's light level plus an interaction
   box (one left click breaks), or vanilla stairs/slabs placed by vanilla from the deco item (crimson/warped under
-  velvet, polished andesite/diorite/blackstone under checkers and marble; the display sits over them at 1.002).
+  velvet, polished andesite/diorite/blackstone under checkers and marble; the display sits over them at 1.032, scaled
+  about a pivot a quarter block inside the carrier's solid part so every face lies 0.008..0.024 outside the carrier's;
+  hotfix 0.9.1, see below).
   Deviations: carriers are full cubes or nothing. A rope post's carrier is a barrier one block high, so a line of
   rope posts is a 1-block wall that players can jump onto and walk across; the mod's post and the rope between two
   posts collide up to 24 px (1.5 blocks), which nobody can jump, and raising it would need a second solid block above
@@ -1297,6 +1299,20 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   ground too. Deterministic as before (pack-tool tests).
 - **"Inventar" label**: a light plate (gold border, cream fill) under the vanilla label in all ten felt title arts
   (slot, wheel, Plinko, roulette, blackjack bet/round, poker bet/round, derby, cashier).
+
+#### Hotfix 0.9.1 (deco stairs and slabs flickering)
+
+- Jack saw deco stairs and slabs "swap all the time" between the casino look and the vanilla carrier. Cause: z-fighting.
+  0.9.0 scaled the cover 1.002 about the block centre, so faces on the block's middle planes (a slab's top, a stair's
+  step and riser) did not move at all and lay exactly on the carrier's faces (the depth test picked either, at every
+  distance), and the outer faces were only 0.001 out (flicker from about 30 blocks). Not entity churn: the cover
+  displays kept their UUIDs for minutes with the verifier running every 100 ticks (bot test, before and after).
+- Fix (`DecoModels.coverPivot`, `DecoRig.pivot`): the cover is scaled 1.032 about a pivot that lies, per axis, a
+  quarter block inside the solid side of every middle-plane face of the carrier's shape (read from its collision
+  boxes as eighths; stairs and slabs always agree, a double slab keeps the centre). Every exposed face then lies
+  0.008..0.024 blocks outside the carrier's (`DecoTransformTest` checks all 40 stair states and the 3 slab types).
+  The cover's view range is 2.0 (128 blocks, Paper's display tracking range), so the vanilla carrier shows only where
+  the server sends no display at all. No vanilla block's look is changed.
 
 ## 11. Testing
 
