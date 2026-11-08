@@ -2,6 +2,10 @@ package de.tigges.kaboofcasino.wager;
 
 import de.tigges.kaboofcasino.util.Keys;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.DamageResistant;
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.keys.tags.DamageTypeTagKeys;
 import java.util.OptionalInt;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -11,9 +15,10 @@ import org.bukkit.persistence.PersistentDataType;
 
 /**
  * Chip items (PLAN-2 C1): {@code minecraft:paper} with {@code item_model kaboofcasino:chip_<n>}, a fixed translatable
- * name ({@code item.kaboofcasino.chip_<n>}, German fallback) and the PDC id {@code kaboofcasino:item =
- * kaboofcasino:chip_<n>}; identity only by that tag on paper, so a plain paper is never a chip. The name never comes
- * from {@code messages_de.yml}: chips made before and after a text change still stack. Thread: any (no world access).
+ * name ({@code item.kaboofcasino.chip_<n>}, German fallback), {@code damage_resistant #minecraft:is_fire} (a chip in
+ * lava or fire survives, like netherite) and the PDC id {@code kaboofcasino:item = kaboofcasino:chip_<n>}; identity
+ * only by that tag on paper, so a plain paper is never a chip. The name never comes from {@code messages_de.yml}: chips
+ * made before and after a text change still stack. Thread: MAIN (the fire tag comes from the server's registry).
  */
 public final class ChipItems {
 
@@ -33,6 +38,8 @@ public final class ChipItems {
         ItemStack stack = ItemStack.of(Material.PAPER, amount);
         stack.setData(DataComponentTypes.ITEM_MODEL, Key.key(key));
         stack.setData(DataComponentTypes.ITEM_NAME, name(denomination));
+        stack.setData(DataComponentTypes.DAMAGE_RESISTANT, DamageResistant.damageResistant(RegistryAccess
+                .registryAccess().getRegistry(RegistryKey.DAMAGE_TYPE).getTag(DamageTypeTagKeys.IS_FIRE)));
         stack.editPersistentDataContainer(pdc -> pdc.set(Keys.ITEM, PersistentDataType.STRING, key));
         return stack;
     }

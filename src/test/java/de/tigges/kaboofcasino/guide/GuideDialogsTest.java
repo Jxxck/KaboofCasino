@@ -311,7 +311,8 @@ class GuideDialogsTest {
     void pluginNotesHangOnModTextsOfTheirSpreads() {
         // every mod text a plugin note amends is on the spread the note is written for
         java.util.Map<String, Integer> where = java.util.Map.of(GuideService.NOTE_COUNTER, 3, GuideService.NOTE_HAND,
-                33, GuideService.NOTE_BETS, 33, GuideService.NOTE_NAMES, 34, GuideService.NOTE_NUMBER, 34);
+                33, GuideService.NOTE_BETS, 33, GuideService.NOTE_NAMES, 34, GuideService.NOTE_NUMBER, 34,
+                GuideService.NOTE_CHIPS, 2);
         where.forEach((key, spread) -> assertTrue(GuideFixtures.describe(GuideFixtures.view(spread, false))
                 .contains("{" + key + "}"), key + " on spread " + spread));
     }

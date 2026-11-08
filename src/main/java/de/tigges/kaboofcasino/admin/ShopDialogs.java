@@ -5,6 +5,7 @@ import de.tigges.kaboofcasino.cashier.CashierSettings;
 import de.tigges.kaboofcasino.cashier.ShopEntry;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
+import de.tigges.kaboofcasino.util.ChipText;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -55,11 +56,18 @@ final class ShopDialogs {
      * @param newSpec  the off-hand item as a prize text, or null
      * @param newCount its amount (items per purchase)
      * @param names    a prize's display name ("1× Casino-Stuhl")
+     * @param refusedOffHand the off hand holds an item that can never be a prize (a chip, or chips or casino items in
+     *                       a container or bundle)
      */
     record Data(List<ShopEntry> shop, int page, String newSpec, int newCount, Function<ShopEntry, Component> names,
-                Component newName) {
+                Component newName, boolean refusedOffHand) {
         Data {
             shop = List.copyOf(shop);
+        }
+
+        Data(List<ShopEntry> shop, int page, String newSpec, int newCount, Function<ShopEntry, Component> names,
+             Component newName) {
+            this(shop, page, newSpec, newCount, names, newName, false);
         }
     }
 
@@ -92,7 +100,7 @@ final class ShopDialogs {
             String n = Integer.toString(page * PAGE_SIZE + i + 1);
             body.add(new PrizeLine(e, m.render(Msg.SHOP_ADMIN_ENTRY, Messages.text("index", n),
                     Messages.component("item", d.names().apply(e)), Messages.text("price",
-                            CashierMath.format(e.price())), Messages.text("limit", Integer.toString(e.limit())))));
+                            ChipText.chips(e.price())), Messages.text("limit", ChipText.number(e.limit())))));
             inputs.add(new AdminView.TextInput(ShopClick.price(i), m.render(Msg.SHOP_ADMIN_PRICE, Messages.text("index",
                     n)), Long.toString(e.price()), ShopClick.PRICE_LENGTH, INPUT_WIDTH));
             inputs.add(new AdminView.TextInput(ShopClick.limit(i), m.render(Msg.SHOP_ADMIN_LIMIT, Messages.text("index",
@@ -116,7 +124,7 @@ final class ShopDialogs {
             inputs.add(new AdminView.TextInput(ShopClick.NEW_LIMIT, m.render(Msg.SHOP_ADMIN_NEW_LIMIT), "0",
                     ShopClick.LIMIT_LENGTH, INPUT_WIDTH));
         } else {
-            body.add(new TextLine(m.render(Msg.SHOP_ADMIN_NEW_NONE)));
+            body.add(new TextLine(m.render(d.refusedOffHand() ? Msg.SHOP_ADMIN_CHIP : Msg.SHOP_ADMIN_NEW_NONE)));
         }
         List<Button> buttons = new ArrayList<>();
         buttons.add(new Button(m.render(Msg.SHOP_ADMIN_SAVE), null, 150, ShopClick.Action.SAVE));

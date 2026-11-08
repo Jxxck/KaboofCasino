@@ -167,7 +167,7 @@ public final class GuideService {
                 page -> m.render(Msg.GUIDE_GOTO, Messages.text("page", Integer.toString(page))), items::vanillaName,
                 Map.of(NOTE_COUNTER, m.render(Msg.GUIDE_NOTE_COUNTER), NOTE_HAND, m.render(Msg.GUIDE_NOTE_HAND),
                         NOTE_BETS, m.render(Msg.GUIDE_NOTE_BETS), NOTE_NAMES, m.render(Msg.GUIDE_NOTE_NAMES),
-                        NOTE_NUMBER, m.render(Msg.GUIDE_NOTE_NUMBER)));
+                        NOTE_NUMBER, m.render(Msg.GUIDE_NOTE_NUMBER), NOTE_CHIPS, m.render(Msg.GUIDE_NOTE_CHIPS)));
     }
 
     /**
@@ -181,6 +181,8 @@ public final class GuideService {
     static final String NOTE_BETS = "guide.roulettecasino.text.213";
     static final String NOTE_NAMES = "guide.roulettecasino.text.262";
     static final String NOTE_NUMBER = "guide.roulettecasino.text.260";
+    /** Spread 2 "MASCHINEN": here the machines take chips, ores go to the cashier (step 9). */
+    static final String NOTE_CHIPS = "guide.roulettecasino.text.012";
 
     /** Every {@code safety.sweep-ticks}: the danger check of every open guide. */
     private void tick() {

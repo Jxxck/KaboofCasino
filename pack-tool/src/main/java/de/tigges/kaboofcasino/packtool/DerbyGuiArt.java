@@ -17,7 +17,8 @@ import java.awt.image.BufferedImage;
  *   <li>the four duck cards (42x37, the mod's {@code CARD_W}/{@code CARD_H}) at window y -4, x -1 / 45 / 89 / 135: the
  *       bet columns are grid columns 0 / 3 / 5 / 8, so the cards keep 2 px between the middle pair and 4 px to the
  *       outer ones, each 4 px off its bet column (the mod: 10 px apart, centred);</li>
- *   <li>bet slot frames on grid rows 1..3 of those columns, the inventory slot frames under the vanilla slots.</li>
+ *   <li>bet slot frames on grid rows 1..3 of those columns, the inventory slot frames under the vanilla slots, the
+ *       {@link InventoryLabelPlate} under vanilla's "Inventar" label (hanging from the gold box's bottom border).</li>
  * </ul>
  * The cards are drawn at twice the resolution (font glyphs with {@code height} = half the texels): the mod scales the
  * ducks by 1.5 and shrinks "SCHWARZ" (42 px) into its 40 px room, which half pixels show at GUI scale 2 and 4.
@@ -386,6 +387,7 @@ final class DerbyGuiArt {
             slot(g, 8 + col * 18, 198);
         }
         g.fill(RIGHT_X + 8, DIVIDER_Y, RIGHT_X + RIGHT_W - 8, DIVIDER_Y + 1, DIVIDER);
+        InventoryLabelPlate.draw(out, ART_X, ART_Y);
         return out;
     }
 }

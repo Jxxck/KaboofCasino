@@ -21,6 +21,9 @@ import java.awt.image.BufferedImage;
  * pixel: the dealer box (window -55..14), the board band (17..158), the player box (161..230), tops at window y 13
  * (the labels CROUPIER / DU above them like in the mod), then the stake band across all three (71..89), the timer bar
  * slot (19..156 x 101..105) and the bet screen's inventory slot art under the vanilla inventory.
+ *
+ * <p>Both get the {@link InventoryLabelPlate} under vanilla's "Inventar" label (the bet view through
+ * {@link MachineGuiArt#compose}).
  */
 final class PokerGuiArt {
 
@@ -149,6 +152,7 @@ final class PokerGuiArt {
         // the inventory slot art of the bet screen (mod (30, 175) 162x54 and the hotbar (30, 233) 162x18)
         Images.copy(bet, 30, 175, 162, 54, out, 7 - ROUND_X, 139 - ROUND_Y);
         Images.copy(bet, 30, 233, 162, 18, out, 7 - ROUND_X, 197 - ROUND_Y);
+        InventoryLabelPlate.draw(out, ROUND_X, ROUND_Y);
         return out;
     }
 }

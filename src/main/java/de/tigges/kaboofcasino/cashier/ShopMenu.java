@@ -8,6 +8,7 @@ import de.tigges.kaboofcasino.gui.DisplayCopies;
 import de.tigges.kaboofcasino.wager.Chips;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import de.tigges.kaboofcasino.util.ChipText;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +33,9 @@ final class ShopMenu extends CashierMenu {
     private int page;
     private int selected = -1;
     private ShopEntry selectedEntry;
+    /** Server tick of the last purchase: a second one within {@link #BUY_GAP_TICKS} is refused (a double click). */
+    private long lastBuy = Long.MIN_VALUE / 2;
+    static final int BUY_GAP_TICKS = 10;
 
     ShopMenu(UUID viewer, CashierController controller, CasinoContext ctx) {
         super(CashierView.Tab.SHOP, viewer, controller, ctx);
@@ -40,7 +44,7 @@ final class ShopMenu extends CashierMenu {
     @Override
     protected void renderTab(Player viewer) {
         Messages m = messages();
-        List<ShopEntry> shop = settings().shop();
+        List<ShopEntry> shop = controller.service().shop();
         int pages = CashierView.pages(shop.size());
         page = Math.max(0, Math.min(page, pages - 1));
         if (selected >= shop.size() || selected >= 0 && !shop.get(selected).equals(selectedEntry)) {
@@ -78,7 +82,7 @@ final class ShopMenu extends CashierMenu {
         Component prizeName = selectedEntry == null ? Component.empty() : name(selectedEntry);
         commit("buy", selectedEntry != null, m.render(Msg.SHOP_BUY_BUTTON), selectedEntry == null
                 ? m.lines(Msg.SHOP_NONE_SELECTED) : m.lines(Msg.SHOP_BUY_LORE, Messages.component("item", prizeName),
-                Messages.text("price", CashierMath.format(selectedEntry.price()))), (p, click) -> buy(p));
+                Messages.text("price", ChipText.chips(selectedEntry.price()))), (p, click) -> buy(p));
         number(true, new PlayerAccount(viewer).countPlain(Chips.VALUE));
         if (selectedEntry != null) {
             number(false, selectedEntry.price());
@@ -95,13 +99,13 @@ final class ShopMenu extends CashierMenu {
         Messages m = messages();
         List<Component> lore = new ArrayList<>();
         lore.add(Component.empty());
-        lore.add(m.render(Msg.SHOP_PRICE_LORE, Messages.text("price", CashierMath.format(entry.price()))));
+        lore.add(m.render(Msg.SHOP_PRICE_LORE, Messages.text("price", ChipText.chips(entry.price()))));
         if (entry.count() > 1) {
-            lore.add(m.render(Msg.SHOP_COUNT_LORE, Messages.text("count", Integer.toString(entry.count()))));
+            lore.add(m.render(Msg.SHOP_COUNT_LORE, Messages.text("count", ChipText.number(entry.count()))));
         }
         if (entry.limit() > 0) {
-            lore.add(m.render(Msg.SHOP_LIMIT_LORE, Messages.text("left", Integer.toString(limits.left(entry))),
-                    Messages.text("limit", Integer.toString(entry.limit()))));
+            lore.add(m.render(Msg.SHOP_LIMIT_LORE, Messages.text("left", ChipText.number(limits.left(entry))),
+                    Messages.text("limit", ChipText.number(entry.limit()))));
         }
         Optional<ItemStack> one = Prizes.one(entry, m);
         if (one.isEmpty()) {
@@ -131,6 +135,10 @@ final class ShopMenu extends CashierMenu {
     }
 
     private void buy(Player player) {
+        long now = org.bukkit.Bukkit.getCurrentTick();
+        if (now - lastBuy < BUY_GAP_TICKS) {
+            return; // a double click: the first one bought, the selection is gone
+        }
         if (!controller.mayTransact(player)) {
             return;
         }
@@ -139,14 +147,20 @@ final class ShopMenu extends CashierMenu {
             refused(player);
             return;
         }
-        List<ShopEntry> shop = settings().shop();
+        List<ShopEntry> shop = controller.service().shop();
         if (selected >= shop.size() || !shop.get(selected).equals(selectedEntry)) {
             messages().actionBar(player, Msg.SHOP_CHANGED);
             refused(player);
             render();
             return;
         }
-        controller.service().buy(player, controller.machine(), selectedEntry);
+        Cashbox.Outcome outcome = controller.service().buy(player, controller.machine(), selectedEntry);
+        if (outcome instanceof Cashbox.Bought) {
+            // one purchase per selection: the next one needs a new click on the prize
+            lastBuy = now;
+            selected = -1;
+            selectedEntry = null;
+        }
         if (isOpenFor(player)) {
             render();
         }

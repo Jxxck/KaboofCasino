@@ -170,4 +170,94 @@ class CashierPackTest {
                 .getAsJsonArray("elements");
         assertEquals(1, models.size());
     }
+
+    /** Window rectangle {x0, y0, x1, y1} of element {@code i} of a GUI model drawn from {@code slot}. */
+    private static double[] windowRect(JsonObject model, int i, int slot) {
+        JsonObject gui = model.getAsJsonObject("display").getAsJsonObject("gui");
+        double s = gui.getAsJsonArray("scale").get(0).getAsDouble();
+        double tx = gui.getAsJsonArray("translation").get(0).getAsDouble();
+        double ty = gui.getAsJsonArray("translation").get(1).getAsDouble();
+        JsonObject e = model.getAsJsonArray("elements").get(i).getAsJsonObject();
+        double[] from = DecoDisplayBake.doubles(e.getAsJsonArray("from"));
+        double[] to = DecoDisplayBake.doubles(e.getAsJsonArray("to"));
+        int sx = BlackjackGuiItems.slotX(slot);
+        int sy = BlackjackGuiItems.slotY(slot);
+        return new double[] {sx + 8 + tx + s * (from[0] - 8), sy + 8 - ty - s * (to[1] - 8),
+                sx + 8 + tx + s * (to[0] - 8), sy + 8 - ty - s * (from[1] - 8)};
+    }
+
+    /**
+     * The thousands dots: strings 10, 11, 12 of both number displays are the gaps after cells 2, 5 and 8; "." draws
+     * the client's '.' (one cream pixel on the digits' baseline, its shadow right below-right) in the gap's first
+     * column, anything else nothing. The digit cells keep their places.
+     */
+    @Test
+    void theThousandsDotsSitInTheGaps() {
+        assertEquals(10, CashierGui.NUM_CELLS);
+        assertEquals(3, CashierGui.NUM_GAPS);
+        BufferedImage dot = Images.read(tree.get(CashierGui.TEXTURE_DIR + "dot.png"));
+        BufferedImage glyph = Images.blank(2, CashierGui.NUM_H);
+        BlackjackGuiText.draw(glyph, text, ".", 0, 0, DerbyGuiArt.CREAM, false, true);
+        BufferedImage digit = Images.read(tree.get(CashierGui.TEXTURE_DIR + "digit_8.png"));
+        int baseline = -1;
+        for (int y = 0; y < CashierGui.NUM_H; y++) {
+            for (int x = 0; x < 6; x++) {
+                if (digit.getRGB(x, y) == (0xFF000000 | DerbyGuiArt.CREAM)) {
+                    baseline = y;
+                }
+            }
+        }
+        assertEquals(6, baseline, "the digits' bottom row");
+        for (int y = 0; y < CashierGui.NUM_H; y++) {
+            for (int x = 0; x < 2; x++) {
+                assertEquals(glyph.getRGB(x, y), dot.getRGB(x, y), x + "," + y);
+                boolean lit = x == 0 && y == baseline;
+                assertEquals(lit, dot.getRGB(x, y) == (0xFF000000 | DerbyGuiArt.CREAM), x + "," + y);
+            }
+        }
+        assertEquals(BlackjackGuiText.shadow(0xFF000000 | DerbyGuiArt.CREAM), dot.getRGB(1, baseline + 1));
+        for (String display : new String[] {"a", "b"}) {
+            int slot = display.equals("a") ? CashierGui.NUM_A_SLOT : CashierGui.NUM_B_SLOT;
+            int numY = display.equals("a") ? CashierGui.NUM_A_Y : CashierGui.NUM_B_Y;
+            JsonArray parts = json(CashierGui.ITEM_DIR + "num_" + display + ".json").getAsJsonObject("model")
+                    .getAsJsonArray("models");
+            assertEquals(CashierGui.NUM_CELLS + CashierGui.NUM_GAPS, parts.size());
+            for (int k = 0; k < CashierGui.NUM_CELLS + CashierGui.NUM_GAPS; k++) {
+                JsonObject select = parts.get(k).getAsJsonObject();
+                assertEquals("minecraft:custom_model_data", select.get("property").getAsString());
+                assertEquals(k, select.get("index").getAsInt());
+                assertEquals("minecraft:empty", select.getAsJsonObject("fallback").get("type").getAsString());
+                JsonArray cases = select.getAsJsonArray("cases");
+                assertEquals(k < CashierGui.NUM_CELLS ? 10 : 1, cases.size());
+                if (k < CashierGui.NUM_CELLS) {
+                    continue;
+                }
+                int g = k - CashierGui.NUM_CELLS;
+                JsonObject c = cases.get(0).getAsJsonObject();
+                assertEquals(".", c.get("when").getAsString());
+                String id = c.getAsJsonObject("model").get("model").getAsString();
+                assertEquals(CashierGui.MODEL_ID + "num_" + display + "_gap_" + g, id);
+                JsonObject model = json(CashierGui.MODEL_DIR + id.substring(CashierGui.MODEL_ID.length()) + ".json");
+                assertEquals(2, model.getAsJsonArray("elements").size());
+                // the spacer over the whole display (drawn oversized like the digits), then the dot
+                assertArrayEquals(new double[] {CashierGui.numLeft(), numY, CashierGui.NUM_RIGHT,
+                        numY + CashierGui.NUM_H}, windowRect(model, 0, slot), 1e-9);
+                double[] r = windowRect(model, 1, slot);
+                assertArrayEquals(new double[] {CashierGui.gapX(g), numY, CashierGui.gapX(g) + 2,
+                        numY + CashierGui.NUM_H}, r, 1e-9);
+                // the gap: right after cell 3g + 3, right before cell 3g + 2
+                assertEquals(CashierGui.cellX(3 * g + 3) + 6, CashierGui.gapX(g));
+                assertEquals(CashierGui.cellX(3 * g + 2), CashierGui.gapX(g) + 2);
+                assertEquals(CashierGui.TEXTURE_ID + "dot", model.getAsJsonObject("textures").get("t1")
+                        .getAsString());
+            }
+            // the digits' cells where they were
+            for (int k = 0; k < CashierGui.NUM_CELLS; k++) {
+                JsonObject model = json(CashierGui.MODEL_DIR + "num_" + display + "_" + k + "_8.json");
+                assertArrayEquals(new double[] {CashierGui.NUM_RIGHT - 6 * (k + 1) - 2 * (k / 3), numY,
+                        CashierGui.NUM_RIGHT - 6 * k - 2 * (k / 3), numY + CashierGui.NUM_H},
+                        windowRect(model, 1, slot), 1e-9);
+            }
+        }
+    }
 }

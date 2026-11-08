@@ -9,6 +9,7 @@ import de.tigges.kaboofcasino.config.ConfigLoader;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.util.ChipText;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.util.Threads;
 import io.papermc.paper.connection.PlayerGameConnection;
@@ -104,6 +105,12 @@ final class ShopEditor implements Listener {
         Log.get().debug("{} opened the shop dialog of cashier #{}", player.getName(), cashier.record().number());
     }
 
+    /** A chip, or chips or casino items inside a container or bundle: never a prize (logged when tried). */
+    private static boolean refused(ItemStack off) {
+        return off != null && !off.isEmpty() && (de.tigges.kaboofcasino.wager.ChipItems.isChip(off)
+                || Prizes.smuggles(off));
+    }
+
     private List<ShopEntry> shop() {
         return ctx.config().get().cashier().shop();
     }
@@ -118,7 +125,7 @@ final class ShopEditor implements Listener {
             Component newName = spec.isPresent() ? off.effectiveName() : Component.empty();
             int newCount = spec.isPresent() ? Math.max(1, Math.min(ShopEntry.MAX_COUNT, off.getAmount())) : 0;
             ShopDialogs.View view = ShopDialogs.view(new ShopDialogs.Data(shop, p, spec.orElse(null), newCount,
-                    e -> displayName(e, m), newName), m);
+                    e -> displayName(e, m), newName, refused(off)), m);
             sessions.put(player.getUniqueId(), new Session(machine, p, ShopDialogs.shown(shop, p), spec.orElse(null),
                     newCount, Bukkit.getCurrentTick()));
             player.showDialog(ShopPaper.dialog(view, m));
@@ -189,22 +196,23 @@ final class ShopEditor implements Listener {
             return;
         }
         if (click.edits().isEmpty()) {
-            m.actionBar(player, Msg.SHOP_ADMIN_INVALID, Messages.text("max", Long.toString(ShopEntry.MAX_PRICE)),
-                    Messages.text("limit", Integer.toString(ShopEntry.MAX_LIMIT)));
+            m.actionBar(player, Msg.SHOP_ADMIN_INVALID, Messages.text("max", ChipText.number(ShopEntry.MAX_PRICE)),
+                    Messages.text("limit", ChipText.number(ShopEntry.MAX_LIMIT)));
             reshow(player, s, done, s.page());
             return;
         }
         ShopEntry added = null;
         if (click.action() == ShopClick.Action.ADD) {
-            Optional<String> now = Prizes.spec(player.getInventory().getItemInOffHand());
+            ItemStack offNow = player.getInventory().getItemInOffHand();
+            Optional<String> now = Prizes.spec(offNow);
             if (now.isEmpty() || !now.get().equals(s.newSpec())) {
-                m.actionBar(player, Msg.SHOP_ADMIN_NO_ITEM);
+                m.actionBar(player, refused(offNow) ? Msg.SHOP_ADMIN_CHIP : Msg.SHOP_ADMIN_NO_ITEM);
                 reshow(player, s, false, s.page());
                 return;
             }
             if (click.added().isEmpty()) {
-                m.actionBar(player, Msg.SHOP_ADMIN_INVALID, Messages.text("max", Long.toString(ShopEntry.MAX_PRICE)),
-                        Messages.text("limit", Integer.toString(ShopEntry.MAX_LIMIT)));
+                m.actionBar(player, Msg.SHOP_ADMIN_INVALID, Messages.text("max", ChipText.number(ShopEntry.MAX_PRICE)),
+                        Messages.text("limit", ChipText.number(ShopEntry.MAX_LIMIT)));
                 reshow(player, s, false, s.page());
                 return;
             }
@@ -222,10 +230,11 @@ final class ShopEditor implements Listener {
         }
         if (added != null) {
             m.actionBar(player, Msg.SHOP_ADMIN_ADDED, Messages.component("item", displayName(added, m)),
-                    Messages.text("price", Long.toString(added.price())));
+                    Messages.text("price", ChipText.chips(added.price())));
         } else if (!changes.lines().isEmpty()) {
+            int n = changes.lines().size();
             m.actionBar(player, Msg.SHOP_ADMIN_SAVED, Messages.text("changes",
-                    Integer.toString(changes.lines().size())));
+                    ChipText.number(n) + (n == 1 ? " Änderung" : " Änderungen")));
         }
         int pages = ShopDialogs.pages(changes.after().size());
         int page = switch (click.action()) {

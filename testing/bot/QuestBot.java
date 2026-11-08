@@ -231,6 +231,9 @@ public class QuestBot {
     if (d != null) {
       Component n = d.get(DataComponentTypes.CUSTOM_NAME);
       if (n != null) b.append(" name='").append(plain(n)).append("'");
+      org.geysermc.mcprotocollib.protocol.data.game.item.component.CustomModelData cmd =
+          d.get(DataComponentTypes.CUSTOM_MODEL_DATA);
+      if (cmd != null && cmd.strings() != null && !cmd.strings().isEmpty()) b.append(" cmd=").append(cmd.strings());
       List<Component> lore = d.get(DataComponentTypes.LORE);
       if (lore != null) for (Component l : lore) b.append("\n        | ").append(plain(l));
     }

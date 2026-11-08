@@ -4,6 +4,7 @@ import de.tigges.kaboofcasino.CasinoContext;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.gui.DisplayCopies;
+import de.tigges.kaboofcasino.util.ChipText;
 import de.tigges.kaboofcasino.util.ItemNames;
 import de.tigges.kaboofcasino.wager.ChipItems;
 import de.tigges.kaboofcasino.wager.Chips;
@@ -68,12 +69,12 @@ public final class ChipStakes {
         List<Component> lines = new ArrayList<>();
         for (ItemAmount a : selection.amounts()) {
             int d = Chips.denomination(a.item()).orElseThrow();
-            lines.add(m.render(Msg.CHIPS_STAKE_LINE, Messages.text("count", Long.toString(a.count())),
+            lines.add(m.render(Msg.CHIPS_STAKE_LINE, Messages.text("count", ChipText.number(a.count())),
                     Messages.component("chip", ChipItems.name(d))));
         }
         lines.addAll(lore);
         ItemStack icon = DisplayCopies.model(Chips.key(selection.largest()), m.render(Msg.CHIPS_STAKE,
-                Messages.text("value", ItemNames.value(selection.value()))), lines);
+                Messages.text("value", ChipText.chips(selection.value()))), lines);
         if (glint) {
             icon.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
         }
@@ -104,7 +105,7 @@ public final class ChipStakes {
             return DisplayCopies.of(de.tigges.kaboofcasino.wager.PlayerAccount.material(item), amount, null,
                     List.of());
         }
-        Component name = chips > 0 ? Component.text(ItemNames.value(chips) + " Chips",
+        Component name = chips > 0 ? Component.text(ChipText.chips(chips),
                 net.kyori.adventure.text.format.NamedTextColor.GOLD) : null;
         ItemStack icon = DisplayCopies.model(item, name, List.of());
         int n = Math.max(1, Math.min(99, amount));
@@ -130,6 +131,6 @@ public final class ChipStakes {
     public static void tellMax(CasinoContext ctx, org.bukkit.entity.Player player) {
         boolean round = ctx.config().get().bets().capPerRound();
         ctx.messages().get().actionBar(player, round ? Msg.CHIPS_MAX_ROUND : Msg.CHIPS_MAX,
-                Messages.text("max", ItemNames.value(ctx.config().get().bets().maxStake())));
+                Messages.text("max", ChipText.chips(ctx.config().get().bets().maxStake())));
     }
 }

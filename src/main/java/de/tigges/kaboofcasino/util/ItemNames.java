@@ -5,7 +5,6 @@ import de.tigges.kaboofcasino.wager.Chips;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
 import java.util.List;
-import java.util.Locale;
 import java.util.OptionalInt;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
@@ -34,7 +33,7 @@ public final class ItemNames {
 
     public static Component amount(ItemAmount a) {
         if (Chips.isValue(a.item())) {
-            return Component.text(value(a.count()) + " Chips");
+            return Component.text(ChipText.chips(a.count()));
         }
         return Component.text(a.count() + "× ").append(name(a.item()));
     }
@@ -45,6 +44,6 @@ public final class ItemNames {
 
     /** A chip value with German digit grouping: 1250 -> "1.250". */
     public static String value(long value) {
-        return String.format(Locale.GERMANY, "%,d", value);
+        return ChipText.number(value);
     }
 }

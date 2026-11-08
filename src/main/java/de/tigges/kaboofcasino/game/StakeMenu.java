@@ -180,7 +180,7 @@ public abstract class StakeMenu extends GameMenu {
             button = DisplayCopies.model(buttonModel(!stakes().isEmpty()), m.render(buttonName()),
                     m.lines(ctx.config().get().bets().capPerRound() ? Msg.CHIPS_PLAY_LORE_ROUND
                             : Msg.CHIPS_PLAY_LORE, Messages.text("max",
-                            ItemNames.value(ctx.config().get().bets().maxStake()))));
+                            de.tigges.kaboofcasino.util.ChipText.chips(ctx.config().get().bets().maxStake()))));
         }
         ItemStack blank = DisplayCopies.model("kaboofcasino:gui/blank", m.render(owed ? Msg.GUI_SLOT_COLLECT
                 : buttonName()), List.of());
@@ -210,7 +210,7 @@ public abstract class StakeMenu extends GameMenu {
             return DisplayCopies.model("kaboofcasino:gui/stake_active", m.render(Msg.GUI_STAKE_ACTIVE),
                     m.lines(ctx.config().get().bets().capPerRound() ? Msg.CHIPS_ACTIVE_LORE_ROUND
                             : Msg.CHIPS_ACTIVE_LORE, Messages.text("max",
-                            ItemNames.value(ctx.config().get().bets().maxStake()))));
+                            de.tigges.kaboofcasino.util.ChipText.chips(ctx.config().get().bets().maxStake()))));
         }
         return DisplayCopies.model("kaboofcasino:gui/blank", m.render(Msg.GUI_STAKE_EMPTY),
                 m.lines(Msg.GUI_STAKE_EMPTY_LORE));

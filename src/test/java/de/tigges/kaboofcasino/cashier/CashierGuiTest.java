@@ -133,21 +133,29 @@ class CashierGuiTest {
             JsonObject def = json("assets/kaboofcasino/items/gui/cashier/" + display + ".json");
             assertTrue(def.get("oversized_in_gui").getAsBoolean());
             JsonArray cells = def.getAsJsonObject("model").getAsJsonArray("models");
-            assertEquals(CashierView.CELLS, cells.size());
+            // ten digit cells, then the three thousands gaps (strings 10..12, "." draws a dot)
+            assertEquals(CashierView.CELLS + CashierView.GAPS, cells.size());
             for (int k = 0; k < cells.size(); k++) {
                 JsonObject select = cells.get(k).getAsJsonObject();
                 assertEquals(k, select.get("index").getAsInt());
-                assertEquals(digits, whens(select));
+                assertEquals(k < CashierView.CELLS ? digits : Set.of("."), whens(select));
             }
         }
         JsonObject marker = json("assets/kaboofcasino/items/gui/cashier/marker.json").getAsJsonObject("model");
         assertEquals(Set.of("0", "1", "2", "3", "4", "5"), whens(marker));
         // what the menu sends
-        assertEquals(List.of("4", "3", "2", "1", "", "", "", "", "", ""), CashierView.digits(1234));
-        assertEquals(List.of("0", "", "", "", "", "", "", "", "", ""), CashierView.digits(0));
-        assertEquals(CashierView.CELLS, CashierView.digits(9_999_999_999L).size());
-        for (String s : CashierView.digits(ShopEntry.MAX_PRICE)) {
+        // ten digit cells from the right, then the three thousands gaps: "1.234" has a dot in the first gap only
+        assertEquals(List.of("4", "3", "2", "1", "", "", "", "", "", "", ".", "", ""), CashierView.digits(1234));
+        assertEquals(List.of("0", "", "", "", "", "", "", "", "", "", "", "", ""), CashierView.digits(0));
+        assertEquals(List.of(".", ".", ""), CashierView.digits(1_234_567).subList(10, 13));
+        assertEquals(List.of("", "", ""), CashierView.digits(999).subList(10, 13));
+        assertEquals(CashierView.CELLS + CashierView.GAPS, CashierView.digits(9_999_999_999L).size());
+        List<String> sent = CashierView.digits(ShopEntry.MAX_PRICE);
+        for (String s : sent.subList(0, CashierView.CELLS)) {
             assertTrue(s.isEmpty() || digits.contains(s));
+        }
+        for (String s : sent.subList(CashierView.CELLS, sent.size())) {
+            assertTrue(s.isEmpty() || s.equals("."), "a gap is a dot or nothing");
         }
     }
 

@@ -9,6 +9,7 @@ import de.tigges.kaboofcasino.machine.ItemCatalog;
 import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.Recipes;
 import de.tigges.kaboofcasino.storage.RoundLog;
+import de.tigges.kaboofcasino.util.ChipText;
 import de.tigges.kaboofcasino.util.ItemNames;
 import de.tigges.kaboofcasino.util.Pos;
 import de.tigges.kaboofcasino.wager.Ledger;
@@ -157,11 +158,11 @@ public final class CasinoCommand implements BasicCommand {
                 return;
             }
             long rounds = lines.stream().mapToLong(RoundLog.StatLine::rounds).sum();
-            m.send(p, Msg.COMMAND_STATS_HEADER, Messages.text("rounds", Long.toString(rounds)));
+            m.send(p, Msg.COMMAND_STATS_HEADER, Messages.text("rounds", ChipText.number(rounds)));
             for (RoundLog.StatLine line : lines) {
                 p.sendMessage(m.render(Msg.COMMAND_STATS_LINE, Messages.component("item", ItemNames.name(line.item())),
-                        Messages.text("staked", Long.toString(line.staked())),
-                        Messages.text("won", Long.toString(line.won()))));
+                        Messages.text("staked", ChipText.number(line.staked())),
+                        Messages.text("won", ChipText.number(line.won()))));
             }
         }));
     }

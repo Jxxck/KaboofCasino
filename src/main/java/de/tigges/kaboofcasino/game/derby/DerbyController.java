@@ -756,7 +756,16 @@ public final class DerbyController extends MachineController {
         if (!effects || delivered <= 0) {
             return;
         }
-        ctx.messages().get().actionBar(p, Msg.DERBY_RECEIVED, Messages.text("count", Long.toString(delivered)));
+        // chip winnings: "1.250 Chips erhalten" ("1 Chip"); ores of an older record: the mod's "<n> Gegenstände"
+        boolean chips = done.rounds().stream().anyMatch(r -> r.payout().stream()
+                .anyMatch(a -> de.tigges.kaboofcasino.wager.Chips.isValue(a.item())));
+        if (chips) {
+            ctx.messages().get().actionBar(p, Msg.DERBY_RECEIVED_CHIPS, Messages.text("chips",
+                    de.tigges.kaboofcasino.util.ChipText.chips(delivered)));
+        } else {
+            ctx.messages().get().actionBar(p, Msg.DERBY_RECEIVED, Messages.text("count",
+                    de.tigges.kaboofcasino.util.ChipText.number(delivered)));
+        }
         World world = world();
         if (world == null || !p.getWorld().equals(world)) {
             return;

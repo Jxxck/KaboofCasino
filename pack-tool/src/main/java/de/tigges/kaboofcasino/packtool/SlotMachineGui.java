@@ -139,6 +139,7 @@ final class SlotMachineGui {
         Images.copy(narrow, 0, 0, LEFT_W, CUT_FROM, out, 0, 0);
         Images.copy(narrow, 0, CUT_FROM + CUT_ROWS, LEFT_W, 266 - CUT_FROM - CUT_ROWS, out, 0, CUT_FROM);
         Images.copy(panel, 0, 0, PANEL_W, 266, out, LEFT_W, 0);
+        InventoryLabelPlate.draw(out, ART_X, ART_Y);
         return out;
     }
 

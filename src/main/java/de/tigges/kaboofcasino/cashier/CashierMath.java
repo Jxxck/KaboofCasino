@@ -59,16 +59,8 @@ public final class CashierMath {
         return new Chips.Selection(counts).equals(selection);
     }
 
-    /** A chip value in German digits: {@code 1234567} -> {@code 1.234.567}. */
+    /** A chip value in German digits ({@link de.tigges.kaboofcasino.util.ChipText#number}): 1234567 -> 1.234.567. */
     public static String format(long value) {
-        String digits = Long.toString(Math.abs(value));
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i < digits.length(); i++) {
-            if (i > 0 && (digits.length() - i) % 3 == 0) {
-                b.append('.');
-            }
-            b.append(digits.charAt(i));
-        }
-        return (value < 0 ? "-" : "") + b;
+        return de.tigges.kaboofcasino.util.ChipText.number(value);
     }
 }

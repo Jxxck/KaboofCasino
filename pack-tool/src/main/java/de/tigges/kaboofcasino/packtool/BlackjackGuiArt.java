@@ -19,6 +19,9 @@ import java.awt.image.BufferedImage;
  * band (36..70) and the stake band (71..89) of the mod's band art, the timer bar slot (window 19..156 x 101..105) and
  * the mod's inventory slot art (window 7..168 x 139..214) under the vanilla inventory. The labels sit in the bands'
  * left part, the totals in their right part, so the 32 px card rows fit the 9 px above the chest at 427x240.
+ *
+ * <p>Both get the {@link InventoryLabelPlate} under vanilla's "Inventar" label (the bet view through
+ * {@link MachineGuiArt#compose}).
  */
 final class BlackjackGuiArt {
 
@@ -155,6 +158,7 @@ final class BlackjackGuiArt {
         // the inventory slot art of the bet screen (mod (30, 175) 162x54 and the hotbar (30, 233) 162x18)
         Images.copy(bet, 30, 175, 162, 54, out, 7 - ROUND_X, 139 - ROUND_Y);
         Images.copy(bet, 30, 233, 162, 18, out, 7 - ROUND_X, 197 - ROUND_Y);
+        InventoryLabelPlate.draw(out, ROUND_X, ROUND_Y);
         return out;
     }
 

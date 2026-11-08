@@ -81,7 +81,7 @@ class ShopDialogsTest {
     @Test
     void theDialogShowsAPageOfPrizesAndTheOffHandItem() {
         ShopDialogs.View v = view(shop(8), 0, "minecraft:diamond_sword");
-        assertEquals("Kasse – Preise", plain(v.title()));
+        assertEquals("Kasse – Prämien", plain(v.title()));
         long prizes = v.body().stream().filter(l -> l instanceof ShopDialogs.PrizeLine).count();
         assertEquals(ShopDialogs.PAGE_SIZE, prizes);
         assertEquals(3 * ShopDialogs.PAGE_SIZE + 2, v.inputs().size());
@@ -105,6 +105,24 @@ class ShopDialogsTest {
         // a full shop offers no ADD
         assertFalse(view(shop(CashierSettings.MAX_SHOP), 0, "minecraft:apple").buttons().stream()
                 .anyMatch(b -> b.action() == ShopClick.Action.ADD));
+    }
+
+    @Test
+    void anOffHandItemWithChipsSaysWhyItCannotBeAPrize() {
+        ShopDialogs.View none = view(shop(2), 0, null);
+        assertTrue(none.body().stream().anyMatch(l -> plain(l.text()).startsWith("Neue Prämie: Nimm ein Item")));
+        ShopDialogs.View refused = ShopDialogs.view(new ShopDialogs.Data(shop(2), 0, null, 0,
+                e -> Component.text(e.count() + "× Kuchen"), null, true), messages);
+        assertTrue(refused.body().stream().anyMatch(l -> plain(l.text()).equals(
+                "Chips und Casino-Items, auch in Kisten oder Bündeln, können keine Prämie sein.")));
+        assertFalse(refused.buttons().stream().anyMatch(b -> b.action() == ShopClick.Action.ADD));
+        assertEquals(none.inputs().size(), refused.inputs().size(), "no new-prize inputs");
+        // prices and limits in the list are formatted like every other number
+        ShopDialogs.View big = view(List.of(new ShopEntry("minecraft:cake", 1, 1_250_000, 1000)), 0, null);
+        assertTrue(big.body().stream().anyMatch(l -> plain(l.text()).endsWith("– 1.250.000 Chips, Limit 1.000")),
+                () -> big.body().stream().map(l -> plain(l.text())).toList().toString());
+        ShopDialogs.View one = view(List.of(new ShopEntry("minecraft:cake", 1, 1, 0)), 0, null);
+        assertTrue(one.body().stream().anyMatch(l -> plain(l.text()).endsWith("– 1 Chip, Limit 0")));
     }
 
     @Test

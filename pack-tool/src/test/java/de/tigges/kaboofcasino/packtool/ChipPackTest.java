@@ -5,11 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,8 +28,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The chips' pack part: an item definition, an {@code item/generated} model and a 16x16 icon per denomination (the
- * icon also an items-atlas sprite for the plugin's text sprites), every denomination its own colours, the mod's
- * colours really the mod's, the names in all 12 languages, byte-identical output, and all of it in the built pack.
+ * icon also an items-atlas sprite for the plugin's text sprites), the value badge only in the GUI case of the item
+ * definition and in front of the icon, every denomination its own colours and its own insert shape, the mod's colours
+ * really the mod's, the names in all 12 languages, byte-identical output, and all of it in the built pack.
  */
 class ChipPackTest {
 
@@ -61,9 +65,9 @@ class ChipPackTest {
     void everyChipHasAnItemDefinitionAModelAndAnIcon() {
         for (int d : ChipPack.DENOMINATIONS) {
             JsonObject definition = Json.parse(tree.get("assets/kaboofcasino/items/chip_" + d + ".json"));
-            JsonObject model = definition.getAsJsonObject("model");
-            assertEquals("minecraft:model", model.get("type").getAsString());
-            assertEquals("kaboofcasino:chip_" + d, model.get("model").getAsString());
+            JsonObject fallback = definition.getAsJsonObject("model").getAsJsonObject("fallback");
+            assertEquals("minecraft:model", fallback.get("type").getAsString());
+            assertEquals("kaboofcasino:chip_" + d, fallback.get("model").getAsString());
             JsonObject json = Json.parse(tree.get("assets/kaboofcasino/models/chip_" + d + ".json"));
             assertEquals("minecraft:item/generated", json.get("parent").getAsString());
             assertEquals("kaboofcasino:item/chip_" + d,
@@ -72,7 +76,8 @@ class ChipPackTest {
             // the id the plugin's text sprite names in the minecraft:items atlas
             assertEquals("kaboofcasino:item/chip_" + d, TexturePadding.atlasTextureId(texture(d)));
         }
-        assertEquals(6 * 3 + 12, tree.size(), tree.files().keySet().toString());
+        // per chip: icon, model, badge texture, badge model, item definition; 12 language files
+        assertEquals(6 * 5 + 12, tree.size(), tree.files().keySet().toString());
     }
 
     @Test
@@ -100,31 +105,274 @@ class ChipPackTest {
 
     @Test
     void theFaceIsASymmetricDisc() {
-        assertEquals(16, ChipPack.FACE.length);
-        for (int y = 0; y < 16; y++) {
-            assertEquals(16, ChipPack.FACE[y].length(), "row " + y);
-            for (int x = 0; x < 16; x++) {
-                char c = ChipPack.FACE[y].charAt(x);
-                assertTrue(".LODHBKIR".indexOf(c) >= 0, "role " + c);
-                // the disc spans 1..15 around (8, 8): shape, inserts and ring are mirror-symmetric
-                if (x >= 1 && y >= 1) {
-                    char mirrorX = ChipPack.FACE[y].charAt(16 - x);
-                    char mirrorY = ChipPack.FACE[16 - y].charAt(x);
-                    assertEquals(c == '.', mirrorX == '.', x + "," + y);
-                    assertEquals(c == '.', mirrorY == '.', x + "," + y);
-                    if (c == 'I' || c == 'R') {
-                        assertEquals(c, mirrorX, x + "," + y);
-                        assertEquals(c, mirrorY, x + "," + y);
+        for (int d : ChipPack.DENOMINATIONS) {
+            String[] face = ChipPack.face(d);
+            assertEquals(16, face.length);
+            for (int y = 0; y < 16; y++) {
+                assertEquals(16, face[y].length(), "row " + y);
+                assertEquals(16, ChipPack.INSERTS.get(d)[y].length(), d + " insert row " + y);
+                for (int x = 0; x < 16; x++) {
+                    char c = face[y].charAt(x);
+                    assertTrue(".LODHBKIR".indexOf(c) >= 0, "role " + c);
+                    assertTrue(ChipPack.BASE[y].charAt(x) != 'I', "the base has no inserts");
+                    // the disc spans 1..15 around (8, 8): shape, inserts and ring are mirror-symmetric
+                    if (x >= 1 && y >= 1) {
+                        char mirrorX = face[y].charAt(16 - x);
+                        char mirrorY = face[16 - y].charAt(x);
+                        assertEquals(c == '.', mirrorX == '.', d + ": " + x + "," + y);
+                        assertEquals(c == '.', mirrorY == '.', d + ": " + x + "," + y);
+                        if (c == 'I' || c == 'R') {
+                            assertEquals(c, mirrorX, d + ": " + x + "," + y);
+                            assertEquals(c, mirrorY, d + ": " + x + "," + y);
+                        }
+                    } else {
+                        assertEquals('.', c, "row 0 and column 0 stay clear");
                     }
-                } else {
-                    assertEquals('.', c, "row 0 and column 0 stay clear");
+                    // inserts only in the body band between rim and inlay ring
+                    if (c == 'I') {
+                        assertTrue("HBK".indexOf(ChipPack.BASE[y].charAt(x)) >= 0, d + ": " + x + "," + y);
+                        double r = Math.hypot(x - 8, y - 8);
+                        assertTrue(r > 3.5 && r < 6.5, d + ": insert at radius " + r);
+                    }
                 }
             }
+            assertTrue(String.join("", face).indexOf('R') >= 0, "an inlay ring");
+            assertTrue(String.join("", face).indexOf('I') >= 0, "inserts");
         }
-        // four inserts of 6 px each, an inlay ring
-        long inserts = String.join("", ChipPack.FACE).chars().filter(c -> c == 'I').count();
-        assertEquals(24, inserts);
-        assertTrue(String.join("", ChipPack.FACE).indexOf('R') >= 0);
+    }
+
+    /** Insert pixels of a denomination as a 16x16 mask. */
+    private static boolean[][] inserts(int d) {
+        boolean[][] mask = new boolean[16][16];
+        String[] face = ChipPack.face(d);
+        for (int y = 0; y < 16; y++) {
+            for (int x = 0; x < 16; x++) {
+                mask[y][x] = face[y].charAt(x) == 'I';
+            }
+        }
+        return mask;
+    }
+
+    /** The sizes of the 8-connected insert pieces, sorted: the shape of the inserts regardless of colour. */
+    private static List<Integer> pieces(boolean[][] mask) {
+        boolean[][] seen = new boolean[16][16];
+        List<Integer> out = new ArrayList<>();
+        for (int y = 0; y < 16; y++) {
+            for (int x = 0; x < 16; x++) {
+                if (!mask[y][x] || seen[y][x]) {
+                    continue;
+                }
+                int size = 0;
+                ArrayDeque<int[]> todo = new ArrayDeque<>();
+                todo.add(new int[] {x, y});
+                seen[y][x] = true;
+                while (!todo.isEmpty()) {
+                    int[] p = todo.poll();
+                    size++;
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            int nx = p[0] + dx;
+                            int ny = p[1] + dy;
+                            if (nx >= 0 && ny >= 0 && nx < 16 && ny < 16 && mask[ny][nx] && !seen[ny][nx]) {
+                                seen[ny][nx] = true;
+                                todo.add(new int[] {nx, ny});
+                            }
+                        }
+                    }
+                }
+                out.add(size);
+            }
+        }
+        out.sort(null);
+        return out;
+    }
+
+    /**
+     * Colour-blind players and the hand / ground (no badge there) tell the chips apart by their inserts: every
+     * denomination's insert mask differs from every other's in at least 10 pixels, and the pieces differ in number or
+     * size (the shapes, not just their places).
+     */
+    @Test
+    void everyDenominationHasItsOwnInsertShape() {
+        Map<Integer, List<Integer>> shapes = new HashMap<>();
+        for (int d : ChipPack.DENOMINATIONS) {
+            shapes.put(d, pieces(inserts(d)));
+        }
+        // 1: four small ticks; 5: four long caps; 25: eight short; 100: two wide stripes; 500: a dotted ring of 14;
+        // 1000: one full ring
+        assertEquals(List.of(2, 2, 2, 2), shapes.get(1));
+        assertEquals(List.of(10, 10, 10, 10), shapes.get(5));
+        assertEquals(List.of(2, 2, 2, 2, 3, 3, 3, 3), shapes.get(25));
+        assertEquals(List.of(19, 19), shapes.get(100));
+        assertEquals(14, shapes.get(500).size());
+        assertTrue(shapes.get(500).stream().allMatch(n -> n == 1));
+        assertEquals(List.of(28), shapes.get(1000));
+        for (int i = 0; i < ChipPack.DENOMINATIONS.length; i++) {
+            for (int j = i + 1; j < ChipPack.DENOMINATIONS.length; j++) {
+                int a = ChipPack.DENOMINATIONS[i];
+                int b = ChipPack.DENOMINATIONS[j];
+                assertFalse(shapes.get(a).equals(shapes.get(b)), a + " and " + b + " have the same insert shape");
+                boolean[][] ma = inserts(a);
+                boolean[][] mb = inserts(b);
+                int differ = 0;
+                for (int y = 0; y < 16; y++) {
+                    for (int x = 0; x < 16; x++) {
+                        differ += ma[y][x] != mb[y][x] ? 1 : 0;
+                    }
+                }
+                assertTrue(differ >= 10, a + " vs " + b + ": " + differ + " pixels differ");
+            }
+        }
+    }
+
+    /** The 26.3 client's {@code ItemDisplayContext} names (net.minecraft.world.item.ItemDisplayContext). */
+    private static final Set<String> DISPLAY_CONTEXTS = Set.of("none", "thirdperson_lefthand",
+            "thirdperson_righthand", "firstperson_lefthand", "firstperson_righthand", "head", "gui", "ground", "fixed",
+            "on_shelf");
+
+    private static List<String> whens(JsonObject select) {
+        List<String> out = new ArrayList<>();
+        for (JsonElement c : select.getAsJsonArray("cases")) {
+            JsonElement when = c.getAsJsonObject().get("when");
+            if (when.isJsonArray()) {
+                when.getAsJsonArray().forEach(w -> out.add(w.getAsString()));
+            } else {
+                out.add(when.getAsString());
+            }
+        }
+        return out;
+    }
+
+    /** Model ids an item model tree can draw. */
+    private static void modelIds(JsonElement node, List<String> out) {
+        if (node.isJsonObject()) {
+            JsonObject o = node.getAsJsonObject();
+            if (o.has("type") && o.get("type").getAsString().equals("minecraft:model")) {
+                out.add(o.get("model").getAsString());
+            }
+            o.entrySet().forEach(e -> modelIds(e.getValue(), out));
+        } else if (node.isJsonArray()) {
+            node.getAsJsonArray().forEach(e -> modelIds(e, out));
+        }
+    }
+
+    @Test
+    void theBadgeIsOnlyInTheGuiCase() {
+        for (int d : ChipPack.DENOMINATIONS) {
+            String chip = "kaboofcasino:chip_" + d;
+            JsonObject select = Json.parse(tree.get("assets/kaboofcasino/items/chip_" + d + ".json"))
+                    .getAsJsonObject("model");
+            assertEquals("minecraft:select", select.get("type").getAsString());
+            assertEquals("minecraft:display_context", select.get("property").getAsString());
+            assertTrue(DISPLAY_CONTEXTS.containsAll(whens(select)), whens(select).toString());
+            assertEquals(List.of("gui"), whens(select));
+            // the GUI: the chip, then the badge over it
+            JsonObject composite = select.getAsJsonArray("cases").get(0).getAsJsonObject().getAsJsonObject("model");
+            assertEquals("minecraft:composite", composite.get("type").getAsString());
+            List<String> gui = new ArrayList<>();
+            modelIds(composite, gui);
+            assertEquals(List.of(chip, chip + "_badge"), gui);
+            // every other context (hands, ground, item frame, shelf, head): the chip alone
+            List<String> elsewhere = new ArrayList<>();
+            modelIds(select.getAsJsonObject("fallback"), elsewhere);
+            assertEquals(List.of(chip), elsewhere);
+            assertTrue(tree.has("assets/kaboofcasino/models/chip_" + d + "_badge.json"));
+        }
+    }
+
+    /**
+     * The badge model is one flat quad in front of the icon's front face ({@code item/generated} layers span z
+     * 7.5..8.5), facing the viewer (south), its texels 1:1 over the icon's top-left corner, lit like the icon.
+     */
+    @Test
+    void theBadgeDrawsInFrontOfTheIcon() {
+        for (int d : ChipPack.DENOMINATIONS) {
+            JsonObject model = Json.parse(tree.get("assets/kaboofcasino/models/chip_" + d + "_badge.json"));
+            assertFalse(model.has("parent"));
+            assertFalse(model.has("display"), "no display transform, like item/generated in the GUI");
+            assertEquals("front", model.get("gui_light").getAsString());
+            JsonArray elements = model.getAsJsonArray("elements");
+            assertEquals(1, elements.size());
+            JsonObject element = elements.get(0).getAsJsonObject();
+            assertEquals(Set.of("south"), element.getAsJsonObject("faces").keySet());
+            double[] from = DecoDisplayBake.doubles(element.getAsJsonArray("from"));
+            double[] to = DecoDisplayBake.doubles(element.getAsJsonArray("to"));
+            assertEquals(from[2], to[2]);
+            assertTrue(from[2] > 8.5 && from[2] < 9.5, "z " + from[2]);
+            assertEquals(0, from[0]);
+            assertEquals(16, to[1]);
+            assertEquals(ChipPack.badgeWidth(d), to[0]);
+            assertEquals(16 - ChipPack.BADGE_H, from[1]);
+            double[] uv = DecoDisplayBake.doubles(element.getAsJsonObject("faces").getAsJsonObject("south")
+                    .getAsJsonArray("uv"));
+            assertArrayEquals(new double[] {0, 0, to[0] - from[0], to[1] - from[1]}, uv);
+            assertEquals("kaboofcasino:item/chip_" + d + "_badge", model.getAsJsonObject("textures").get("badge")
+                    .getAsString());
+            assertEquals("kaboofcasino:item/chip_" + d, model.getAsJsonObject("textures").get("particle")
+                    .getAsString());
+        }
+    }
+
+    /** Reads a badge back: cream numerals 1 px apart, a one-pixel outline, nothing else. */
+    @Test
+    void theBadgeShowsTheValueInOutlined3x5Numerals() throws IOException {
+        Map<Integer, String> expected = Map.of(1, "1", 5, "5", 25, "25", 100, "100", 500, "500", 1000, "1K");
+        for (int d : ChipPack.DENOMINATIONS) {
+            BufferedImage png = ImageIO.read(new ByteArrayInputStream(tree.get(
+                    "assets/kaboofcasino/textures/item/chip_" + d + "_badge.png")));
+            assertEquals(16, png.getWidth());
+            assertEquals(16, png.getHeight());
+            int w = ChipPack.badgeWidth(d);
+            assertTrue(w <= 16);
+            StringBuilder read = new StringBuilder();
+            for (int i = 0; 1 + 4 * i + 3 <= w - 1; i++) {
+                String[] cell = new String[5];
+                for (int y = 0; y < 5; y++) {
+                    StringBuilder row = new StringBuilder();
+                    for (int x = 0; x < 3; x++) {
+                        row.append(png.getRGB(1 + 4 * i + x, 1 + y) == ChipPack.BADGE_CREAM ? '#' : '.');
+                    }
+                    cell[y] = row.toString();
+                }
+                for (Map.Entry<Character, String[]> n : ChipPack.NUMERALS.entrySet()) {
+                    if (Arrays.equals(n.getValue(), cell)) {
+                        read.append(n.getKey());
+                    }
+                }
+            }
+            assertEquals(expected.get(d), read.toString());
+            for (int y = 0; y < 16; y++) {
+                for (int x = 0; x < 16; x++) {
+                    int p = png.getRGB(x, y);
+                    boolean nearCream = false;
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            int nx = x + dx;
+                            int ny = y + dy;
+                            nearCream |= nx >= 0 && ny >= 0 && nx < 16 && ny < 16 && (dx != 0 || dy != 0)
+                                    && png.getRGB(nx, ny) == ChipPack.BADGE_CREAM;
+                        }
+                    }
+                    boolean inBadge = x < w && y < ChipPack.BADGE_H;
+                    if (p == ChipPack.BADGE_CREAM) {
+                        assertTrue(inBadge && x > 0 && y > 0 && x < w - 1 && y < ChipPack.BADGE_H - 1);
+                    } else if (nearCream) {
+                        assertEquals(ChipPack.BADGE_OUTLINE, p, d + ": outline at " + x + "," + y);
+                    } else {
+                        assertEquals(0, p >>> 24, d + ": clear at " + x + "," + y);
+                    }
+                }
+            }
+            // the top-left corner is the badge's
+            assertEquals(ChipPack.BADGE_OUTLINE, png.getRGB(1, 0), d + "");
+        }
+        assertEquals(0xFFF3E7BF, ChipPack.BADGE_CREAM);
+        for (String[] n : ChipPack.NUMERALS.values()) {
+            assertEquals(5, n.length);
+            Arrays.stream(n).forEach(row -> assertEquals(3, row.length()));
+        }
+        assertTrue(colours("assets/roulettecasino/textures/gui/roulette.png").contains(ChipPack.BADGE_OUTLINE),
+                "the outline is the mod's chip black");
     }
 
     @Test

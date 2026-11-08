@@ -20,7 +20,8 @@ import java.util.List;
  *  Preise    9-44 the prizes of a page, 45/46 pages, 48-51 KAUFEN, 53 the player's chips (row A), 52 the price (B)
  * </pre>
  * Numbers are drawn right-aligned in ten cells of 6 px (a 2 px gap after every third digit), each cell a
- * {@code select} on its custom model data string ("0".."9", anything else blank).
+ * {@code select} on its custom model data string ("0".."9", anything else blank); strings 10, 11 and 12 are the gaps
+ * after cells 2, 5 and 8 ("." a thousands dot, anything else blank).
  */
 final class CashierGui {
 
@@ -72,6 +73,9 @@ final class CashierGui {
     static final int NUM_RIGHT = DerbyGuiArt.RIGHT_X + DerbyGuiArt.RIGHT_W - 8;
     static final int NUM_CELLS = 10;
     static final int NUM_H = 9;
+    /** The thousands gaps: custom model data strings {@code NUM_CELLS + g} (g = 0, 1, 2), the gap after cell 3g + 2. */
+    static final int NUM_GAPS = 3;
+    static final String DOT = ".";
 
     private CashierGui() {
     }
@@ -79,6 +83,14 @@ final class CashierGui {
     /** Window x of digit cell {@code k} (0 = the rightmost). */
     static int cellX(int k) {
         return NUM_RIGHT - 6 * (k + 1) - 2 * (k / 3);
+    }
+
+    /**
+     * Window x of the dot in gap {@code g} (between cells 3g + 3 and 3g + 2): the first of the gap's two columns, so
+     * digit, shadow column, dot, shadow column, digit like the client's "1.287" ('.' advances 2).
+     */
+    static int gapX(int g) {
+        return cellX(3 * g + 2) - 2;
     }
 
     /** The left edge of the widest number. */
@@ -132,7 +144,8 @@ final class CashierGui {
 
     /**
      * Both felt panels exactly as the derby cuts them (the left one with its gold box around the chest grid), the
-     * player inventory's slot frames and the receipt's divider; the grid's frames come with each tab's overlay.
+     * player inventory's slot frames, the {@link InventoryLabelPlate} under "Inventar" and the receipt's divider; the
+     * grid's frames come with each tab's overlay.
      */
     static BufferedImage background(BufferedImage feltSource) {
         BufferedImage felt = Images.argb(feltSource);
@@ -162,6 +175,7 @@ final class CashierGui {
         }
         g.fill(DerbyGuiArt.RIGHT_X + 8, DIVIDER_Y, DerbyGuiArt.RIGHT_X + DerbyGuiArt.RIGHT_W - 8, DIVIDER_Y + 1,
                 DerbyGuiArt.DIVIDER);
+        InventoryLabelPlate.draw(out, DerbyGuiArt.ART_X, DerbyGuiArt.ART_Y);
         return out;
     }
 
@@ -286,7 +300,9 @@ final class CashierGui {
     /**
      * The two number displays ({@code num_a} from slot 53 on row A, {@code num_b} from slot 52 on row B): per cell a
      * select on custom model data string {@code k} whose digit model holds the digit and a transparent spacer quad
-     * over the whole display (so every case is wider than a slot and drawn oversized).
+     * over the whole display (so every case is wider than a slot and drawn oversized); then per thousands gap a select
+     * on string {@code NUM_CELLS + g} whose "." model holds the dot (the client's '.' in the digits' cream with its
+     * shadow, on the baseline) and the spacer.
      */
     static void numbers(PackTree tree, TextGlyphs text) {
         for (int d = 0; d < 10; d++) {
@@ -294,6 +310,9 @@ final class CashierGui {
             BlackjackGuiText.draw(img, text, Integer.toString(d), 0, 0, DerbyGuiArt.CREAM, false, true);
             texture(tree, "digit_" + d, img);
         }
+        BufferedImage dot = Images.blank(2, NUM_H);
+        BlackjackGuiText.draw(dot, text, DOT, 0, 0, DerbyGuiArt.CREAM, false, true);
+        texture(tree, "dot", dot);
         int width = NUM_RIGHT - numLeft();
         texture(tree, "spacer", Images.blank(width, NUM_H)); // one texel per pixel like every picture
         for (String display : new String[] {"a", "b"}) {
@@ -312,6 +331,13 @@ final class CashierGui {
                     models.add(plain(name));
                 }
                 cells.add(DerbyGuiItems.select(k, values, models));
+            }
+            for (int g = 0; g < NUM_GAPS; g++) {
+                String name = "num_" + display + "_gap_" + g;
+                model(tree, name, slot, List.of(
+                        new BlackjackGuiItems.Quad(TEXTURE_ID + "spacer", numLeft(), y, width, NUM_H, -1, 7.9),
+                        BlackjackGuiItems.Quad.of(TEXTURE_ID + "dot", gapX(g), y, 2, NUM_H)));
+                cells.add(DerbyGuiItems.select(NUM_CELLS + g, List.of(DOT), List.of(plain(name))));
             }
             item(tree, "num_" + display, DerbyGuiItems.composite(cells));
         }

@@ -9,6 +9,7 @@ import de.tigges.kaboofcasino.wager.Chips;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import de.tigges.kaboofcasino.util.ChipText;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.UUID;
@@ -77,7 +78,7 @@ final class ChangeMenu extends CashierMenu {
             if (selected[k] > 0) {
                 final int row = k;
                 set(CashierView.SELECTED_FIRST + k, Button.of(chipIcon(d, selected[k], null, m.lines(
-                        Msg.CASHIER_SELECTED_LORE, Messages.text("count", Long.toString(selected[k])))),
+                        Msg.CASHIER_SELECTED_LORE, Messages.text("count", ChipText.number(selected[k])))),
                         (p, click) -> selectedClicked(p, row, click)));
             }
             ItemStack icon = chipIcon(d, 1, m.render(Msg.CASHIER_TARGET, Messages.text("denomination",
@@ -106,12 +107,12 @@ final class ChangeMenu extends CashierMenu {
         for (int k = 0; k < row.length; k++) {
             if (row[k] > 0) {
                 set(CashierView.RESULT_FIRST + k, Button.display(chipIcon(CashierView.ROW_DENOMINATIONS[k], row[k],
-                        null, m.lines(Msg.CASHIER_CHIPS_LORE, Messages.text("count", Long.toString(row[k]))))));
+                        null, m.lines(Msg.CASHIER_CHIPS_LORE, Messages.text("count", ChipText.number(row[k]))))));
             }
         }
         clearButton(() -> java.util.Arrays.fill(selected, 0));
         commit("exchange", changes, m.render(Msg.CASHIER_EXCHANGE_BUTTON), changes ? m.lines(Msg.CASHIER_CHANGE_LORE,
-                Messages.text("value", CashierMath.format(value)), Messages.text("denomination", Integer.toString(t)))
+                Messages.text("value", ChipText.chips(value)), Messages.text("denomination", Integer.toString(t)))
                 : m.lines(Msg.CASHIER_NOTHING_LORE), (p, click) -> change(p));
         number(true, value);
     }

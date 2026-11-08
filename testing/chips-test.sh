@@ -95,6 +95,7 @@ poker) # 25 + 5 + 1 = 31 ante, deal, call (2 x 31 more, paid by value)
   ;;
 derby) # a group race: Alice 30 on lane 0, Bob 55 on lane 1
   chips Alice; chips Bob; a0=$(value Alice); b0=$(value Bob); dn=$($S/dk.sh nover)
+  ma=$(wc -l < "$T/out/bots/Alice.log"); mb=$(wc -l < "$T/out/bots/Bob.log")
   q "tp Alice 81.5 -57 60.5 180 0" "tp Bob 80.5 -57 60.5 180 0"; sleep 0.8
   $S/dk.sh open Alice >/dev/null; b Alice click 9; b Alice click 81 right; b Alice click 82 right; $S/dk.sh group Alice
   sleep 1
@@ -105,6 +106,8 @@ derby) # a group race: Alice 30 on lane 0, Bob 55 on lane 1
   sleep 3; b Alice close; b Bob close
   a1=$(value Alice); b1=$(value Bob); echo "  Alice $a0 -> $a1 ($((a1 - a0))), Bob $b0 -> $b1 ($((b1 - b0)))"
   grep -E "settled .*lane=" "$L" | tail -2 | sed -E 's/^.*\[KaboofCasino\] //' | cut -c1-200
+  echo "  Alice saw: $(tail -n +"$ma" "$T/out/bots/Alice.log" | grep -E 'ACTIONBAR.*erhalten' | tail -1 | cut -c32-120)"
+  echo "  Bob saw:   $(tail -n +"$mb" "$T/out/bots/Bob.log" | grep -E 'ACTIONBAR.*erhalten' | tail -1 | cut -c32-120)"
   ;;
 *) echo "usage: chips-test.sh slot|wheel|plinko|roulette|blackjack|poker|derby"; exit 2;;
 esac

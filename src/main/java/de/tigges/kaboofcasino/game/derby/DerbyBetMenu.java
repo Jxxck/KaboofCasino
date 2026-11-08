@@ -162,7 +162,7 @@ public final class DerbyBetMenu extends StakeMenu {
         if (de.tigges.kaboofcasino.wager.Chips.isValue(stake.item())) {
             return de.tigges.kaboofcasino.game.ChipStakes.valueIcon(stake.count(), m.render(Msg.CHIPS_ESCROW,
                     de.tigges.kaboofcasino.config.Messages.text("value",
-                            de.tigges.kaboofcasino.util.ItemNames.value(stake.count()))), List.of());
+                            de.tigges.kaboofcasino.util.ChipText.chips(stake.count()))), List.of());
         }
         return DisplayCopies.of(PlayerAccount.material(stake.item()), (int) Math.min(99, stake.count()), null,
                 m.lines(Msg.GUI_DERBY_CONFIRMED));

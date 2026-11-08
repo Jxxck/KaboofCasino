@@ -6,6 +6,7 @@ import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.machine.CasinoItem;
 import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.Recipes;
+import de.tigges.kaboofcasino.util.ChipText;
 import de.tigges.kaboofcasino.util.Keys;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.Chips;
@@ -52,6 +53,23 @@ public final class CashierService {
 
     public CashierSettings settings() {
         return ctx.config().get().cashier();
+    }
+
+    private CashierSettings shopOf;
+    private List<ShopEntry> shop = List.of();
+
+    /**
+     * The prizes players see: {@code shop.items} without entries whose prize holds chips or casino items in a
+     * container or bundle (each logged WARN once). Rebuilt when the config changes (reload, the croupier's hand).
+     */
+    public List<ShopEntry> shop() {
+        CashierSettings now = settings();
+        if (now != shopOf) {
+            Messages m = ctx.messages().get();
+            shop = now.shop().stream().filter(e -> !Prizes.refused(e, m)).toList();
+            shopOf = now;
+        }
+        return shop;
     }
 
     public CashierController controller(Machine machine) {
@@ -125,9 +143,9 @@ public final class CashierService {
                     done.value(), done.owed(), "", ctx.clock().getAsLong()));
             Messages m = ctx.messages().get();
             m.send(player, Msg.CASHIER_EXCHANGED, Messages.component("items", items(done.taken())),
-                    Messages.text("value", CashierMath.format(done.value())));
+                    Messages.text("value", ChipText.chips(done.value())));
             if (done.owed() > 0) {
-                m.send(player, Msg.CASHIER_EXCHANGED_OWED, Messages.text("owed", CashierMath.format(done.owed())));
+                m.send(player, Msg.CASHIER_EXCHANGED_OWED, Messages.text("owed", ChipText.chips(done.owed())));
             }
             success(player);
         } else if (outcome instanceof Cashbox.Refused refused) {
@@ -148,7 +166,7 @@ public final class CashierService {
                         + "owed", player.getName(), done.owed());
             }
             ctx.messages().get().send(player, Msg.CASHIER_CHANGED, Messages.text("value",
-                    CashierMath.format(done.value())));
+                    ChipText.chips(done.value())));
             success(player);
         } else if (outcome instanceof Cashbox.Refused refused) {
             refuse(player, refused);
@@ -177,17 +195,17 @@ public final class CashierService {
                             + entry.limit() : ""), ctx.clock().getAsLong()));
             if (done.goodsLeft() > 0 || done.owed() > 0) {
                 Log.critical("CASHIER_ROOM_CHECK", "purchase of {} by {}: {} prize item(s) and {} chips did not fit "
-                        + "after the room check (prize not delivered: {} x {})", entry.item(), player.getName(),
-                        done.goodsLeft(), done.owed(), done.goodsLeft(), entry.item());
+                        + "after the room check (the prize rest lies at his feet, locked to him; the chips are "
+                        + "owed)", entry.item(), player.getName(), done.goodsLeft(), done.owed());
             }
             m.send(player, Msg.SHOP_BOUGHT, Messages.component("item", Component.text(entry.count() + "× ")
-                    .append(one.get().effectiveName())), Messages.text("price", CashierMath.format(entry.price())));
+                    .append(one.get().effectiveName())), Messages.text("price", ChipText.chips(entry.price())));
             success(player);
         } else if (outcome instanceof Cashbox.Refused refused) {
             switch (refused.refusal()) {
                 case LIMIT -> m.actionBar(player, Msg.SHOP_LIMIT);
                 case NOT_ENOUGH -> m.actionBar(player, Msg.SHOP_NOT_ENOUGH, Messages.text("price",
-                        CashierMath.format(entry.price())));
+                        ChipText.chips(entry.price())));
                 case NO_ROOM -> m.actionBar(player, Msg.SHOP_NO_ROOM);
                 default -> refuse(player, refused);
             }

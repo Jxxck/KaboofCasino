@@ -98,7 +98,10 @@ public final class Cashbox {
         /** Empty storage slots the prize needs once its similar partial stacks are topped up; changes nothing. */
         int slotsNeeded();
 
-        /** Puts the prize into the storage slots; returns how many items did not fit (0 after the room check). */
+        /**
+         * Puts the prize into the storage slots; returns how many items did not fit (0 after the room check; the
+         * Bukkit layer drops such a rest at the player's feet, locked to him, and logs it: never lost).
+         */
         int give();
     }
 

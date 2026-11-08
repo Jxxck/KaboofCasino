@@ -104,7 +104,7 @@ final class SlotMenu extends GameMenu {
             button = DisplayCopies.model(selection == null ? "kaboofcasino:gui/spin_off" : "kaboofcasino:gui/spin_on",
                     m.render(Msg.GUI_SLOT_SPIN), m.lines(Msg.CHIPS_SLOT_SPIN_LORE,
                             de.tigges.kaboofcasino.config.Messages.text("max",
-                                    ItemNames.value(ctx.config().get().bets().maxStake()))));
+                                    de.tigges.kaboofcasino.util.ChipText.chips(ctx.config().get().bets().maxStake()))));
         }
         ItemStack blank = DisplayCopies.model("kaboofcasino:gui/blank", m.render(owed ? Msg.GUI_SLOT_COLLECT
                 : Msg.GUI_SLOT_SPIN), List.of());

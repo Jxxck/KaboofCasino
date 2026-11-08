@@ -8,6 +8,7 @@ import de.tigges.kaboofcasino.gui.DisplayCopies;
 import de.tigges.kaboofcasino.wager.ChipItems;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
+import de.tigges.kaboofcasino.util.ChipText;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -28,6 +29,9 @@ import org.bukkit.inventory.ItemStack;
  * first), the receipt its value; WECHSELN exchanges in one tick ({@link Cashbox#exchange}).
  */
 final class ExchangeMenu extends CashierMenu {
+
+    /** The value the WECHSELN button showed at the last render: the exchange must give exactly that. */
+    private long shownValue;
 
     private final Map<String, Long> selection = new LinkedHashMap<>();
 
@@ -61,6 +65,7 @@ final class ExchangeMenu extends CashierMenu {
         Messages m = messages();
         CashierSettings s = settings();
         long value = Math.max(0, CashierMath.value(amounts(), s::rate));
+        shownValue = value;
         int slot = CashierView.TRAY_FIRST;
         for (Map.Entry<String, Long> e : selection.entrySet()) {
             String item = e.getKey();
@@ -70,21 +75,21 @@ final class ExchangeMenu extends CashierMenu {
                 continue;
             }
             ItemStack icon = DisplayCopies.of(material, (int) Math.min(99, count), null, m.lines(
-                    Msg.CASHIER_ORE_LORE, Messages.text("count", Long.toString(count)), Messages.text("value",
-                            CashierMath.format(count * s.rate(item).orElse(0)))));
+                    Msg.CASHIER_ORE_LORE, Messages.text("count", ChipText.number(count)), Messages.text("value",
+                            ChipText.chips(count * s.rate(item).orElse(0)))));
             set(slot++, Button.of(icon, (p, click) -> trayClicked(p, item, click)));
         }
         long[] row = CashierView.breakdownRow(value);
         for (int k = 0; k < row.length; k++) {
             if (row[k] > 0) {
                 set(CashierView.PREVIEW_FIRST + k, Button.display(chipIcon(CashierView.ROW_DENOMINATIONS[k], row[k],
-                        null, m.lines(Msg.CASHIER_CHIPS_LORE, Messages.text("count", Long.toString(row[k]))))));
+                        null, m.lines(Msg.CASHIER_CHIPS_LORE, Messages.text("count", ChipText.number(row[k]))))));
             }
         }
         set(CashierView.RATES_BOOK, Button.display(ratesBook()));
         clearButton(selection::clear);
         commit("exchange", value > 0, m.render(Msg.CASHIER_EXCHANGE_BUTTON), value > 0
-                ? m.lines(Msg.CASHIER_EXCHANGE_LORE, Messages.text("value", CashierMath.format(value)))
+                ? m.lines(Msg.CASHIER_EXCHANGE_LORE, Messages.text("value", ChipText.chips(value)))
                 : m.lines(Msg.CASHIER_NOTHING_LORE), (p, click) -> exchange(p));
         number(true, value);
     }
@@ -95,7 +100,7 @@ final class ExchangeMenu extends CashierMenu {
         List<Component> lore = new ArrayList<>();
         for (CashierSettings.Rate r : settings().rates()) {
             lore.add(m.render(Msg.CASHIER_RATE_LINE, Messages.component("item", CashierService.name(r.item())),
-                    Messages.text("value", CashierMath.format(r.value()))));
+                    Messages.text("value", ChipText.chips(r.value()))));
         }
         lore.addAll(m.lines(Msg.CASHIER_RATES_LORE));
         return DisplayCopies.of(Material.BOOK, 1, m.render(Msg.CASHIER_RATES), lore);
@@ -156,6 +161,14 @@ final class ExchangeMenu extends CashierMenu {
             return;
         }
         prune(player);
+        long now = Math.max(0, CashierMath.value(amounts(), settings()::rate));
+        if (now != shownValue) {
+            // a rate changed (reload, config edit) or the ores did since the button showed its value: no surprise
+            messages().actionBar(player, Msg.CASHIER_RATES_CHANGED);
+            refused(player);
+            render();
+            return;
+        }
         Cashbox.Outcome outcome = controller.service().exchange(player, controller.machine(), amounts());
         if (outcome instanceof Cashbox.Exchanged) {
             selection.clear();

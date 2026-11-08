@@ -428,7 +428,8 @@ Look:
 - GUI: 16 felt rows removed, the bet slot 4 px higher, the left panel 19 px and the payout panel 15 px narrower, the
   panels joined; the mod's hover lines on paytable rows are missing, the "Bettable items" list is a book item tooltip,
   the SPIN button has no hover state, labels are German literals from de_de.json, the vanilla "Inventar" label is
-  drawn by the client in its own colour.
+  drawn by the client in its own colour (#404040; since the step 9 fix round it sits on a light cream plate in every
+  felt title art, `InventoryLabelPlate`, window x 5..59, y 126..137).
 - The slot menu closes itself after 120 s without a spin (`gui.idle-close-seconds`) and in more danger situations
   than the mod knows (any targeting mob, vehicles, levitation, drift, water); the mod's screen stays open.
 
@@ -1229,21 +1230,24 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     sweep, MenuSafety and range as the games): **Wechseln** (inventory clicks select plain ores that have a rate:
     left the stack, right +1, shift all; selection in 9-26, the chips you get in 30-35, rates book 45, clear 46,
     WECHSELN 48-51, value 53), **Kleingeld** (selected chips 12-17, target 21-26: 1000 ... 1, default one step below
-    the largest selected chip; result 30-35), **Preise** (36 prizes a page in 9-44 with price and "Heute noch x von y",
+    the largest selected chip; result 30-35), **Prämien** (36 prizes a page in 9-44 with price and "Heute noch x von y",
     pages 45/46, KAUFEN 48-51, the player's chips 53, the price 52). Receipt numbers are 10-digit picture items.
   - Atomic (`Cashbox`, on MAIN inside the click, every check and plan before the first change): **exchange** = rates,
     ledger read, counts, `planTake`; then take the ores, give the chip value largest first, one ledger write only if
     something did not fit (owed chips, WARN log; delivered by the owed timer); **change** = `planTake`, room check
     (`Account.spareSlots`, Bukkit's `addItem` rules) or refused; then take and give (value-neutral; the rest of a value
     not divisible by the target comes in the next smaller chips); **buy** = daily limit, ledger read, `planPay`, room
-    for the prize and the change or refused ("Kein Platz im Inventar für den Preis und das Wechselgeld."); then pay,
+    for the prize and the change or refused ("Kein Platz im Inventar für die Prämie und das Wechselgeld."); then pay,
     give the prize, write the day's count. Inventory, ledger and daily counts are all in the player file: a crash rolls
-    the whole transaction back or keeps it. No way from chips back to ores; prizes are never owed or dropped.
+    the whole transaction back or keeps it. No way from chips back to ores. Prizes are never owed (the owed list holds
+    only plain items and chip values, not items with components); if the room check was ever wrong, the rest of the
+    prize is dropped at the player's feet, locked to him (fix round).
   - Shop (`shop.items`, a list so a deleted entry never comes back): `item` = a casino id (built fresh, names follow
     the messages) or `id[components]` (`ItemFactory.createItemStack`, written with `ItemMeta.getAsComponentString`),
     `count` 1-64, `price` 1-100 000 000 chips, `limit` 0-1000 per player and Berlin day (0 = none; counts in the
     player PDC `kaboofcasino:shop_limits`, keyed by item and count so a new price keeps the day's count). Chips are
-    never prizes. Default: chair 64, stool 48, chip pile 32, small sign 96, bottles 24, coupes 24.
+    never prizes, nor anything holding chips or casino items (fix round). Default: chair 64, stool 48, chip pile 32,
+    small sign 96, bottles 24, coupes 24.
   - Admin (croupier's hand on a cashier, creative + `kaboofcasino.admin`): a dialog with six prizes a page (icon, price,
     limit, remove), the off-hand item as a new prize with its own price and limit, Speichern / Nebenhand hinzufügen /
     pages / Fertig (ESC applies valid inputs); one click per tick, the hand's 20 edits a second; if the list changed
@@ -1256,6 +1260,43 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     thread (not authoritative).
 - **RoundLog** (C4 data): chip rounds are rows with `stake_item = payout_item = kaboofcasino:chips` and the values in
   `stake_count`/`payout_count`, with game, player and times as before; ore rounds of 0.8.0 keep their items.
+
+#### Step 9 fix round (reviews of 43d9a57..ea1af1b)
+
+- **Shop double-buy**: after a purchase `ShopMenu` clears the selection, and a second KAUFEN within 10 ticks
+  (`BUY_GAP_TICKS`, server ticks) is ignored, so a fast double click buys once (bot test: one `cashier BUY` row).
+- **Prize rest**: `Prizes.goods().give()` drops what did not fit at the player's feet (`World.dropItem` with owner and
+  thrower = the player, no mob pickup, no despawn, no pickup delay) and logs a WARN; with the room check this never
+  happens, it is the safety net. The owed list is not used: it holds plain items and chip values only, a prize can carry
+  components.
+- **Prize contents**: a prize whose `minecraft:container` or `minecraft:bundle_contents` holds a chip or any casino item,
+  at any depth (deeper than 8 counts as such), is refused (`Prizes.smuggles`): the admin dialog shows "Chips und
+  Casino-Items, auch in Kisten oder Bündeln, können keine Prämie sein." instead of the new-prize line, the add action
+  refuses it with the same text, and such a `shop.items` entry is skipped with a WARN (`CashierService.shop()`, the
+  filtered list per config).
+- **Stale rate**: the exchange tab remembers the value its WECHSELN button showed; if the rates or the ores give another
+  value at the click, nothing is exchanged ("Die Kurse oder deine Erze haben sich inzwischen geändert. Schau noch
+  mal.") and the menu shows the current value.
+- **Fire-proof chips**: chips carry `minecraft:damage_resistant {types: "#minecraft:is_fire"}` (no chips existed on
+  live, so all chips stack alike): they float in lava and survive fire like netherite.
+- **Texts**: goods are "Prämien" (tab, head, help, dialog title "Kasse – Prämien", messages), "Preis" is only the cost;
+  every chip amount and count in a text goes through `util/ChipText` (dot grouping, "1 Chip" / "1.250 Chips";
+  `CashierMath.format` and `ItemNames.value` delegate to it): menus, messages, admin errors, `/casino stats`; the mod's tone ("Klicke ... an", "Wähle",
+  "Umschalt", "Schaffe erst Platz.", "Rest in kleineren Chips."); the derby says "<n> Chips erhalten" for chip
+  payouts (`chips.derby-received`) and keeps the mod's "<n> Gegenstände erhalten" for ore records; the "Mit Chips
+  spielen" book adds "Gewinne und Erstattungen kommen in möglichst großen Chips zurück."; the guide's machines spread
+  has a plugin note about chips and the cashier (`guide.note-chips`).
+- **Receipt dots**: `CashierView.digits` sends three more custom-model-data strings after the ten digit cells, one per
+  thousands gap (`CashierView.GAPS`), "." where more digits follow; `CashierGui` draws the vanilla '.' (with its
+  shadow) there (models `num_<a|b>_gap_<g>`, texture `dot`), spaced like the client's "1.287".
+- **Chip readability** (`ChipPack`): the chip item definitions are `select display_context`: in `gui` a `composite` of
+  the chip and a value badge ("1", "5", "25", "100", "500", "1K", 3x5 numerals in cream #F3E7BF with a #20252C
+  outline, top left, models `chip_<n>_badge`); everywhere else (hand, ground, frames) the chip alone. Each
+  denomination also has its own edge-insert pattern (1: four short ticks, 5: four long caps, 25: eight short pieces,
+  100: two wide stripes, 500: a dotted ring, 1000: a solid ring), so chips differ without colour in hand and on the
+  ground too. Deterministic as before (pack-tool tests).
+- **"Inventar" label**: a light plate (gold border, cream fill) under the vanilla label in all ten felt title arts
+  (slot, wheel, Plinko, roulette, blackjack bet/round, poker bet/round, derby, cashier).
 
 ## 11. Testing
 

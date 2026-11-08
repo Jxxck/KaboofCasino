@@ -61,6 +61,8 @@ public final class CashierView {
     public static final int PAGE_SIZE = 36;
     /** Digit cells of a number display. */
     public static final int CELLS = 10;
+    /** Thousands gaps of a number display (between the digit groups of its {@link #CELLS} cells). */
+    public static final int GAPS = 3;
 
     private CashierView() {
     }
@@ -82,9 +84,11 @@ public final class CashierView {
     }
 
     /**
-     * The custom model data strings of a number display: string {@code k} is the {@code k}-th digit from the right
-     * ("0".."9"), "" for an empty cell. A value with more than {@link #CELLS} digits shows its last ten (never in
-     * practice: the shop's prices end at 10^8).
+     * The custom model data strings of a number display: string {@code k} (0..{@link #CELLS}-1) is the {@code k}-th
+     * digit from the right ("0".."9"), "" for an empty cell; then one string per thousands gap ({@link #GAPS}: after
+     * the 3rd, 6th and 9th digit from the right), "." where more digits follow, so "1.234.567" reads like every other
+     * number in the casino ({@code ChipText}). A value with more than {@link #CELLS} digits shows its last ten (never
+     * in practice: the shop's prices end at 10^8).
      */
     public static List<String> digits(long value) {
         String s = Long.toString(Math.max(0, value));
@@ -92,8 +96,12 @@ public final class CashierView {
         for (int k = 0; k < CELLS; k++) {
             out.add(k < s.length() ? String.valueOf(s.charAt(s.length() - 1 - k)) : "");
         }
+        for (int g = 1; g <= GAPS; g++) {
+            out.add(s.length() > 3 * g ? "." : "");
+        }
         return out;
     }
+
 
     /** Pages of a shop with {@code entries} prizes (at least one). */
     public static int pages(int entries) {

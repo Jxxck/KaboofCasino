@@ -19,6 +19,7 @@ import java.util.List;
  *       payout panel loses the plain columns the game names (its bottom lettering is pasted back centred).</li>
  * </ul>
  * The play button (drawn by the mod's code, not part of the texture) becomes a 72x14 item over grid slot (4, 5).
+ * Every composite gets the {@link InventoryLabelPlate} under vanilla's "Inventar" label.
  */
 final class MachineGuiArt {
 
@@ -138,6 +139,7 @@ final class MachineGuiArt {
         }
         int tx = panelFrom() + (panelW - text[2]) / 2;
         Images.copy(mod, text[0], text[1], text[2], text[3], out, tx, ty);
+        InventoryLabelPlate.draw(out, ART_X, ART_Y);
         return out;
     }
 
