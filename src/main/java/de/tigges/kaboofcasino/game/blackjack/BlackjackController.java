@@ -10,6 +10,7 @@ import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.gui.Usability;
 import de.tigges.kaboofcasino.machine.Heartbeat;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.LedgerCodec;
@@ -396,7 +397,7 @@ public final class BlackjackController extends MachineController {
         if (shoe == null) {
             shoe = new BlackjackShoe(new ShoeRandom(ctx.random().nextLong()));
         }
-        int bias = ctx.config().get().blackjack().bias();
+        int bias = MachineSettings.bias(ctx.config().get(), machine);
         long seed = ctx.random().nextLong();
         // the live round shuffles in its constructor when the shoe is low: the copy does the same with the same random
         BlackjackShoe sim = shoe.copy();

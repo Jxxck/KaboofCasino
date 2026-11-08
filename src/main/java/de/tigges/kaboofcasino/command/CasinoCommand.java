@@ -52,6 +52,8 @@ public final class CasinoCommand implements BasicCommand {
     }
 
     /** @param adminStatus status lines for admins under {@code /casino} and after {@code /casino reload} (full deco) */
+    private de.tigges.kaboofcasino.music.MusicOptOut musicOptOut;
+
     public CasinoCommand(CasinoContext ctx, RoundLog log, Reloader reloader,
                          java.util.function.Supplier<Component> adminStatus) {
         this.ctx = ctx;
@@ -81,6 +83,7 @@ public final class CasinoCommand implements BasicCommand {
         switch (sub) {
             case "" -> info(sender);
             case "credits" -> m.lines(Msg.COMMAND_CREDITS).forEach(sender::sendMessage);
+            case "musik", "music" -> music(sender, args);
             case "stats", "statistik" -> stats(sender);
             case "abholen", "collect" -> {
                 if (sender instanceof Player p) {
@@ -95,6 +98,26 @@ public final class CasinoCommand implements BasicCommand {
             });
             default -> m.send(sender, Msg.COMMAND_USAGE);
         }
+    }
+
+    /** {@code /casino musik aus|an}: the player's lounge-music choice, applied from his next login. */
+    private void music(CommandSender sender, String[] args) {
+        Messages m = ctx.messages().get();
+        String what = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
+        if (!(sender instanceof Player p) || musicOptOut == null
+                || !(what.equals("aus") || what.equals("an") || what.equals("off") || what.equals("on"))) {
+            m.send(sender, Msg.COMMAND_MUSIC_USAGE);
+            return;
+        }
+        boolean off = what.equals("aus") || what.equals("off");
+        musicOptOut.set(p, off);
+        m.send(p, off ? Msg.COMMAND_MUSIC_OFF : Msg.COMMAND_MUSIC_ON);
+        de.tigges.kaboofcasino.util.Log.get().info("{} turned the lounge music {}", p.getName(), off ? "off" : "on");
+    }
+
+    /** The music opt-out store ({@code /casino musik}); null = the subcommand only shows its usage. */
+    public void musicOptOut(de.tigges.kaboofcasino.music.MusicOptOut musicOptOut) {
+        this.musicOptOut = musicOptOut;
     }
 
     private void admin(CommandSender sender, Runnable action) {
@@ -225,11 +248,14 @@ public final class CasinoCommand implements BasicCommand {
         boolean admin = source.getSender().hasPermission("kaboofcasino.admin");
         if (args.length <= 1) {
             String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
-            Stream<String> subs = Stream.of("stats", "abholen", "credits");
+            Stream<String> subs = Stream.of("stats", "abholen", "credits", "musik");
             if (admin) {
                 subs = Stream.concat(subs, Stream.of("give", "remove", "reload"));
             }
             return subs.filter(s -> s.startsWith(prefix)).toList();
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("musik") || args[0].equalsIgnoreCase("music"))) {
+            return Stream.of("aus", "an").filter(s -> s.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
         }
         if (admin && args[0].equalsIgnoreCase("give")) {
             if (args.length == 2) {

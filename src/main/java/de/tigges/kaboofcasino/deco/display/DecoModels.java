@@ -12,7 +12,8 @@ import org.joml.Vector3f;
  * Which models a decoration shows, exactly as the mod's blockstate files pick them: one {@link Part} per display, the
  * item model {@code kaboofcasino:deco/...} (the pack's item definition of the mod's block model), the blockstate's
  * {@code y} rotation, and the cell it stands in (offset from the anchor). Stairs use models the pack bakes per state
- * (the mod's stairs are uv-locked); the 3 x 2 sign and the chandelier body are merged models. Pure.
+ * (the mod's stairs are uv-locked); the 3 x 2 sign and the chandelier body are merged models; a TV shows the mod's
+ * own model of every cell (one display per cell, as its blockstate). Pure.
  */
 public final class DecoModels {
 
@@ -100,6 +101,15 @@ public final class DecoModels {
             case CHANDELIER_WALL_SCONCE, CASINO_CHIP_PILE, RECEPTION_PLAQUE, CASH_REGISTER, SERVING_TRAY,
                  VIP_ONLY_PLAQUE, BOTTLE_DISPLAY_SHELF, GLASS_DISPLAY_SHELF ->
                     out.add(new Part(PREFIX + t.path(), y, 0, 0, 0));
+            case CASINO_TV, CASINO_TV_LARGE, CASINO_TV_3X3 -> {
+                int columns = t.tvColumns();
+                for (int part = 0; part < columns * columns; part++) {
+                    Pos cell = DecoGeometry.wallPart(a, r.facing(), columns, part);
+                    out.add(new Part(tvKey(t, r.channel(), part), y, cell.x() - a.x(), cell.y() - a.y(),
+                            cell.z() - a.z()));
+                }
+            }
+            case DEALER_STATION -> out.add(new Part(PREFIX + t.path(), 0, 0, 0, 0));
             default -> {
                 if (t.carrier() == DecoType.Carrier.STAIRS && carrier != null && carrier.facing() != null) {
                     out.add(new Part(stairsKey(t.family(), carrier, variant(t, a)), 0, 0, 0, 0));
@@ -115,6 +125,14 @@ public final class DecoModels {
             }
         }
         return out;
+    }
+
+    /**
+     * {@code kaboofcasino:deco/<tv>_screen<channel>_<part>}: the mod's model of one TV cell ({@code on=false} shows
+     * {@code screen0}, the off picture; {@code on=true, screen=N} shows {@code screenN}).
+     */
+    public static String tvKey(DecoType tv, int channel, int part) {
+        return PREFIX + tv.path() + "_screen" + channel + "_" + part;
     }
 
     /** The random variant of stairs and slabs ({@code variants} lists of four marble models; 0 for the rest). */
@@ -224,6 +242,15 @@ public final class DecoModels {
             out.add(PREFIX + "speaker_" + face + "_on");
             out.add(PREFIX + "speaker_" + face + "_off");
         }
+        for (DecoType tv : DecoType.values()) {
+            int columns = tv.tvColumns();
+            for (int channel = 0; channel <= DecoRecord.LAST_CHANNEL; channel++) {
+                for (int part = 0; part < columns * columns; part++) {
+                    out.add(tvKey(tv, channel, part));
+                }
+            }
+        }
+        out.add(PREFIX + "dealer_station");
         for (DecoType t : DecoType.values()) {
             int variants = t.variants() ? 4 : 1;
             if (t.carrier() == DecoType.Carrier.STAIRS) {

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import net.kyori.adventure.key.Key;
 import org.bukkit.Material;
+import org.bukkit.inventory.ItemRarity;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -18,12 +19,20 @@ public final class CasinoItems {
     private CasinoItems() {
     }
 
+    /** The croupier's hand stacks to 1 (more than one is never handed out at once). */
     public static ItemStack create(CasinoItem item, Messages messages, int amount) {
-        ItemStack stack = ItemStack.of(Material.PAPER, amount);
+        boolean hand = item == CasinoItem.CROUPIER_HAND;
+        ItemStack stack = ItemStack.of(Material.PAPER, hand ? 1 : amount);
         stack.setData(DataComponentTypes.ITEM_MODEL, Key.key(item.model()));
         stack.setData(DataComponentTypes.ITEM_NAME, messages.render(item.nameMsg()));
         if (item.machine().isPresent()) {
             stack.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(messages.render(Msg.ITEM_SLOT_MACHINE_LORE))));
+        }
+        if (hand) {
+            // CroupierHandItem: stacksTo(1), Rarity.UNCOMMON, the grey lore line
+            stack.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
+            stack.setData(DataComponentTypes.RARITY, ItemRarity.UNCOMMON);
+            stack.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(messages.render(Msg.ITEM_CROUPIER_HAND_LORE))));
         }
         stack.editPersistentDataContainer(pdc -> pdc.set(Keys.ITEM, PersistentDataType.STRING, item.id()));
         return stack;

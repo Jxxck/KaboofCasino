@@ -238,6 +238,38 @@ class WagerEngineTest {
     }
 
     @Test
+    void settleRoundsIgnoresDuplicateAndGoneIds() {
+        FakeAccount a = new FakeAccount().with(DIAMOND, 20);
+        commit(a, DIAMOND, 5, 10);
+        commit(a, DIAMOND, 5, 0);
+        List<UUID> ids = a.ledger().rounds().stream().map(RoundRecord::id).toList();
+        // the same id twice: settled and paid once
+        WagerEngine.Settlement s = engine.settleRounds(a, List.of(ids.get(0), ids.get(0)), SettleReason.NORMAL);
+        assertEquals(1, s.rounds().size());
+        assertEquals(10, s.paid());
+        assertEquals(20, a.count(DIAMOND));
+        // an id settled before (gone) next to a live one: only the live one settles
+        WagerEngine.Settlement t = engine.settleRounds(a, List.of(ids.get(0), ids.get(1)), SettleReason.NORMAL);
+        assertEquals(List.of(ids.get(1)), t.rounds().stream().map(RoundRecord::id).toList());
+        assertEquals(0, t.paid());
+        assertEquals(20, a.count(DIAMOND));
+        assertTrue(a.ledger().rounds().isEmpty());
+        // only gone ids: nothing at all
+        assertTrue(engine.settleRounds(a, ids, SettleReason.NORMAL).rounds().isEmpty());
+        assertEquals(20, a.count(DIAMOND));
+    }
+
+    @Test
+    void deliveredOfCountsOnlyTheSettledRowsItems() {
+        RoundRecord r = new RoundRecord(UUID.randomUUID(), UUID.randomUUID(), "derby", RoundState.DECIDED,
+                new ItemAmount(DIAMOND, 2), List.of(new ItemAmount(DIAMOND, 6)), 0, 0, "");
+        assertEquals(6, WagerEngine.deliveredOf(new WagerEngine.Settlement(List.of(r),
+                List.of(new ItemAmount(DIAMOND, 9), new ItemAmount("minecraft:emerald", 4)))));
+        assertEquals(3, WagerEngine.deliveredOf(new WagerEngine.Settlement(List.of(r),
+                List.of(new ItemAmount(DIAMOND, 3)))));
+    }
+
+    @Test
     void heldRoundsSurviveQuitAndJoinAndSettleOnceAfterwards() {
         FakeAccount a = new FakeAccount().with(DIAMOND, 20);
         commit(a, DIAMOND, 5, 10);

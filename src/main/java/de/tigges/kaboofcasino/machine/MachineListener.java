@@ -56,8 +56,9 @@ public final class MachineListener implements Listener {
         if (machine.isPresent()) {
             event.setUseInteractedBlock(Event.Result.DENY);
             event.setUseItemInHand(Event.Result.DENY);
-            if (event.getHand() != EquipmentSlot.HAND || FakePlayers.isFake(player)) {
-                return;
+            if (event.getHand() != EquipmentSlot.HAND || FakePlayers.isFake(player)
+                    || CasinoItems.of(event.getItem()).orElse(null) == CasinoItem.CROUPIER_HAND) {
+                return; // the croupier's hand opens the machine's settings instead (admin.HandListener)
             }
             try {
                 menus.beginInteraction(player);
@@ -103,8 +104,11 @@ public final class MachineListener implements Listener {
         }
     }
 
-    /** Blocks whose right click does something in vanilla (containers, doors, switches, work stations, beds). */
-    static boolean interactable(Block block) {
+    /**
+     * Blocks whose right click does something in vanilla (containers, doors, switches, work stations, beds); also used
+     * by the guide book.
+     */
+    public static boolean interactable(Block block) {
         BlockData data = block.getBlockData();
         if (data instanceof Openable || data instanceof Switch || data instanceof Bed || data instanceof Repeater
                 || data instanceof Comparator || data instanceof NoteBlock) {

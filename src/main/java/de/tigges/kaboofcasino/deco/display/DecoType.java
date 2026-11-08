@@ -4,8 +4,9 @@ import java.util.Optional;
 import org.bukkit.Material;
 
 /**
- * The display-entity decoration of MineVegas Casino (games.md 15, 17, 22): every non-full-cube block of
- * {@code casinodeco}, the casino chair and stool of {@code roulettecasino} and the speaker of {@code casinosound}.
+ * The display-entity decoration of MineVegas Casino (games.md 15-18, 22): every non-full-cube block of
+ * {@code casinodeco}, the casino chair and stool, the three casino TVs and the dealer station of {@code roulettecasino}
+ * and the speaker of {@code casinosound}.
  * Per type: the mod id, the carrier (render.md 4.4 option A), how it is placed (the mod's {@code getStateForPlacement}
  * and {@code canSurvive}), the material whose tool speed, break rules and sounds the mod copies, the hardness, the light
  * the block emits, what it connects to, and the German item name (fallback of the {@code block.<ns>.<id>} key the pack's
@@ -103,7 +104,17 @@ public enum DecoType {
             Material.OAK_PLANKS, 0.8, 0, Connect.NONE, "Gläserregal"),
     // ---- speaker --------------------------------------------------------------------------------------------------
     CASINO_SPEAKER("casinosound:casino_speaker", Carrier.LIGHT, Place.SPEAKER, Material.OAK_PLANKS,
-            Material.OAK_PLANKS, 2.5, 2, Connect.NONE, "Casino-Lautsprecher");
+            Material.OAK_PLANKS, 2.5, 2, Connect.NONE, "Casino-Lautsprecher"),
+    // ---- casino TVs (games.md 16): oak planks with the metal sound, light when on ---------------------------------
+    CASINO_TV("roulettecasino:casino_tv", Carrier.LIGHT, Place.TV, Material.OAK_PLANKS, Material.IRON_BLOCK, 2.0, 5,
+            Connect.NONE, "Kleiner Casino-Fernseher"),
+    CASINO_TV_LARGE("roulettecasino:casino_tv_large", Carrier.LIGHT, Place.TV, Material.OAK_PLANKS,
+            Material.IRON_BLOCK, 2.0, 7, Connect.NONE, "Großer Casino-Fernseher"),
+    CASINO_TV_3X3("roulettecasino:casino_tv_3x3", Carrier.LIGHT, Place.TV, Material.OAK_PLANKS, Material.IRON_BLOCK,
+            2.0, 7, Connect.NONE, "Extragroßer Casino-Fernseher"),
+    // ---- dealer station (games.md 18): a lectern copy, the croupier's job site ------------------------------------
+    DEALER_STATION("roulettecasino:dealer_station", Carrier.BARRIER, Place.FREE, Material.LECTERN, Material.LECTERN,
+            2.5, 0, Connect.NONE, "Croupier-Theke");
 
     /** What stands in the world under the display. */
     public enum Carrier {
@@ -140,7 +151,14 @@ public enum DecoType {
         /** Floor, wall or ceiling ({@code FaceAttachedHorizontalDirectionalBlock}). */
         SPEAKER,
         /** Hanging 3 x 3 body under 1-2 chain blocks ({@code CasinoChandelierBlock}). */
-        CHANDELIER
+        CHANDELIER,
+        /**
+         * The clicked horizontal face; a panel of {@link DecoType#tvColumns()} squared cells growing to the
+         * counter-clockwise side and upward, a sturdy wall behind every cell ({@code CasinoTelevisionBlock}).
+         */
+        TV,
+        /** Any replaceable cell: no support, no facing (a plain {@code Block}: the dealer station). */
+        FREE
     }
 
     /** What a block's connections ({@code north/east/south/west}, sofa {@code joins}) follow. */
@@ -271,6 +289,25 @@ public enum DecoType {
         return !vanillaCarrier();
     }
 
+    /**
+     * Digging ignores the tool: every tool digs at hand speed, because the mod's block is in no {@code mineable/*} tag
+     * (games.md 21.1). True for the step 8 blocks; the chair and stool (also untagged in the mod) keep the planks' axe
+     * speed of step 4. Light carriers break at the first hit anyway, so only the dealer station's timer uses it.
+     */
+    public boolean anyTool() {
+        return place == Place.TV || this == DEALER_STATION;
+    }
+
+    /** Columns (= rows) of a TV: 1, 2 or 3 ({@code CasinoTelevisionBlock.columns}); 0 for everything else. */
+    public int tvColumns() {
+        return switch (this) {
+            case CASINO_TV -> 1;
+            case CASINO_TV_LARGE -> 2;
+            case CASINO_TV_3X3 -> 3;
+            default -> 0;
+        };
+    }
+
     /** True for chair, stool and sofa. */
     public boolean seat() {
         return place == Place.SEAT || place == Place.SOFA;
@@ -284,7 +321,7 @@ public enum DecoType {
     /** Range of the display entities: {@code view_range} x 64 blocks (x the client's entity distance setting). */
     public float viewRange() {
         return switch (this) {
-            case CASINO_SIGN, CASINO_CHANDELIER -> 2.0f;
+            case CASINO_SIGN, CASINO_CHANDELIER, CASINO_TV_LARGE, CASINO_TV_3X3 -> 2.0f;
             case CASINO_BOTTLES, CHAMPAGNE_COUPES, SHOT_GLASSES, CASINO_CHIP_PILE, RECEPTION_PLAQUE, CASH_REGISTER,
                  SERVING_TRAY, VIP_ONLY_PLAQUE -> 0.75f;
             default -> 1.25f;

@@ -67,6 +67,7 @@ public class QuestBot {
       "state                         container id/state, position, last dialog summary",
       "entities                      tracked entities with position; moves of non-players log as ENTITY~ lines",
       "rclick <id|type> [main|off]   right click an entity; type = last seen entity of that type, e.g. wandering_trader",
+      "selecttrade <n>               choose offer n of the open merchant screen (MERCHANT lines log the offers)",
       "attack <id|type>              left click an entity",
       "rclickuse <id|type> [main|off] [main|off]   right click and use the held item in one tick, hands given separately",
       "air <x> <y> <z>               a position with nothing under the feet: a jump, a fall",
@@ -471,6 +472,8 @@ public class QuestBot {
         } else if (p instanceof ClientboundRespawnPacket r) { log("RESPAWN " + r.getCommonPlayerSpawnInfo().getWorldName()); ss.send(ServerboundPlayerLoadedPacket.INSTANCE);
         } else if (p instanceof ClientboundSetHealthPacket h) { log("HEALTH " + h.getHealth() + " food=" + h.getFood());
         } else if (p instanceof ClientboundPlayerCombatKillPacket k) { log("DIED " + plain(k.getMessage()));
+        } else if (p instanceof ClientboundMerchantOffersPacket mo) {
+          log("MERCHANT container=" + mo.getContainerId() + " level=" + mo.getVillagerLevel() + " xp=" + mo.getVillagerXp() + " progress=" + mo.isShowProgress() + " restock=" + mo.isCanRestock() + " offers=" + mo.getOffers());
         } else if (p instanceof ClientboundOpenScreenPacket o) {
           containerId = o.getContainerId(); title = plain(o.getTitle()); log("OPEN id=" + containerId + " type=" + o.getType() + " title='" + title + "'");
         } else if (p instanceof ClientboundContainerSetContentPacket c) {
@@ -633,6 +636,7 @@ public class QuestBot {
             px = Double.parseDouble(w[1]); py = Double.parseDouble(w[2]); pz = Double.parseDouble(w[3]);
             s.send(new ServerboundMovePlayerPosRotPacket(false, false, px, py, pz, 0f, 90f));
           }
+          case "selecttrade" -> s.send(new ServerboundSelectTradePacket(Integer.parseInt(w[1]))); // selecttrade <offer index>: a merchant screen's offer
           case "glide" -> s.send(new ServerboundPlayerCommandPacket(myId, org.geysermc.mcprotocollib.protocol.data.game.entity.player.PlayerState.START_ELYTRA_FLYING));
           case "sneak" -> s.send(new org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.ServerboundPlayerInputPacket(false, false, false, false, false, w[1].equals("on"), false));
           case "use" -> s.send(new ServerboundUseItemPacket(Hand.MAIN_HAND, seq++, 0f, 90f));

@@ -122,8 +122,13 @@ class PackListenerTest {
     }
 
     private static PackSessions run(CasinoConfig config, Client client) {
+        return run(config, client, id -> false);
+    }
+
+    private static PackSessions run(CasinoConfig config, Client client, java.util.function.Predicate<UUID> musicOff) {
         PackSessions sessions = new PackSessions();
         PackListener listener = new PackListener(() -> config, () -> messages, pack, music, sessions);
+        listener.musicOptOut(musicOff);
         listener.millisPerTimeoutSecond = 20; // 5 "seconds" = 100 ms
         listener.configure(client.connection());
         return sessions;
@@ -211,6 +216,18 @@ class PackListenerTest {
         assertEquals(1, c.requests.size());
         assertFalse(s.hasMusic(PLAYER));
         assertTrue(s.hasPack(PLAYER));
+    }
+
+    @Test
+    void aPlayerWhoTurnedTheMusicOffGetsNoMusicRequest() throws Exception {
+        Client c = new Client().answer(LOADED).answer(LOADED);
+        PackSessions s = run(config(false, true), c, PLAYER::equals);
+        assertEquals(1, c.requests.size(), "only the casino pack");
+        assertFalse(s.hasMusic(PLAYER));
+        assertTrue(s.hasPack(PLAYER));
+        // everybody else still gets the offer
+        Client other = new Client().answer(LOADED).answer(LOADED);
+        assertTrue(run(config(false, true), other, id -> !id.equals(PLAYER)).hasMusic(PLAYER));
     }
 
     @Test

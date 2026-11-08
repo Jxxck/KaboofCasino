@@ -51,6 +51,71 @@ class DecoGeometryTest {
         }
     }
 
+    /**
+     * {@code CasinoTelevisionBlock.cellPos}: part {@code p} is {@code p % columns} steps toward
+     * {@code facing.getCounterClockWise()} (the right of a viewer looking at the screen) and {@code p / columns} up.
+     */
+    @Test
+    void televisionsGrowToTheViewersRightAndUp() {
+        for (DecoType t : List.of(DecoType.CASINO_TV, DecoType.CASINO_TV_LARGE, DecoType.CASINO_TV_3X3)) {
+            int columns = t.tvColumns();
+            for (Facing f : Facing.values()) {
+                List<Pos> cells = DecoGeometry.cells(record(t, f, 0));
+                assertEquals(columns * columns, new HashSet<>(cells).size(), t.id());
+                assertEquals(A, cells.getFirst());
+                // the viewer looks at the screen (against the facing); his right is the clockwise turn of that
+                BlockFace looks = f.blockFace().getOppositeFace();
+                BlockFace right = switch (looks) {
+                    case NORTH -> BlockFace.EAST;
+                    case EAST -> BlockFace.SOUTH;
+                    case SOUTH -> BlockFace.WEST;
+                    default -> BlockFace.NORTH;
+                };
+                for (int part = 0; part < columns * columns; part++) {
+                    int col = part % columns;
+                    int row = part / columns;
+                    assertEquals(A.offset(right.getModX() * col, row, right.getModZ() * col), cells.get(part),
+                            t.id() + " " + f + " part " + part);
+                }
+            }
+        }
+        assertEquals(List.of(1, 2, 3, 0), List.of(DecoType.CASINO_TV.tvColumns(),
+                DecoType.CASINO_TV_LARGE.tvColumns(), DecoType.CASINO_TV_3X3.tvColumns(),
+                DecoType.CASINO_SIGN.tvColumns()));
+    }
+
+    /**
+     * A TV's click boxes: one per column, over the screen's rows ({@code CasinoTelevisionBlock.getShape}: small 3.5 to
+     * 12.5 px, large 7 to 25, 3 x 3 10.5 to 37.5), centred on the 2 px panel in front of the wall.
+     */
+    @Test
+    void televisionClickBoxes() {
+        double[][] screen = {{3.5, 12.5}, {7.0, 25.0}, {10.5, 37.5}};
+        for (DecoType t : List.of(DecoType.CASINO_TV, DecoType.CASINO_TV_LARGE, DecoType.CASINO_TV_3X3)) {
+            int columns = t.tvColumns();
+            for (Facing f : Facing.values()) {
+                int[] s = f.step();
+                int[] c = DecoGeometry.ccw(f);
+                List<DecoGeometry.Box> boxes = DecoGeometry.clickBoxes(record(t, f, 0));
+                assertEquals(columns, boxes.size(), t.id());
+                for (int col = 0; col < columns; col++) {
+                    DecoGeometry.Box b = boxes.get(col);
+                    assertEquals(screen[columns - 1][0] / 16, b.y0(), 1e-9, t.id());
+                    assertEquals((screen[columns - 1][1] - screen[columns - 1][0]) / 16, b.height(), 1e-9, t.id());
+                    // the panel centre is 1 px in front of the wall, which lies at -facing
+                    double centre = s[0] != 0 ? b.cx() : b.cz();
+                    int dir = s[0] != 0 ? s[0] : s[1];
+                    assertEquals(dir > 0 ? 1.0 / 16 : 15.0 / 16, centre, 1e-9, t.id() + " " + f);
+                    // the box lies in its column's cell
+                    double across = c[0] != 0 ? b.cx() - c[0] * col : b.cz() - c[1] * col;
+                    assertTrue(across > 0 && across < 1, t.id() + " " + f + " column " + col);
+                    double width = col == 0 && col == columns - 1 ? 15 : col == 0 || col == columns - 1 ? 15.5 : 16;
+                    assertEquals(width / 16, b.width(), 1e-9, t.id() + " " + f + " column " + col);
+                }
+            }
+        }
+    }
+
     @Test
     void chandelierCellsBodyAndChain() {
         List<Pos> one = DecoGeometry.cells(record(DecoType.CASINO_CHANDELIER, Facing.SOUTH, 1));
@@ -75,6 +140,13 @@ class DecoGeometryTest {
         assertArrayEquals(new int[] {-1, 0}, shift);
         assertNull(DecoGeometry.chunkFit(DecoGeometry.cells(DecoType.CASINO_SIGN, new Pos("w", 3, 64, 5),
                 Facing.SOUTH, 0), List.of(DecoGeometry.ccw(Facing.SOUTH))));
+        // a 3 x 3 TV facing north grows to -x: from x = 1 it reaches x = -1, one block to +x fits (2, 1, 0)
+        List<Pos> tv = DecoGeometry.cells(DecoType.CASINO_TV_3X3, new Pos("w", 1, 64, 5), Facing.NORTH, 0);
+        assertEquals(List.of(1, 0, -1), tv.subList(0, 3).stream().map(Pos::x).toList());
+        assertArrayEquals(new int[] {1, 0}, DecoGeometry.chunkFit(tv, List.of(DecoGeometry.ccw(Facing.NORTH))));
+        // from x = 0 (0, -1, -2) one block further to -x fits the chunk on the other side (-1, -2, -3)
+        List<Pos> tv0 = DecoGeometry.cells(DecoType.CASINO_TV_3X3, new Pos("w", 0, 64, 5), Facing.NORTH, 0);
+        assertArrayEquals(new int[] {-1, 0}, DecoGeometry.chunkFit(tv0, List.of(DecoGeometry.ccw(Facing.NORTH))));
         // the chandelier body around x = 0 (chunk edge at x = 0 / -1): one block to +x
         List<Pos> body = DecoGeometry.cells(DecoType.CASINO_CHANDELIER, new Pos("w", 0, 64, 8), Facing.SOUTH, 1);
         assertArrayEquals(new int[] {1, 0}, DecoGeometry.chunkFit(body, List.of(new int[] {1, 0}, new int[] {0, 1})));

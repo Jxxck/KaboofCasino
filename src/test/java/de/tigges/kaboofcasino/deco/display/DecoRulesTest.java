@@ -14,8 +14,9 @@ import org.bukkit.block.BlockFace;
 import org.junit.jupiter.api.Test;
 
 /**
- * The type table against the mod's registrations (games.md 15, 17, 22): carriers, light, hardness, connections,
- * waterlogging, the support the mod's shapes give, and the light levels per cell and state.
+ * The type table against the mod's registrations (games.md 15-18, 22): carriers, light, hardness, connections,
+ * waterlogging, the support the mod's shapes give, the light levels per cell and state, the TV channels and the dealer
+ * station's lookup.
  */
 class DecoRulesTest {
 
@@ -28,8 +29,11 @@ class DecoRulesTest {
             assertTrue(ids.add(t.id()), t.id());
             assertEquals(t, DecoType.byId(t.id()).orElseThrow());
         }
-        // 38 non-full-cube casinodeco blocks + chair + stool + speaker
+        // 38 non-full-cube casinodeco blocks + chair, stool, 3 TVs, dealer station + speaker
         assertEquals(38, ids.stream().filter(i -> i.startsWith("casinodeco:")).count());
+        assertEquals(Set.of("roulettecasino:casino_chair", "roulettecasino:casino_stool", "roulettecasino:casino_tv",
+                "roulettecasino:casino_tv_large", "roulettecasino:casino_tv_3x3", "roulettecasino:dealer_station"),
+                ids.stream().filter(i -> i.startsWith("roulettecasino:")).collect(java.util.stream.Collectors.toSet()));
         assertEquals(14, ids.stream().filter(i -> i.endsWith("_stairs") || i.endsWith("_slab")).count());
     }
 
@@ -49,6 +53,107 @@ class DecoRulesTest {
         assertEquals(0.2, DecoType.CASINO_CHIP_PILE.hardness());
         assertEquals(0.8, DecoType.CHIP_CASE.hardness());
         assertEquals(Material.POLISHED_ANDESITE, DecoType.IVORY_MARBLE_BAR.material());
+        // RouletteMod: TVs copy oak planks with the metal sound, strength 2.0, light 5 (small) / 7 when on
+        assertEquals(5, DecoType.CASINO_TV.light());
+        assertEquals(7, DecoType.CASINO_TV_LARGE.light());
+        assertEquals(7, DecoType.CASINO_TV_3X3.light());
+        for (DecoType tv : new DecoType[] {DecoType.CASINO_TV, DecoType.CASINO_TV_LARGE, DecoType.CASINO_TV_3X3}) {
+            assertEquals(2.0, tv.hardness());
+            assertEquals(Material.OAK_PLANKS, tv.material());
+            assertEquals(Material.IRON_BLOCK, tv.sound()); // SoundType.METAL
+            assertEquals(DecoType.Place.TV, tv.place());
+        }
+        // the dealer station: ofFullCopy(Blocks.LECTERN) (strength 2.5, wood sound, no tool needed)
+        assertEquals(2.5, DecoType.DEALER_STATION.hardness());
+        assertEquals(Material.LECTERN, DecoType.DEALER_STATION.material());
+        assertEquals(Material.LECTERN, DecoType.DEALER_STATION.sound());
+        assertEquals(0, DecoType.DEALER_STATION.light());
+    }
+
+    /** The step 8 blocks are in no mineable tag of the mod: every tool digs them at hand speed. */
+    @Test
+    void untaggedBlocksIgnoreTheTool() {
+        Set<DecoType> any = new HashSet<>();
+        for (DecoType t : DecoType.values()) {
+            if (t.anyTool()) {
+                any.add(t);
+            }
+        }
+        assertEquals(Set.of(DecoType.CASINO_TV, DecoType.CASINO_TV_LARGE, DecoType.CASINO_TV_3X3,
+                DecoType.DEALER_STATION), any);
+    }
+
+    /**
+     * {@code CasinoTelevisionChannels.next}: off -> 3 -> 1 -> 2 -> 4 -> 5 -> 6 -> 7 -> 8 -> off, the light of every cell
+     * with the TV on (5 or 7) and 0 when off, a light carrier on every cell.
+     */
+    @Test
+    void televisionChannelsAndLight() {
+        java.util.List<Integer> cycle = new java.util.ArrayList<>();
+        int channel = 0;
+        do {
+            channel = DecoRecord.nextChannel(channel);
+            cycle.add(channel);
+        } while (channel != 0 && cycle.size() < 20);
+        assertEquals(java.util.List.of(3, 1, 2, 4, 5, 6, 7, 8, 0), cycle);
+        assertEquals(0, DecoRecord.nextChannel(DecoRecord.LAST_CHANNEL));
+        for (DecoType tv : new DecoType[] {DecoType.CASINO_TV, DecoType.CASINO_TV_LARGE, DecoType.CASINO_TV_3X3}) {
+            assertEquals(DecoType.Carrier.LIGHT, tv.carrier());
+            DecoRecord off = new DecoRecord(UUID.randomUUID(), tv, A, Facing.WEST, 0, new UUID(0, 0), 0);
+            assertFalse(off.tvOn());
+            for (Pos cell : DecoGeometry.cells(off)) {
+                assertEquals(0, DisplayDecoService.lightLevel(off, cell, false), tv.id());
+            }
+            for (int c = 1; c <= DecoRecord.LAST_CHANNEL; c++) {
+                DecoRecord on = off.withState(c);
+                assertTrue(on.tvOn());
+                assertEquals(c, on.channel());
+                for (Pos cell : DecoGeometry.cells(on)) {
+                    assertEquals(tv.light(), DisplayDecoService.lightLevel(on, cell, false), tv.id());
+                }
+            }
+            assertEquals(DecoRecord.LAST_CHANNEL, off.withState(99).channel()); // clamped
+            for (BlockFace face : new BlockFace[] {BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.WEST}) {
+                assertFalse(DisplayDecoService.decoSturdy(tv, face, true), "a TV panel carries nothing");
+            }
+        }
+    }
+
+    /**
+     * The dealer station: a barrier with no support rule and no facing (a plain {@code Block}); its 12 px post carries
+     * the centre below it (a lantern or chandelier can hang under it), its 11.7 px top carries nothing.
+     */
+    @Test
+    void dealerStationRules() {
+        assertEquals(DecoType.Carrier.BARRIER, DecoType.DEALER_STATION.carrier());
+        assertEquals(DecoType.Place.FREE, DecoType.DEALER_STATION.place());
+        assertTrue(DisplayDecoService.decoSturdy(DecoType.DEALER_STATION, BlockFace.DOWN, true));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.DEALER_STATION, BlockFace.DOWN, false));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.DEALER_STATION, BlockFace.UP, true));
+        assertFalse(DisplayDecoService.decoSturdy(DecoType.DEALER_STATION, BlockFace.NORTH, true));
+        assertTrue(DecoGeometry.clickBoxes(new DecoRecord(UUID.randomUUID(), DecoType.DEALER_STATION, A,
+                Facing.SOUTH, 0, new UUID(0, 0), 0)).isEmpty(), "a barrier is its own click target");
+        assertEquals(java.util.List.of(A), DecoGeometry.cells(DecoType.DEALER_STATION, A, Facing.SOUTH, 0));
+    }
+
+    /** The croupier's lookup: stations within the radius, nearest first, other worlds never; the default hook. */
+    @Test
+    void dealerStationLookup() {
+        DecoRecord far = station(new Pos("minecraft:overworld", 10, 64, 0));
+        DecoRecord near = station(new Pos("minecraft:overworld", 2, 65, 1));
+        DecoRecord edge = station(new Pos("minecraft:overworld", 0, 64, 5));
+        DecoRecord nether = station(new Pos("minecraft:the_nether", 0, 64, 0));
+        java.util.List<DecoRecord> all = java.util.List.of(far, near, edge, nether);
+        assertEquals(java.util.List.of(near, edge), DisplayDecoService.near(all, A, 5));
+        assertEquals(java.util.List.of(near, edge, far), DisplayDecoService.near(all, A, 10));
+        assertEquals(java.util.List.of(), DisplayDecoService.near(all, A, 1));
+        assertEquals(6.0, DisplayDecoService.distanceSquared(A, near.anchor()));
+        assertEquals(Double.POSITIVE_INFINITY, DisplayDecoService.distanceSquared(A, nether.anchor()));
+        assertFalse(DealerStationHook.NONE.onUse(null, near), "the mod's station has no use");
+    }
+
+    private static DecoRecord station(Pos at) {
+        return new DecoRecord(UUID.randomUUID(), DecoType.DEALER_STATION, at, Facing.SOUTH, 0, new UUID(0, 0), 0);
     }
 
     @Test

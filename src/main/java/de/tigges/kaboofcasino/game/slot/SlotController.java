@@ -7,6 +7,7 @@ import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.gui.Usability;
 import de.tigges.kaboofcasino.machine.Heartbeat;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.game.GameMenu;
 import de.tigges.kaboofcasino.game.MachineController;
 import de.tigges.kaboofcasino.util.ItemNames;
@@ -181,7 +182,7 @@ public final class SlotController extends MachineController {
             m.actionBar(player, Msg.SLOT_NO_BET);
             return;
         }
-        int[] next = SlotGame.draw(ctx.config().get().slot().winChance(), ctx.random()::nextInt);
+        int[] next = SlotGame.draw(MachineSettings.winChance(ctx.config().get(), machine), ctx.random()::nextInt);
         SlotGame.Result result = SlotGame.evaluate(next);
         List<ItemAmount> payout = result.multiplier() > 0
                 ? List.of(new ItemAmount(stake.item(), stake.count() * result.multiplier())) : List.of();

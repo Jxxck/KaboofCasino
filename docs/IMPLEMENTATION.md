@@ -1,4 +1,4 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker; step 7: duck derby)
+# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker; step 7: duck derby; step 8: croupier, guide, TVs, dealer station)
 
 Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
 GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
@@ -55,9 +55,12 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
 | `game.poker` | verbatim ports (`PokerRound`, `PokerHands`, `PokerBias`, `PokerLayout`, `PokerTableState`, `PokerTableGeometry`; the shoe, cards, dealer and card motion are blackjack's), `PokerCall` (the called outcome on a shoe copy), `PokerPayout`, `PokerController` (hand, PLAYING records, timeout/quit/death fold), `PokerRig`, `PokerPanel`, `PokerBetMenu`, `PokerRoundMenu`, `PokerSnapshot` |
 | `game.derby` | verbatim ports (`DuckDerbyRace`, `DuckDerbyLayout`, `DuckDerbyGeometry`, `DuckDerbySignLights`, `DuckDerbyFootprint`, `DerbyPanelPresentation`), `DerbyRules` (winner draw, plan retry, runner-up, payouts), `DerbyController` (solo and group races, records, effects), `DerbyRig`, `DerbyBetMenu`, `DerbyView`, `DerbySnapshot`, `DerbyMember` |
 | `deco.full` | the 27 full-cube deco blocks on 72 reserved `down=true` mushroom states (`FullDecoStates`, persistent table `tools/census/chosen-states.txt`), vanilla mushroom block items with `block_state`/`item_model`, drops, explosions, pistons, pilaster connections (`PilasterChoice`), the Paper-switch guard |
-| `deco.display` | the 41 display-entity deco types (`DecoType`): chunk-PDC records (`kaboofcasino:deco`), carriers (barrier / light + interaction / vanilla stairs and slabs), rigs, placement and support rules, connections (tables, bars, rope posts, the sofa's verbatim `SofaLayout`), protection, candle flames |
+| `deco.display` | the 45 display-entity deco types (`DecoType`): chunk-PDC records (`kaboofcasino:deco`), carriers (barrier / light + interaction / vanilla stairs and slabs), rigs, placement and support rules, connections (tables, bars, rope posts, the sofa's verbatim `SofaLayout`), protection, candle flames, TV channels, the dealer station's `DealerStationHook` and lookup |
+| `croupier` | the croupier villager as a display NPC at a counter (step 8, option A): `CroupierService` (index, chunk lifecycle, trade screen, hiring, counter loss), `CroupierSpawnTrigger` + `VillagerOnCounterTrigger`, `CroupierEligibility`, `CroupierPlacement`, `CroupierRig`, `CroupierTrade`, `CroupierHiring`, records in chunk PDC `kaboofcasino:croupiers` |
+| `guide` | the casino guide book (step 8): `GuideBook` (the mod's `casino_guide.json`, embedded as `pack/guide.json`), `GuideDialogs` (spread → dialog model, pure), `GuidePaper` (Paper dialogs), `GuideSessions` (navigation, history, click rate), `GuideService` + `GuideListener` |
+| `admin` | the croupier's hand (step 8, partial port of the mod's settings): `AdminService` (dialog sessions, clicks, edits, labels), `AdminDialogs`/`AdminPaper` (machine and whole-casino dialogs), `AdminClick` (payload parsing), `HandCopy` + `Clipboard` (copy/paste), `EditRate`, `AdminLabels` (floating names); `machine.MachineSettings` (own values over type values), `config.ConfigEdits` (comment-keeping `config.yml` edits) |
 | `seat` | sitting on chairs, stools and sofas: a non-persistent item-display vehicle, the mod's dismount search, forced stand-up on danger/combat/damage/quit/death/teleport, rescue of players found inside deco barriers |
-| `music` | `MusicTimeline` (verbatim), the station per world (world PDC), playback per player who loaded the music pack, note particles; second pack delivery in `pack/` |
+| `music` | `MusicTimeline` (verbatim), the station per world (world PDC), playback per player who loaded the music pack, note particles; second pack delivery in `pack/`; `MusicOptOut` (`/casino musik aus|an`, player PDC) |
 | `storage` | SQLite: `Database` (1 connection, 1 thread, migrations), `RoundLog` (RoundSink + stats), `MachineIndex` |
 | `command` | `/casino` (Brigadier `BasicCommand`) |
 | `pack-tool/` | builds the pack (see 6) |
@@ -670,7 +673,8 @@ that stands ("Die Zeit ist um: Du bleibst stehen."), the mod's tick plan, sound 
   open round menu every tick (only changed slots are sent) and closes it when the hand is over; a right-click by
   the owner reopens it during the hand.
 - Recipe: the mod's (`WWW/GBG/PRP` with the Croupier's Badge), unlocked by holding a badge. Badges come from hiring a
-  croupier (step 8); until then tables come from `/casino give blackjack_table` (the badge is giveable too).
+  croupier (see step 8: the croupier's hiring card used on him gives the badge); `/casino give blackjack_table` and
+  `/casino give croupier_badge` work too.
 - Placement (permadeath deviation, like the roulette): `blackjack.needs-support: true` (default) wants at least one of
   the eight cells on a sturdy block; the mod's `BlackjackTableBlock.canSurvive` is always true (`false` restores
   that). One supported cell is enough, so a table can still reach over a hole, as the roulette.
@@ -757,7 +761,8 @@ the roll of `CasinoExchange.payout` comes from the round's seed and the bet slot
 - The call ignores `bets.max-stake` and the owed list like the mod (it is part of the hand).
 - Bias ("which side the cards favour") is `poker.bias` (default 0), exchange rules and per-table settings are not
   built. `poker.needs-support: true` (default) wants one of the twelve cells on a sturdy block (the mod: always).
-- Recipe: the mod's (with the Croupier's Badge); until step 8 tables come from `/casino give poker_table`.
+- Recipe: the mod's (with the Croupier's Badge, see step 8; it unlocks with the badge like the blackjack table);
+  `/casino give poker_table` works too.
 - Look (`PokerRig`, `PokerPanel`; pack `PokerPack`): the table is the mod's twelve block models `poker_0..11` as item
   displays at their cells (turned like the blockstate, view range 2.0); the dealer is blackjack's eight-part rig at the
   same `DealerPlacement`, posed from `PokerTableState.dealerInput` (shuffle, deal aimed at the slot, flip, pay /
@@ -909,6 +914,211 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   panel, the lobby as a row of head items (forced: a chest can show players only as items in slots, names only in
   tooltips) instead of drawn names and skins, one pager instead of the two arrows, an 18 px help button, buttons 83 px
   wide.
+### Step 8 (croupier, guide book, TVs, dealer station)
+
+- **Casino TVs and dealer station** (display deco, games.md 16 and 18; `DecoType`, now 45 types):
+  `roulettecasino:casino_tv` (1 x 1, light 5 when on), `casino_tv_large` (2 x 2, light 7) and `casino_tv_3x3`
+  (3 x 3, light 7) on light carriers in every cell (oak planks, hardness 2.0, metal sound);
+  `roulettecasino:dealer_station` ("Croupier-Theke") on a barrier (lectern copy: hardness 2.5, wood sound, no tool
+  needed for the drop), `Place.FREE`: a plain block of the mod, so no support rule, no facing, it never pops. The four
+  are in no `mineable/*` tag of the mod, so every tool digs them at hand speed (`DecoType.anyTool`: the dealer station
+  takes 75 ticks with anything; the chair and stool, untagged in the mod as well, keep step 4's axe speed).
+- **TV placement** (`Place.TV`, `CasinoTelevisionBlock.getStateForPlacement`): only on the side of a block, facing =
+  the clicked face; part p sits `p % columns` steps toward `facing.getCounterClockWise()` (the viewer's right) and
+  `p / columns` up (`DecoGeometry.wallPart`); every cell replaceable, inside height and border, with a full sturdy
+  face behind it. One record for all cells, which must lie in the anchor's chunk (the chunk-border hint shifts along
+  the wall, as for the large sign).
+- **Integrity**: the support of every cell is checked on neighbour changes and by the verifier; a lost wall removes
+  the whole TV and drops its item once at the anchor (the mod's `tick` → `destroyBlock(anchor, true)`). A hit on any
+  column's click box removes all cells and gives one item. A cell whose light block vanished without an event
+  (`/fill`, an exploit) removes the TV without a drop (deco rule; the mod would drop the anchor's item). Explosions
+  and pistons leave TVs alone (light carriers; the mod's TV is IMMOVEABLE).
+- **Channels**: the record's state is the channel 0..8 (0 = off). A right click on a click box with the main hand,
+  not sneaking (sneaking passes, as `isSecondaryUseActive`), steps `DecoRecord.nextChannel`: off → 3 → 1 → 2 → 4 →
+  5 → 6 → 7 → 8 → off on all cells at once (one record update swaps every cell's model and sets the light blocks to
+  5/7 or 0), with the lever click (BLOCKS, volume 0.25, pitch 0.8 when on afterwards, 0.65 when off) at the clicked
+  cell. Saved in the chunk record: survives chunk reloads and restarts.
+- **Look**: one item display per cell with the mod's own cell model `roulettecasino:block/<tv>_screen<channel>_<part>`
+  and the blockstate's `y` (`DecoModels.tvKey`, display key `kaboofcasino:deco/<tv>_screen<channel>_<part>`): 126
+  models; the small TV's blockstate also names parts 1..3, which the mod never places (not shipped). The screens are
+  the mod's static pictures (`light_emission` 15 faces). Click boxes: one Interaction per column over the screen's
+  rows (`getShape`: small 3.5-12.5 px, large 7-25, 3 x 3 10.5-37.5), square in x/z like the signs' boxes. View range
+  1.25 (small), 2.0 (large, 3 x 3). The dealer station is one display of its model; its barrier carries the centre
+  below it (a hanging lantern or chandelier, from the 12 px post) and nothing on its top or sides, like the mod's shape.
+- **Croupier hook** (`DealerStationHook`, used by the `croupier` package): `onPlaced(record, player)`,
+  `onRemoved(record)` (broken or carrier lost; not on chunk unload or plugin disable), `boolean onUse(player,
+  record)` (main hand, not while sneaking with an item, never spectators or fake players; true = the held item is
+  not used). `DisplayDecoService.dealerStationHook(hook)` sets it (null = `DealerStationHook.NONE`, the default: the
+  mod's station has no use). Loaded stations: `dealerStations()` and `dealerStationsNear(Pos, radius)` (same world,
+  nearest first), from an index kept with chunk loads and unloads. Exceptions of `onPlaced`/`onRemoved` are logged as
+  incidents; one of `onUse` is reported to the player like any deco use.
+- **Pack** (`DecoDisplayPack`): the four item definitions with their item and icon models and textures, the TV cell
+  models and the dealer model with display definitions, `block.roulettecasino.casino_tv*`/`dealer_station` in all 12
+  languages; the screen pictures (512 x 288, 256 x 144) need no padding. Recipes: the mod's four (`ModRecipes.SHIPPED`),
+  their results are the paper deco items.
+- **Deviations** (deco rules): no collision on TVs (the mod's panel collides 2 px deep) and a full 16 px barrier for
+  the dealer station (the mod's top ends at 11.7 px); a TV breaks at the first hit instead of 60 ticks; no villager
+  job-site POI (the croupier module finds stations through the lookup).
+- **Tests**: `DecoBlockstateTest.televisionsEveryState` (all 288 + 288 + 648 states: model, `y` and cell of every
+  placed part; the legacy `on=true, screen=0` = channel 1) and `dealerStation`; `DecoGeometryTest` (cells to the
+  viewer's right and up, click boxes, chunk fit along the wall); `DecoRulesTest` (light per channel, the cycle,
+  hardness and sound, untagged dig speed, the station's support and lookup); `RecipesDataTest`
+  (`televisionAndDealerStationRecipes`, deco results); `DecoDisplayPackTest.televisionCellModels`; `DecoPackKeysTest`
+  covers the new keys and names.
+- **Recipe unlocks** (`ModRecipes.unlock`): an unlock item that is an item tag of the mod is expanded to its items
+  (the pack tool now reads `data/<ns>/tags/item/`), so holding any racing duck unlocks the derby mechanism
+  (`#roulettecasino:derby_ducks`; before, that unlock never fired). The badge unlocks the blackjack and poker tables;
+  the guide unlocks with leather, the counter with green wool, the small and large TV with tinted glass, the 3 x 3 TV
+  with the large TV (`RecipesDataTest`).
+- **Music opt-out** (Jack's request): `/casino musik aus|an` stores the choice in the player's PDC
+  (`kaboofcasino:music_off`); from the next login no music pack is offered (`PackListener` asks `MusicOptOut` in the
+  configuration phase: remembered since the plugin started, else read from the player file), so nothing plays for
+  him. `/casino credits` names the command (`PackListenerTest.aPlayerWhoTurnedTheMusicOffGetsNoMusicRequest`).
+- **Croupier's hiring card** (`roulettecasino:croupier_hiring_card`, `CasinoItem.CROUPIER_HIRING_CARD`): the croupier's
+  one trade (24 emeralds, 64 uses, 2 XP, games.md 10.2); used on a croupier it hires him for a Croupier's Badge
+  (games.md 10.3). Giveable with `/casino give croupier_hiring_card`; no recipe (as in the mod).
+- **Guide book** (`roulettecasino:casino_guide`, games.md 19; package `guide`): the mod's 34 spreads as Paper dialogs
+  (multi_action, ESC allowed, no pause, after_action none, 4 button columns, footer "Fertig"). Data: the pack tool's
+  `GuideData` writes `guide.json` (the mod's `casino_guide.json` unchanged, the German text of its 134 lang keys, the
+  name keys of 91 casino ids) from the SHA-checked jar; `processResources` embeds it as `pack/guide.json`.
+  - Mapping: a top line "« Vorherige Seite  n / 34  Nächste Seite »"; title widgets bold in the mod's gold
+    `#F2C65A`, labels and texts in its colours; items as item bodies (labels beside the icon become the description,
+    else the name, a link if the mod's `index` points to a spread); tiles as icon + link; recipes as an item body with
+    the result and "Rezept · Name" / the mod's "Formloses Rezept · Name", shaped ones as a digit grid ("-" = empty,
+    empty edge rows and columns trimmed) with a numbered legend, shapeless ones as counts ("1× Leder"), linked
+    ingredients, tags as their first item + "(beliebige Sorte)"; scenes as their main items' icons (the hiring scene
+    and the villager figures: a villager spawn egg named "Dorfbewohner"/"Croupier"); the arrow "↓", rules as a
+    struck-through line; chips and previews dropped (every variant is shown); the cover ends with the licence line.
+    Buttons: the 4 bookmarks (open chapter in gold), « Vorherige Seite / Inhalt (only with a way back) / Nächste
+    Seite ».
+  - Clicks: custom click `kaboofcasino:guide` with `{do, to}`; only known kinds, pages 1-34, players with an open
+    guide, one click per tick (close always); back history capped at 64; no commands, no callbacks. Page turn:
+    `item.book.page_turn` (0.6, 1.0) for the reader only.
+  - Opening: right click in the air or on a plain block with either hand, nothing used up; not on machines or deco,
+    not on doors, containers or work stations unless sneaking; always at the cover (as the mod).
+  - Safety (PLAN decision 3): in survival/adventure it does not open in combat or danger ("Nicht jetzt – du bist in
+    Gefahr.") and closes on damage, a mob targeting the player or the danger sweep ("Gefahr – Handbuch zu."); the
+    sweep counts riding a vehicle and standing in water as danger, so it cannot be read on a horse or in a minecart
+    (open decision for Jack, easy to relax). Creative is unrestricted.
+  - Deviations: "Rezept" is the plugin's German text (the mod has only "Formloses Rezept"); recipes are digit grids,
+    not 3 x 3 slots (dialog bodies stack vertically); scenes are 16 px icons (dialog items are always 16 x 16); items
+    without a label show their name (the mod only on hover); the added top navigation line; "Fertig" needs one round
+    trip, ESC closes at once.
+  - Tests: `GuideBookTest`, `GuideDialogsTest` (all 34 spreads with and without history, a full snapshot of spread
+    3, styles), `GuideSessionsTest`, `GuideActionTest` (forged payloads); pack tool `GuideDataTest` (every key in all
+    12 languages, every mod key with its exact German text, every item id resolves).
+- **Croupier's hand** (`roulettecasino:croupier_hand`, games.md 20; Jack's partial proposal; package `admin`):
+  - Access: creative + `kaboofcasino.admin`; outside creative every use shows the mod's `creative_only` message,
+    without the permission "Dazu fehlt dir die Berechtigung.". Main hand on a machine opens its dialog, sneak + use on
+    a machine pastes; use in the air or on a plain block opens the whole-casino dialog, sneak in the air forgets the
+    copy. Nobody breaks a machine with the hand in the main hand. Every 5 ticks a dialog whose player lost the
+    permission, the mode or the hand, or whose machine is gone, is closed.
+  - Machine dialog: name (64 characters, no control or `§` codes, empty = automatic "<Typ> #n"), win chance 0..100
+    (roulette, derby, slot machine, wheel, Plinko) or bias -100..100 (blackjack, poker) with "Wie das Casino"; Save,
+    Copy, Paste, Reset (two clicks within 60 ticks, "Sicher?" in between). Stored in the machine record as
+    `MachineSettings.Own` (three optional chunk-PDC keys `name`/`chance`/`bias`, written only when set; record
+    version stays 1; an invalid stored value reads as inherit and is logged; 0.7.0 reads such records unchanged, but
+    rewrites them without the keys when a game saves its data, so a downgrade loses own settings). Effective value
+    = own if set, else the type's from `config.yml` (`MachineSettings.winChance/bias`; the only place games ask, a
+    source scan test holds them to it). `/casino reload` never touches own values.
+  - Whole-casino dialog: the seven type values (win chance with "normal" = -1, bias) and "breakable"; Save and
+    "Alles normal" (two clicks: every win chance -1, every bias 0). Written into the live `config.yml` with Bukkit's
+    comment-keeping `YamlConfiguration` (only the `ConfigEdits.EDITABLE` paths, temp file + atomic move), then the
+    plugin's own reload. Bet lists and exchange rules stay config-only.
+  - `machines.breakable` (default true, new key merged at start): false = survival players cannot mine machines
+    (silent, as the mod); creative and `/casino remove` still remove them.
+  - Copy/paste: the hand keeps only the copy's identity (type, token, position, number, name) in its PDC and shows the
+    mod's "Kopierte Einstellungen: …" lore; the values stay on the server under the token (at most 256, overworld
+    PDC, survive restarts). Chance/bias paste only between machines of the same game; a token that dropped out pastes
+    "inherit" (mod). Mod messages pasted / nothing_to_paste / copy_forgotten.
+  - Limits and logs: 20 edits per player per game second (opening counts, as the mod), one click per tick, the target
+    always from the server-side session; every change logged with old and new values, copy and forget too.
+  - Floating labels: a text display per machine (the mod's heights, colours and size), shown only to permitted
+    players holding the hand within 8 blocks, despawned when nobody sees it.
+  - Texts: the mod's keys as translatable components with its German text as fallback (67 checked against the jar);
+    vanilla `gui.done`, `options.percent_value`, `options.generic_value`.
+  - Deviations: no bet lists, payouts or machine list/search (Jack's scope), so the tabs collapse into two dialogs;
+    values apply on Save, Fertig/ESC, Copy and Forget (the mod's sliders apply while dragging); a typed name is saved
+    on Fertig/ESC (the mod drops the draft); sliders only, no number box (help texts about typing left out); buttons
+    that would do nothing are hidden (dialogs cannot disable one); "Kopiert!"/"Eingefügt!"/"Sicher?" appear in the
+    re-sent dialog instead of 2-second labels; no type-level "inherit" for the bias (0 = normal); the mod's quirk
+    "sechs Casinomaschinen" kept; labels with one background colour, estimated width.
+  - Tests: `MachineRecordCodecTest` (0.7.0 readability, lenient values), `MachineSettingsTest` (resolution, name
+    rule, ranges, source scan), `BreakRulesTest`, `ConfigEditsTest` (comments kept, live-file round trip),
+    `AdminClickTest`, `AdminSessionsTest`, `AdminDialogsTest` (snapshots), `AdminTextsTest` (every fallback = the
+    mod's German text), `CopyPasteTest`, `EditRateTest`.
+- **Croupier** (games.md 10; Jack's option A: a display NPC at a counter). Package `croupier`; the only part in which
+  A and A' ("appears with the counter") differ is the `CroupierSpawnTrigger`.
+  - **Trigger A** (`VillagerOnCounterTrigger`): every 20 ticks each loaded counter without a croupier
+    (`DisplayDecoService.dealerStations()`) looks into the block directly above it, never further. A villager there
+    becomes its croupier if every rule of `CroupierEligibility` holds: feet in that block and standing on the
+    counter's top (on ground, y = counter + 1), profession none, not a nitwit, level 1, villager XP 0, no trades, adult,
+    not leashed, no custom name, not riding, no passengers, not trading, not asleep, the counter has no croupier, and
+    (added) a player (not spectating, not a bot) within 8 blocks of the counter. A villager that stands on a counter
+    and is refused is logged once per reason (not a dying one and not one only passing through). The conversion releases the villager's job site, bed, potential job
+    site and meeting point (`Villager.releaseAllPois()` by reflection, as the mod's hiring does before it removes a
+    villager; no API has it; a failure only leaves the claims, logged once), keeps `createSnapshot().getAsString()`,
+    the Minecraft version and every inventory stack (`serializeAsBytes`, Base64) in the record, spawns the croupier
+    and removes the villager; logged with world, position, villager UUID and the nearest player. A' would be
+    `stationPlaced` calling `spawns.spawn(station, Origin.NONE, placer)`.
+  - **Record** (`CroupierRecord`, `CroupierCodec`, `CroupierRecords`): chunk PDC `kaboofcasino:croupiers`, a list of
+    JSON strings, version 1 (`v`); spot (block, feet height, facing), counter id and block, villager UUID, snapshot,
+    items, uses, XP, restock day, creation time and nearest player. A newer or unreadable entry is logged CRITICAL and
+    kept verbatim (that croupier stays inactive). Croupier, counter and record always share one chunk: it is placed
+    only beside a counter in the counter's chunk and re-attaches only to one there, so nothing is looked up across a
+    chunk border. Index on chunk load/unload; after a load the record's counter is checked (missing = counter lost).
+  - **Spot** (`CroupierPlacement`): on the ground beside the counter, the side opposite the nearest player first
+    (then the sides turning least towards him), facing the counter; free = feet and head blocks without casino cells,
+    other croupiers or liquids, head passable, feet passable or carpet-low (up to 3 px, standing on it), a floor below
+    (collision top >= 0.8: full blocks, paths 15/16); else on the counter's top (11.7 px, the mod's shape) looking at
+    the player.
+  - **Look** (`CroupierRig`): the blackjack dealer's eight displays (`kaboofcasino:blackjack/dealer_*`, the mod's
+    croupier profession texture) with `BlackjackDealerRig`'s transformations moved from the table placement to the
+    feet, the idle loop only (`BlackjackDealerRig.pose` with no gesture, `BlackjackRig.idleEvery` cadence, pose of
+    now + n + 1, within 32 blocks, shared idle budget `ctx.lights()`), brightness of the two body blocks every 40
+    ticks; an Interaction with the villager's hit box (0.6 x 1.95) as click box. Non-persistent, tagged
+    `kaboofcasino:part`, rebuilt at chunk load (4 per tick) and when an entity vanished (checked every 20 ticks).
+  - **Trade** (`CroupierTrade`): a right click with the main hand, not sneaking (a sneaking click does nothing, as
+    with a villager), opens a vanilla merchant screen (`Bukkit.createMerchant()` + `MenuType.MERCHANT.builder()`;
+    `createMerchant(Component)` and `openMerchant` are deprecated) titled `entity.roulettecasino.villager.croupier`
+    ("Croupier"): 24 emeralds -> 1 hiring card, 64 uses, 2 villager XP, price multiplier 0 (demand and gossip never
+    change it), Hero of the Village lowers it as in vanilla (by 7, to 17 emeralds, at level I). Uses and XP go into the record
+    (`PlayerPurchaseEvent`, MONITOR); the player's orb is vanilla's 3-6 (+5 on a level-up: 10/70/150/250 XP) at the
+    croupier (the recipe's own reward is off, Paper's custom merchant would drop the villager XP at the player).
+    Restocked once per Minecraft day (`fullTime / 24000`) while it has its counter and nobody trades. One player at a
+    time: a second one gets the mod's `message.roulettecasino.croupier_busy` ("Dieser Croupier ist beschäftigt.",
+    action bar), which the mod only uses for hiring (a vanilla villager ignores the second player). The screen closes
+    beyond 8 blocks. Sounds as a villager: yes/no when the payment changes (`notifyTradeUpdated`, its 20-tick gate),
+    the ambient (trade) voice by vanilla's ambient clock within 16 blocks, the cartographer's work sound on a
+    restock; voice pitch 0.8-1.2.
+  - **Hiring** (`CroupierHiring`, verbatim where pure): a card in the clicked hand, or in the off hand with an empty
+    main hand; busy check; the kept villager items drop at the croupier's block like `Block.popResource`; the croupier
+    is gone for good; survival: one card used, the badge into that hand if it is empty now, else the inventory, else
+    dropped at the player; creative: card kept, badge added; burst (totem 34, poof 12, the three confetti dusts, end
+    rod 14), `entity.villager.yes` + `block.enchantment_table.use`, the 14-tick stream to the hands with its end burst,
+    `roulettecasino:card_flip` and the amethyst chime. Logged.
+  - **Counter lost** (`DealerStationHook.onRemoved`, or missing at chunk load): vanilla's job-site rule. XP 0: the
+    croupier is the villager again (`createEntitySnapshot(...).createEntity` at its feet; a snapshot from another
+    Minecraft version is restored with a warning; if it cannot be restored the croupier stays, CRITICAL). XP > 0: it
+    keeps its profession, stays without a counter (tradeable, hireable, no restock; one on the counter's top steps
+    down if a floor carries it) and takes a free counter placed right next to it (same height and chunk; placed into
+    its feet block it stands on the counter's top). Using the counter itself does nothing (the mod's station has no
+    use). A croupier whose chunk unloads disappears with it and comes back from its record.
+  - **Deviations**: the croupier is the dealer model with the idle loop (no villager entity: no walking, sleeping,
+    gossip, breeding, zombie conversion, level-up regeneration); the busy message also for trading; the added player
+    rule; restock once a day without the work schedule; the trade screen is the vanilla one (the mod's
+    `croupier_trade.png` look is a client mixin; as a title glyph the art would hide the offer button, and vanilla's
+    dark labels would be unreadable on its dark green), and it shows no level name or XP bar (a plugin merchant has
+    no villager level; the record keeps the XP); no danger sweep on the trade screen (as a villager's). A villager
+    the mod's job-site rule has already made jobless (profession, XP 0, level 1, no job site: vanilla's
+    `ResetProfession` resets it within a second) counts as unemployed; with its job site it is refused (`EMPLOYED`).
+  - **Tests**: `CroupierEligibilityTest` (every refusal on its own), `CroupierPlacementTest` (side order, blocked
+    sides, carpet/path heights, chunk border, counter top, loss, re-attach), `CroupierCodecTest` (round trip, minimal
+    v1, newer and broken entries, the store keeps foreign entries), `CroupierTradeTest` (the trade, Hero of the
+    Village, levels, orb, restock by day), `CroupierHiringTest` (card hand, card and badge, the stream point for point
+    against the mod's arithmetic, colours), `CroupierRigTest` (feet offset = the dealer's placement, pack keys and
+    texts); pack tool `CroupierPackTest` (the mod's trade JSON = the plugin's constants).
+
 ## 11. Testing
 
 Unit tests: `./gradlew build` (see the final report for counts). Step 2 adds `WheelOddsTest` / `PlinkoOddsTest`
@@ -937,7 +1147,16 @@ independent transcription, invariants), `DerbyRtpSimulationTest`, `DerbyPlacemen
 ducks, gates, sign against an independent evaluation of the renderer, culling box, rotation steps, traffic),
 `DerbyPanelTest` (including: no result line before `resultTick` for any winner, solo and group), `DerbyPackKeysTest`,
 `DerbyPackTest`, `DerbyBetMenuTest`, `DerbyGuiTest` and `DerbyGuiPreviewTest`
-(`build/reports/gui/derby-*-preview-<W>x<H>.png`). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
+(`build/reports/gui/derby-*-preview-<W>x<H>.png`). Step 8 adds the croupier tests (`CroupierEligibilityTest`,
+`CroupierPlacementTest`, `CroupierCodecTest`, `CroupierTradeTest`, `CroupierHiringTest`, `CroupierRigTest`, pack tool
+`CroupierPackTest`), the guide tests (`GuideBookTest`, `GuideDialogsTest`, `GuideSessionsTest`, `GuideActionTest`,
+pack tool `GuideDataTest`), the croupier's-hand tests (`MachineRecordCodecTest`, `MachineSettingsTest`,
+`BreakRulesTest`, `ConfigEditsTest`, `AdminClickTest`, `AdminSessionsTest`, `AdminDialogsTest`, `AdminTextsTest`,
+`CopyPasteTest`, `EditRateTest`), the TV/dealer-station cases in the deco tests, the unlock checks in
+`RecipesDataTest`, `WagerEngineTest.settleRoundsIgnoresDuplicateAndGoneIds`/`deliveredOfCountsOnlyTheSettledRowsItems`
+and `PackListenerTest.aPlayerWhoTurnedTheMusicOffGetsNoMusicRequest`. Croupier on the test instance:
+`testing/croupier-test.sh setup|refuse|leash|push|trade|reopen|breakA|reattach|hire|fresh|breakB` (the bot's
+`selecttrade <n>` picks a merchant offer, `MERCHANT` lines log the offers). Step 4 adds `FullDecoStatesTest`, `PilasterChoiceTest`, `DecoFullPackTest` (every state of the three mushroom blocks
 evaluated with the client's condition semantics), the display-deco tests (`DecoBlockstateTest`: every state of the mod's
 blockstates picks the same model and turn; `DecoGeometryTest`, `DecoTransformTest`, `DecoRulesTest`, `SofaLayoutTest`,
 `DecoPackKeysTest`, `DecoDisplayPackTest`: 280 baked stair states against vanilla's shapes), `SeatMathTest`, the
@@ -1016,6 +1235,23 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
   the live `messages_de.yml` so the new credits text is merged in. `config.yml` gets `music.enabled: true`. The casino
   pack grows to ~4.7 MB; the music pack (~22 MB) is offered after it, optional; clients that accepted the casino pack
   usually accept it silently (a second resource reload at login).
+- Step 8 ships as `KaboofCasino-0.8.0.jar`: remove `KaboofCasino-0.7.0.jar`. Before the start delete the
+  `command.credits` block (`credits: |-` and its indented lines) from the live `messages_de.yml` so the new credits text
+  with the `/casino musik aus|an` hint is merged in (optionally `command.usage` too, which now names `musik`).
+  `config.yml` gets `machines.breakable: true` merged in (it works on top of the live `machines.break: owner`: false
+  stops every survival player); `messages_de.yml` gets the `guide:` section, `item.croupier-hiring-card`,
+  `item.casino-guide`, `item.croupier-hand*` and `command.music-*`. No database migration and no ledger version;
+  machine records gain the optional keys `name`/`chance`/`bias` only when an admin sets own values (a rollback to
+  0.7.0 reads them but drops them when a game rewrites that record); croupiers live in the chunk PDC
+  `kaboofcasino:croupiers` (0.7.0 ignores it: on a rollback croupiers are simply not shown, and a converted
+  villager is not given back). The casino pack is 5,861,439 bytes (~5.59 MiB; the 300 s hard cap then asks for
+  19.1 KiB/s on average; unchanged policy). Counters (`dealer_station`), TVs and the guide are craftable with the
+  mod's recipes; the hiring card only comes from a croupier's trade (or `/casino give croupier_hiring_card`), the
+  croupier's hand only from `/casino give croupier_hand` (creative + `kaboofcasino.admin`). A croupier appears when a
+  player brings an unemployed level-1 villager onto a free counter (log line "Croupier: villager … became a
+  croupier"); refusals are logged once per villager and reason. The conversion releases the villager's bed and job
+  site via reflection on the server's villager (`releaseAllPois`); after a Paper update that renames it, only a WARN
+  is logged and the claims stay.
 - Step 7 ships as `KaboofCasino-0.7.0.jar`: remove `KaboofCasino-0.6.0.jar`. The live `config.yml` gets `derby:`
   (`win-chance: -1`, `needs-support: true`, `idle-light-ticks: 4`, `idle-light-range: 16`) merged in, `messages_de.yml`
   the `item.duck-derby*`/`item.derby-duck-*`, `derby.*` and `gui.derby.*` keys; no database migration and no new
@@ -1031,14 +1267,14 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
   `double-lore` from the live `messages_de.yml` before the start so the new texts with the key hints "(Taste 1/2/3)"
   are merged in (existing keys are never overwritten). No database migration, no new ledger version (poker hands use the PLAYING records of 0.4.0). The casino pack
   grows to ~5.0 MB, so the 300 s hard cap now asks for 16.3 KiB/s on average, slightly more than the 16 KiB/s
-  minimum (unchanged values; `DownloadDeadlineTest`'s steady-download bound now follows the pack size). Tables come from `/casino give poker_table` until the croupier hands
-  out badges (step 8). A three-slot poker hand holds three PLAYING records, so the live `rounds.max-open: 4` allows
+  minimum (unchanged values; `DownloadDeadlineTest`'s steady-download bound now follows the pack size). Tables come from
+  `/casino give poker_table` or the recipe with a badge (step 8). A three-slot poker hand holds three PLAYING records, so the live `rounds.max-open: 4` allows
   one poker hand plus one more stake.
 - Step 5 ships as `KaboofCasino-0.4.0.jar`: remove `KaboofCasino-0.3.0.jar`. The live `config.yml` gets `blackjack:`
   (`bias: 0`, `needs-support: true`) merged in, `messages_de.yml` the `blackjack.*`, `gui.blackjack.*` and
   `machine.chunk-border-far` keys; no database migration. Ledgers become version 2 only while a blackjack hand is
   open (0.3.0 cannot read such a ledger: a rollback is safe once no hand is open, which a clean stop guarantees).
-  Tables come from `/casino give blackjack_table` until the croupier (step 8) hands out badges; the recipe is
+  Tables come from `/casino give blackjack_table` or the recipe with a badge (step 8); the recipe is
   registered and unlocks with a badge. The live `rounds.max-open: 4` allows one three-slot hand plus one more stake.
 - Step 3 ships as `KaboofCasino-0.3.0.jar`: remove `KaboofCasino-0.2.0.jar`. The live `config.yml` gets `roulette:`
   (natural odds, `needs-support: true`) and `machines.refuse-logout-spots: true` merged in; `casino.db` migrates to

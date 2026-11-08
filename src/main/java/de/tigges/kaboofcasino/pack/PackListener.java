@@ -51,6 +51,13 @@ public final class PackListener implements Listener {
     private final PackSessions sessions;
     /** Milliseconds per configured timeout second (tests shorten it). */
     long millisPerTimeoutSecond = 1000L;
+    /** Players who turned the lounge music off ({@code /casino musik aus}): no music pack is offered to them. */
+    private volatile java.util.function.Predicate<UUID> musicOff = id -> false;
+
+    /** Sets who gets no music pack offer (thread-safe predicate; read on the configuration threads). */
+    public void musicOptOut(java.util.function.Predicate<UUID> musicOff) {
+        this.musicOff = musicOff == null ? id -> false : musicOff;
+    }
 
     /**
      * @param music the optional music pack, or null (never offered)
@@ -117,7 +124,11 @@ public final class PackListener implements Listener {
             return;
         }
         if (music != null && c.music().enabled()) {
-            offerMusic(connection, id, name, p);
+            if (id != null && musicOff.test(id)) {
+                Log.get().info("Music pack for {}: not offered (the player turned the music off)", name);
+            } else {
+                offerMusic(connection, id, name, p);
+            }
         }
     }
 

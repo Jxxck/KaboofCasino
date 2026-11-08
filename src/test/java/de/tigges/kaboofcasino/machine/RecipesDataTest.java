@@ -3,6 +3,7 @@ package de.tigges.kaboofcasino.machine;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.tigges.kaboofcasino.deco.display.DecoType;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +47,19 @@ class RecipesDataTest {
         assertEquals("roulettecasino:duck_derby_mechanism", derby.key().get('M'));
         // the 23 other duck orders of the mechanism have no recipe-book unlock in the mod
         assertEquals(List.of(), d.get("duck_derby_mechanism_order_07").unlocks());
+        // the mechanism unlocks with any racing duck (the mod's item tag #roulettecasino:derby_ducks, expanded)
+        assertEquals(List.of("roulettecasino:derby_duck_red", "roulettecasino:derby_duck_yellow",
+                "roulettecasino:derby_duck_black", "roulettecasino:derby_duck_white"),
+                d.get("duck_derby_mechanism").unlocks());
+        assertEquals(List.of("roulettecasino:duck_derby_mechanism"), d.get("duck_derby").unlocks());
+        // step 8: the badge unlocks both card tables; the guide, counter and TVs unlock like the mod
+        assertEquals(List.of("roulettecasino:croupier_badge"), d.get("blackjack_table").unlocks());
+        assertEquals(List.of("roulettecasino:croupier_badge"), d.get("poker_table").unlocks());
+        assertEquals(List.of("minecraft:leather"), d.get("casino_guide").unlocks());
+        assertEquals(List.of("minecraft:green_wool"), d.get("dealer_station").unlocks());
+        assertEquals(List.of("minecraft:tinted_glass"), d.get("casino_tv").unlocks());
+        assertEquals(List.of("minecraft:tinted_glass"), d.get("casino_tv_large").unlocks());
+        assertEquals(List.of("roulettecasino:casino_tv_large"), d.get("casino_tv_3x3").unlocks());
         assertEquals("roulettecasino:duck_derby_mechanism", d.get("duck_derby_mechanism_order_07").result());
     }
 
@@ -71,9 +85,8 @@ class RecipesDataTest {
             for (String id : java.util.stream.Stream.concat(java.util.stream.Stream.of(def.result()),
                     def.allIngredients().stream()).toList()) {
                 if (id.startsWith("roulettecasino:")) {
-                    assertTrue(CasinoItem.byId(id.substring(15)).isPresent()
-                            || id.equals("roulettecasino:casino_chair") || id.equals("roulettecasino:casino_stool"),
-                            id);
+                    // machine items, or display deco (chair, stool, the TVs, the dealer station)
+                    assertTrue(CasinoItem.byId(id.substring(15)).isPresent() || DecoType.byId(id).isPresent(), id);
                 } else if (!id.startsWith("minecraft:") && !id.startsWith("#")) {
                     assertTrue(id.startsWith("casinodeco:") || id.startsWith("casinosound:"), id);
                 }
@@ -103,6 +116,25 @@ class RecipesDataTest {
                 d.get("casinodeco/serving_tray").unlocks());
     }
 
+    /** The TVs and the dealer station (step 8): the mod's recipes, results are display deco. */
+    @Test
+    void televisionAndDealerStationRecipes() {
+        Map<String, Recipes.Def> d = defs();
+        Recipes.Def tv = d.get("casino_tv");
+        assertEquals(List.of("nnn", "nTn", "nRn"), tv.pattern());
+        assertEquals("minecraft:tinted_glass", tv.key().get('T'));
+        assertEquals(List.of("III", "TRT", "III"), d.get("casino_tv_large").pattern());
+        Recipes.Def xl = d.get("casino_tv_3x3");
+        assertTrue(xl.shapeless());
+        assertEquals(List.of("roulettecasino:casino_tv_large", "minecraft:redstone_block"), xl.ingredients());
+        Recipes.Def station = d.get("dealer_station");
+        assertEquals(List.of("FFF", "GRG", "PPP"), station.pattern());
+        assertEquals("#minecraft:planks", station.key().get('P'));
+        for (String id : List.of("casino_tv", "casino_tv_large", "casino_tv_3x3", "dealer_station")) {
+            assertEquals(DecoType.byId("roulettecasino:" + id).orElseThrow().id(), d.get(id).result());
+        }
+    }
+
     /** The shipped set. */
     private static final class Set6 {
         static final String[] ORDER_IDS = java.util.stream.IntStream.rangeClosed(1, 23)
@@ -112,6 +144,7 @@ class RecipesDataTest {
                 "slot_machine_reel", "slot_machine_mechanism", "slot_machine", "roulette_mechanism", "fortune_wheel",
                 "plinko", "roulette_table", "blackjack_table", "casino_chair", "casino_stool", "poker_table",
                 "derby_duck_yellow", "derby_duck_red", "derby_duck_white", "derby_duck_black", "duck_derby_mechanism",
-                "duck_derby"), java.util.Arrays.stream(ORDER_IDS)).collect(java.util.stream.Collectors.toSet());
+                "duck_derby", "casino_guide", "dealer_station", "casino_tv", "casino_tv_large", "casino_tv_3x3"),
+                java.util.Arrays.stream(ORDER_IDS)).collect(java.util.stream.Collectors.toSet());
     }
 }

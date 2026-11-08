@@ -10,17 +10,20 @@ import java.util.Map;
 import java.util.TreeSet;
 
 /**
- * Models of the display decoration (step 4): every non-full-cube block of {@code casinodeco}, the casino chair and
- * stool ({@code roulettecasino}) and the speaker ({@code casinosound}).
+ * Models of the display decoration (step 4; the TVs and the dealer station of step 8): every non-full-cube block of
+ * {@code casinodeco}, the casino chair and stool, the three casino TVs and the dealer station ({@code roulettecasino})
+ * and the speaker ({@code casinosound}).
  * <ul>
- *   <li>the mod's item definitions of the 41 placing items (with their item and icon models and textures);</li>
+ *   <li>the mod's item definitions of the 45 placing items (with their item and icon models and textures);</li>
  *   <li>one item definition {@code kaboofcasino:deco/<model>} per block model the mod's blockstates of these blocks
  *       use, for item displays (render.md 2.2; blockstate {@code y} turns are display rotations);</li>
  *   <li>the stairs baked per state ({@code kaboofcasino:deco/stairs/<family>_<facing>_<half>_<shape>_<variant>}):
  *       the 40 turned, uv-locked vanilla templates once ({@code kaboofcasino:deco/stairs/template/...}), and a child
  *       per family and random variant that only sets the textures ({@link DecoDisplayBake});</li>
  *   <li>the 3 x 2 sign merged into one model around its middle column ({@code kaboofcasino:deco/casino_sign}) and the
- *       chandelier's nine body parts merged around the anchor ({@code kaboofcasino:deco/chandelier_body}).</li>
+ *       chandelier's nine body parts merged around the anchor ({@code kaboofcasino:deco/chandelier_body});</li>
+ *   <li>the TVs' cell models as the mod has them, one per channel and cell
+ *       ({@code kaboofcasino:deco/<tv>_screen<0..8>_<part>}, {@link #televisions}).</li>
  * </ul>
  * The blocks only use vanilla sounds (cushion, chest, lever click, candles), so no sound events are added.
  */
@@ -40,7 +43,12 @@ final class DecoDisplayPack {
             "shot_glasses", "casino_chip_pile", "chip_case", "reception_plaque", "cash_register", "serving_tray",
             "vip_only_plaque", "bottle_display_shelf", "glass_display_shelf");
     static final List<String> OTHER_IDS = List.of("roulettecasino:casino_chair", "roulettecasino:casino_stool",
-            "casinosound:casino_speaker");
+            "casinosound:casino_speaker", "roulettecasino:casino_tv", "roulettecasino:casino_tv_large",
+            "roulettecasino:casino_tv_3x3", "roulettecasino:dealer_station");
+    /** The three TVs ({@code roulettecasino}) and their columns (= rows). */
+    static final Map<String, Integer> TV_COLUMNS = Map.of("casino_tv", 1, "casino_tv_large", 2, "casino_tv_3x3", 3);
+    /** The TVs' channels 0..8 ({@code screen}; 0 = off). */
+    static final int TV_CHANNELS = 9;
 
     /** Exact keys ("key="): the names of the placing items in all 12 languages. */
     static final List<String> LANG_PREFIXES = langKeys();
@@ -76,7 +84,8 @@ final class DecoDisplayPack {
             String ns = id.substring(0, id.indexOf(':'));
             String path = id.substring(id.indexOf(':') + 1);
             JsonObject state = Json.parse(jar.bytes("assets/" + ns + "/blockstates/" + path + ".json"));
-            if (path.endsWith("_stairs") || path.equals("casino_sign") || path.equals("casino_chandelier")) {
+            if (path.endsWith("_stairs") || path.equals("casino_sign") || path.equals("casino_chandelier")
+                    || TV_COLUMNS.containsKey(path)) {
                 continue;
             }
             collect(state, models);
@@ -91,6 +100,26 @@ final class DecoDisplayPack {
         merged(jar, copier, tree, "casino_sign", "casinodeco:block/sign_", 6, 0);
         merged(jar, copier, tree, "chandelier_body", "casinodeco:block/chandelier_", 9, 1);
         stairs(jar, copier, tree);
+        televisions(copier, tree);
+    }
+
+    /**
+     * One display model per TV cell and channel: the mod's {@code roulettecasino:block/<tv>_screen<channel>_<part>}
+     * (the screen picture's slice for that cell, the off picture for channel 0), as the blockstates pick them. The
+     * small TV's blockstate also names parts 1..3, which the mod never places: those are not shipped.
+     */
+    static void televisions(ModelCopier copier, PackTree tree) {
+        for (String id : new TreeSet<>(TV_COLUMNS.keySet())) {
+            int cells = TV_COLUMNS.get(id) * TV_COLUMNS.get(id);
+            for (int channel = 0; channel < TV_CHANNELS; channel++) {
+                for (int part = 0; part < cells; part++) {
+                    String name = id + "_screen" + channel + "_" + part;
+                    String model = "roulettecasino:block/" + name;
+                    copier.model(model);
+                    displayDefinition(tree, name, model);
+                }
+            }
+        }
     }
 
     /**

@@ -74,8 +74,11 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      * @param breakMode         {@code owner} (placer + ops) or {@code anyone}
      * @param refuseLogoutSpots refuse placing a carrier within one block of where an offline player logged out
      *                          (safety; only switched off for tests)
+     * @param breakable         the mod's world setting "Breakable in survival" (games.md 21.2, set with the croupier's
+     *                          hand): false = nobody outside creative mines a machine; creative and
+     *                          {@code /casino remove} still remove them
      */
-    public record Machines(String breakMode, int verifyTicks, boolean refuseLogoutSpots) {
+    public record Machines(String breakMode, int verifyTicks, boolean refuseLogoutSpots, boolean breakable) {
         public Machines {
             Objects.requireNonNull(breakMode);
         }
@@ -152,7 +155,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Bets(64, DEFAULT_BET_ITEMS, Bets.PER_SLOT),
             new Rounds(8),
             new Owed(20),
-            new Machines("owner", 100, true),
+            new Machines("owner", 100, true, true),
             new Safety(10, 12, 8, 5),
             new Gui(4, 120),
             new Slot(-1, 4, 16, true),

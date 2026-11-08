@@ -70,6 +70,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private de.tigges.kaboofcasino.music.MusicService music;
     private de.tigges.kaboofcasino.deco.full.FullDecoService fullDeco;
     private de.tigges.kaboofcasino.deco.display.DisplayDecoService displayDeco;
+    private de.tigges.kaboofcasino.croupier.CroupierService croupiers;
+    private de.tigges.kaboofcasino.guide.GuideService guide;
+    private de.tigges.kaboofcasino.admin.AdminService admin;
     private LedgerListener ledger;
     private MenuService menus;
 
@@ -156,9 +159,11 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             case DUCK_DERBY -> new de.tigges.kaboofcasino.game.derby.DerbyController(machine, ctx);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
+        de.tigges.kaboofcasino.music.MusicOptOut musicOptOut = new de.tigges.kaboofcasino.music.MusicOptOut(this);
+        PackListener packListener = new PackListener(() -> config, () -> messages, pack, musicPack, sessions);
+        packListener.musicOptOut(musicOptOut::optedOut);
         for (Listener l : List.of(menus, new MenuListener(menus, Bukkit::getCurrentTick,
-                        () -> config.gui().clickGuardTicks(), () -> messages), safety, ledger,
-                new PackListener(() -> config, () -> messages, pack, musicPack, sessions),
+                        () -> config.gui().clickGuardTicks(), () -> messages), safety, ledger, packListener, musicOptOut,
                 new MachineListener(machines, menus, () -> messages), breaks, new ProtectionListener(machines),
                 new ChunkListener(machines), new ItemVetoListener(), new SafetyListener(machines, this))) {
             getServer().getPluginManager().registerEvents(l, this);
@@ -169,9 +174,17 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         music.enable();
         fullDeco.enable();
         displayDeco.enable();
+        croupiers = new de.tigges.kaboofcasino.croupier.CroupierService(ctx, displayDeco);
+        croupiers.enable();
+        guide = new de.tigges.kaboofcasino.guide.GuideService(ctx, sweep);
+        guide.enable();
+        // the croupier's hand: machine and casino settings; type values are written into config.yml and reloaded
+        admin = new de.tigges.kaboofcasino.admin.AdminService(ctx, this::reload);
+        admin.enable();
         Recipes.load(getClassLoader());
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload, () -> fullDeco.status());
+        command.musicOptOut(musicOptOut);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register("casino", "KaboofCasino (MineVegas Casino)", List.of(), command));
 
@@ -200,6 +213,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             long tick = Bukkit.getCurrentTick();
             machines.tick(tick);
             displayDeco.tick(tick);
+            croupiers.tick(tick);
             breaks.tick();
             if (tick % config.safety().sweepTicks() == 0) {
                 sweep.sweep();
@@ -254,6 +268,12 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         try {
+            if (guide != null) {
+                guide.disable();
+            }
+            if (admin != null) {
+                admin.disable();
+            }
             if (menus != null) {
                 menus.closeAll();
             }
@@ -262,6 +282,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             }
             if (machines != null) {
                 machines.disable();
+            }
+            if (croupiers != null) {
+                croupiers.disable();
             }
             if (displayDeco != null) {
                 displayDeco.disable();

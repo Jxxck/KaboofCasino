@@ -253,6 +253,24 @@ public final class WagerEngine {
     }
 
     /**
+     * How many of the settled rows' own payout items were delivered: per item kind the smaller of what they paid and
+     * what was delivered (the delivery may also hand out older owed items of the same or other kinds).
+     */
+    public static long deliveredOf(Settlement s) {
+        java.util.Map<String, Long> paid = new java.util.HashMap<>();
+        for (RoundRecord r : s.rounds()) {
+            for (ItemAmount a : r.payout()) {
+                paid.merge(a.item(), a.count(), Long::sum);
+            }
+        }
+        long out = 0;
+        for (ItemAmount a : ItemAmount.merge(s.delivered())) {
+            out += Math.min(a.count(), paid.getOrDefault(a.item(), 0L));
+        }
+        return out;
+    }
+
+    /**
      * Settles several open rounds of one account (a derby entrant's bet rows) with one ledger read and one write
      * (records out, payouts into owed), then delivers what fits. Missing ids are skipped.
      */

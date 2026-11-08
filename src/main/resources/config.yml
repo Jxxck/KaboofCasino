@@ -65,6 +65,9 @@ machines:
   # Nie eine Maschine dort aufstellen, wo ein Spieler ausgeloggt ist (er würde in den Barrieren erwachen und
   # ersticken). Nur für Tests abschalten.
   refuse-logout-spots: true
+  # "Im Überlebensmodus abbaubar" des Mods (Hand des Croupiers › Schutz). false: niemand außerhalb des
+  # Kreativmodus kann Casino-Maschinen abbauen; Kreativ und /casino remove entfernen sie weiterhin.
+  breakable: true
 
 safety:
   # Kein Menü, solange der Spieler vor so vielen Sekunden Schaden genommen oder ausgeteilt hat.

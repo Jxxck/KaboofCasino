@@ -7,8 +7,9 @@ import java.util.List;
 
 /**
  * Where a decoration's cells are and how big its click boxes are (the mod's {@code LargeCasinoSignBlock.partPos},
- * {@code CasinoChandelierBlock.bodyPos/chainPos}, {@code DecorShapes.turn} and the outline shapes of
- * {@code CasinoDecorGeometry}, {@code CasinoSignBlock}, {@code SpeakerBlock}, {@code DecorGeometry}). Pure.
+ * {@code CasinoTelevisionBlock.cellPos}, {@code CasinoChandelierBlock.bodyPos/chainPos}, {@code DecorShapes.turn} and
+ * the outline shapes of {@code CasinoDecorGeometry}, {@code CasinoSignBlock}, {@code CasinoTelevisionBlock},
+ * {@code SpeakerBlock}, {@code DecorGeometry}). Pure.
  */
 public final class DecoGeometry {
 
@@ -73,8 +74,36 @@ public final class DecoGeometry {
 
     /** {@code LargeCasinoSignBlock.partPos}: part 0..5 (3 wide to the counter-clockwise side, 2 high). */
     public static Pos signPart(Pos anchor, Facing face, int part) {
+        return wallPart(anchor, face, 3, part);
+    }
+
+    /**
+     * {@code CasinoTelevisionBlock.cellPos}: part {@code part % columns} steps to the counter-clockwise side (the
+     * viewer's right) and {@code part / columns} up.
+     */
+    public static Pos wallPart(Pos anchor, Facing face, int columns, int part) {
         int[] c = ccw(face);
-        return anchor.offset(c[0] * (part % 3), part / 3, c[1] * (part % 3));
+        return anchor.offset(c[0] * (part % columns), part / columns, c[1] * (part % columns));
+    }
+
+    /** {@code CasinoTelevisionBlock.getShape}: the screen's bottom and top in px over all rows, per TV size. */
+    static double[] tvScreen(int columns) {
+        return switch (columns) {
+            case 3 -> new double[] {10.5, 37.5};
+            case 2 -> new double[] {7.0, 25.0};
+            default -> new double[] {3.5, 12.5};
+        };
+    }
+
+    /**
+     * {@code CasinoTelevisionBlock.getShape} of one column (all rows): the 2 px panel against the wall in the south
+     * frame (outer columns 0.5 px narrower), turned to {@code face}.
+     */
+    static double[] tvColumn(Facing face, int columns, int column) {
+        double[] screen = tvScreen(columns);
+        double x0 = column == 0 ? 0.5 : 0.0;
+        double x1 = column == columns - 1 ? 15.5 : 16.0;
+        return turn(new double[] {x0, screen[0], 0.0, x1, screen[1], 2.0}, face.turns());
     }
 
     /** {@code CasinoChandelierBlock.bodyPos}: part 0..8 around the anchor (part 4). */
@@ -82,13 +111,22 @@ public final class DecoGeometry {
         return anchor.offset(part % 3 - 1, 0, part / 3 - 1);
     }
 
-    /** Every cell of a decoration: anchor first; the sign's six parts; the chandelier's body then chain upwards. */
+    /**
+     * Every cell of a decoration: anchor first; the sign's six parts and a TV's cells in part order; the chandelier's
+     * body then chain upwards.
+     */
     public static List<Pos> cells(DecoType type, Pos anchor, Facing facing, int state) {
         List<Pos> out = new ArrayList<>();
         switch (type.place()) {
             case LARGE_SIGN -> {
                 for (int part = 0; part < 6; part++) {
                     out.add(signPart(anchor, facing, part));
+                }
+            }
+            case TV -> {
+                int columns = type.tvColumns();
+                for (int part = 0; part < columns * columns; part++) {
+                    out.add(wallPart(anchor, facing, columns, part));
                 }
             }
             case CHANDELIER -> {
@@ -135,6 +173,13 @@ public final class DecoGeometry {
             case CHANDELIER_WALL_SCONCE -> out.add(box(turn(SCONCE, turns), 0, 0));
             case VIP_ONLY_PLAQUE -> out.add(box(turn(VIP_ONLY_PLAQUE, turns), 0, 0));
             case CASINO_SPEAKER -> out.add(box(turn(SPEAKER[r.face()], turns), 0, 0));
+            case CASINO_TV, CASINO_TV_LARGE, CASINO_TV_3X3 -> {
+                int columns = r.type().tvColumns();
+                int[] c = ccw(r.facing());
+                for (int col = 0; col < columns; col++) {
+                    out.add(box(tvColumn(r.facing(), columns, col), c[0] * col, c[1] * col));
+                }
+            }
             case CASINO_CHANDELIER -> {
                 out.add(box(CHANDELIER_BODY, 0, 0));
                 int length = r.chain();

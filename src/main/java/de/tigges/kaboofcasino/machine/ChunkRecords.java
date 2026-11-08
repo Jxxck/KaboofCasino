@@ -29,6 +29,10 @@ public final class ChunkRecords {
     private static final NamespacedKey PLACED = Keys.key("placed");
     private static final NamespacedKey NUMBER = Keys.key("number");
     private static final NamespacedKey DATA = Keys.key("data");
+    /** Own settings of the croupier's hand (games.md 20): only present when set (absent = automatic / inherit). */
+    private static final NamespacedKey NAME = Keys.key("name");
+    private static final NamespacedKey CHANCE = Keys.key("chance");
+    private static final NamespacedKey BIAS = Keys.key("bias");
 
     private ChunkRecords() {
     }
@@ -57,7 +61,7 @@ public final class ChunkRecords {
                 PersistentDataType.LIST.dataContainers(), List.of());
     }
 
-    private static MachineRecord decode(String world, PersistentDataContainer c) {
+    static MachineRecord decode(String world, PersistentDataContainer c) {
         MachineType type = MachineType.byId(c.get(TYPE, PersistentDataType.STRING)).orElseThrow();
         return new MachineRecord(UUID.fromString(c.get(ID, PersistentDataType.STRING)), type,
                 new Pos(world, c.get(X, PersistentDataType.INTEGER), c.get(Y, PersistentDataType.INTEGER),
@@ -66,7 +70,25 @@ public final class ChunkRecords {
                 UUID.fromString(c.get(PLACER, PersistentDataType.STRING)),
                 c.get(PLACED, PersistentDataType.LONG),
                 c.getOrDefault(NUMBER, PersistentDataType.INTEGER, 0),
-                c.getOrDefault(DATA, PersistentDataType.STRING, ""));
+                c.getOrDefault(DATA, PersistentDataType.STRING, ""),
+                own(c));
+    }
+
+    /**
+     * The own settings; a record without them (written before step 8) reads as {@link MachineSettings.Own#NONE}, an
+     * invalid stored value as "inherit" (logged) instead of an unreadable record.
+     */
+    private static MachineSettings.Own own(PersistentDataContainer c) {
+        String name = c.has(NAME, PersistentDataType.STRING) ? c.get(NAME, PersistentDataType.STRING) : null;
+        Integer chance = c.has(CHANCE, PersistentDataType.INTEGER) ? c.get(CHANCE, PersistentDataType.INTEGER) : null;
+        Integer bias = c.has(BIAS, PersistentDataType.INTEGER) ? c.get(BIAS, PersistentDataType.INTEGER) : null;
+        MachineSettings.Own own = MachineSettings.Own.read(name, chance, bias);
+        if (name != null && !name.equals(own.name()) || chance != null && chance != own.chance()
+                || bias != null && bias != own.bias()) {
+            Log.get().warn("machine record {}: invalid own settings (name {}, chance {}, bias {}) read as {}",
+                    idOf(c), name, chance, bias, own);
+        }
+        return own;
     }
 
     /** The id string of a raw record, or null if it has none (such entries are kept as they are). */
@@ -78,7 +100,7 @@ public final class ChunkRecords {
         }
     }
 
-    private static PersistentDataContainer encode(PersistentDataAdapterContext ctx, MachineRecord r) {
+    static PersistentDataContainer encode(PersistentDataAdapterContext ctx, MachineRecord r) {
         PersistentDataContainer c = ctx.newPersistentDataContainer();
         c.set(V, PersistentDataType.INTEGER, MachineRecord.VERSION);
         c.set(ID, PersistentDataType.STRING, r.id().toString());
@@ -91,6 +113,17 @@ public final class ChunkRecords {
         c.set(PLACED, PersistentDataType.LONG, r.placedAt());
         c.set(NUMBER, PersistentDataType.INTEGER, r.number());
         c.set(DATA, PersistentDataType.STRING, r.data());
+        // only what is set: a machine without own settings keeps exactly the version-1 keys of 0.7.0
+        MachineSettings.Own own = r.own();
+        if (!own.name().isEmpty()) {
+            c.set(NAME, PersistentDataType.STRING, own.name());
+        }
+        if (own.ownChance()) {
+            c.set(CHANCE, PersistentDataType.INTEGER, own.chance());
+        }
+        if (own.ownBias()) {
+            c.set(BIAS, PersistentDataType.INTEGER, own.bias());
+        }
         return c;
     }
 

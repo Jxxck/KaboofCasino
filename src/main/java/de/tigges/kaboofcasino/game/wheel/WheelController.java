@@ -11,6 +11,7 @@ import de.tigges.kaboofcasino.game.PanelText;
 import de.tigges.kaboofcasino.game.StakeMenu;
 import de.tigges.kaboofcasino.game.slot.IdleLights;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
@@ -241,7 +242,7 @@ public final class WheelController extends MachineController {
             m.actionBar(player, Msg.WHEEL_NO_BET);
             return;
         }
-        int next = draw(ctx.config().get().wheel().winChance(), ctx.random()::nextInt);
+        int next = draw(MachineSettings.winChance(ctx.config().get(), machine), ctx.random()::nextInt);
         int quarters = FortuneWheelGame.quarters(next);
         long seed = ctx.random().nextLong();
         FortuneWheelSpin.Plan plan = FortuneWheelSpin.plan(stop, next, seed);

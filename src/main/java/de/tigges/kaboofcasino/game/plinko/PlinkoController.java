@@ -10,6 +10,7 @@ import de.tigges.kaboofcasino.game.Odds;
 import de.tigges.kaboofcasino.game.PanelText;
 import de.tigges.kaboofcasino.game.StakeMenu;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
@@ -241,7 +242,7 @@ public final class PlinkoController extends MachineController {
             return;
         }
         long seed = ctx.random().nextLong();
-        int winChance = ctx.config().get().plinko().winChance();
+        int winChance = MachineSettings.winChance(ctx.config().get(), machine);
         int[] paths = new int[stakes.size()];
         for (int b = 0; b < paths.length; b++) {
             paths[b] = path(winChance, ctx.random()::nextInt);

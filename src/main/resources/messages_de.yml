@@ -103,6 +103,18 @@ deco:
   logout-spot: "<red>Hier ist jemand ausgeloggt – stell das woanders hin."
   seat-danger: "<red>Gefahr – du stehst auf."
 
+# the casino guide (dialogs); its own texts come from the mod (pack lang files), these are the plugin's additions
+guide:
+  # label of a shaped recipe (the mod only labels shapeless ones: "Formloses Rezept")
+  recipe: "Rezept"
+  # after an ingredient tag shown by one of its items (planks, slabs, signs)
+  any-kind: " (beliebige Sorte)"
+  # hover text of a link to another page: <page>
+  goto: "<gray>Zur Seite <page>"
+  # licence line on the cover
+  credits: "<gray>Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>"
+  danger-close: "<red>Gefahr – Handbuch zu."
+
 pack:
   prompt: "<gold>KaboofCasino</gold>: Grafiken und Sounds von <yellow>MineVegas Casino</yellow> (MIT), curseforge.com/minecraft/mc-mods/minevegas-casino"
   kick: "<red>Das Casino-Ressourcenpaket ist auf diesem Server Pflicht.</red>\n<gray>Verbinde dich neu und nimm es an (Serverliste: Server-Ressourcenpakete aktivieren)."
@@ -111,7 +123,7 @@ pack:
 
 command:
   info: "<gold>KaboofCasino</gold> <gray>– Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino abholen · /casino credits"
-  usage: "<gray>/casino [stats|abholen|credits] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
+  usage: "<gray>/casino [stats|abholen|credits|musik] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
   give-done: "<green><player> hat <item> bekommen."
   give-unknown: "<red>Unbekannte Maschine: <name>. Möglich: <list>"
   player-unknown: "<red>Spieler <name> ist nicht online."
@@ -119,7 +131,11 @@ command:
   stats-header: "<gold>Deine Casino-Statistik</gold> <gray>(<rounds> Runden)"
   stats-line: "<gray>• <yellow><item></yellow>: gesetzt <staked>, gewonnen <won>"
   stats-empty: "<gray>Du hast noch nicht gespielt."
-  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Spiele, Modelle, Texturen, GUI-Grafiken, Sounds und Texte: <yellow>MineVegas Casino</yellow> 1.1.0 von byMehd, MIT-Lizenz mit Hinweispflicht:\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>Lounge-Musik an den Lautsprechern (freiwilliges Musikpaket): <yellow>Airport Lounge, Backbay Lounge, Jazz Brunch, George Street Shuffle, Cool Vibes, Bossa Antigua</yellow> – Kevin MacLeod (<click:open_url:'https://incompetech.com'>incompetech.com</click>), Lizenz CC BY 4.0:\n<aqua><click:open_url:'https://creativecommons.org/licenses/by/4.0/'><u>https://creativecommons.org/licenses/by/4.0/</u></click>\n<gray>Geändert von MineVegas Casino: MP3 in Ogg Vorbis umgewandelt, Lautheit auf -20 LUFS angeglichen; Komposition unverändert. Keine Billigung durch den Komponisten.\n<gray>Plugin für Kaboof SMP; GUI-Schrift aus der Minecraft-Standardschrift."
+  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Spiele, Modelle, Texturen, GUI-Grafiken, Sounds und Texte: <yellow>MineVegas Casino</yellow> 1.1.0 von byMehd, MIT-Lizenz mit Hinweispflicht:\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>Lounge-Musik an den Lautsprechern (freiwilliges Musikpaket): <yellow>Airport Lounge, Backbay Lounge, Jazz Brunch, George Street Shuffle, Cool Vibes, Bossa Antigua</yellow> – Kevin MacLeod (<click:open_url:'https://incompetech.com'>incompetech.com</click>), Lizenz CC BY 4.0:\n<aqua><click:open_url:'https://creativecommons.org/licenses/by/4.0/'><u>https://creativecommons.org/licenses/by/4.0/</u></click>\n<gray>Geändert von MineVegas Casino: MP3 in Ogg Vorbis umgewandelt, Lautheit auf -20 LUFS angeglichen; Komposition unverändert. Keine Billigung durch den Komponisten.\n<gray>Plugin für Kaboof SMP; GUI-Schrift aus der Minecraft-Standardschrift.\n<gray>Lounge-Musik abschalten (ab dem nächsten Login kein Musikpaket mehr): <yellow>/casino musik aus</yellow>, wieder an: <yellow>/casino musik an</yellow>"
+  # /casino musik aus|an (plugin texts): the music pack offer at the next login
+  music-off: "<gray>Lounge-Musik ist <yellow>aus</yellow>: Ab dem nächsten Login wird dir kein Musikpaket mehr angeboten."
+  music-on: "<gray>Lounge-Musik ist <yellow>an</yellow>: Ab dem nächsten Login wird dir das Musikpaket wieder angeboten."
+  music-usage: "<gray>/casino musik aus · /casino musik an"
   open-rounds: "<gray>Laufende Runden: <rounds> · offene Gewinne: <owed>"
 
 gui:
@@ -249,6 +265,12 @@ item:
   # block.roulettecasino.blackjack_table, item.roulettecasino.croupier_badge
   blackjack-table: "Blackjack-Tisch"
   croupier-badge: "Croupier-Abzeichen"
+  # item.roulettecasino.croupier_hiring_card, item.roulettecasino.casino_guide
+  croupier-hiring-card: "Croupier-Anstellungskarte"
+  casino-guide: "Casino-Handbuch"
+  # item.roulettecasino.croupier_hand, .lore (die Texte der Einstellungs-Dialoge sind die des Mods)
+  croupier-hand: "Hand des Croupiers"
+  croupier-hand-lore: "<gray>Kreativ: richte die Maschinen des Casinos ein"
   # block.roulettecasino.poker_table
   poker-table: "Pokertisch"
   # block.roulettecasino.duck_derby, item.roulettecasino.duck_derby_mechanism, derby_duck_*

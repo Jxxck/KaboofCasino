@@ -19,8 +19,20 @@ public enum CasinoItem {
     PLINKO("plinko", "roulettecasino:plinko", Msg.ITEM_PLINKO, MachineType.PLINKO),
     ROULETTE_TABLE("roulette_table", "roulettecasino:roulette_table", Msg.ITEM_ROULETTE_TABLE,
             MachineType.ROULETTE_TABLE),
-    /** The blackjack recipe's ingredient; the mod hands it out for a hired croupier (step 8). */
+    /**
+     * The blackjack and poker recipes' ingredient; the mod hands it out for a hired croupier (games.md 10.3: a hiring
+     * card used on a croupier).
+     */
     CROUPIER_BADGE("croupier_badge", "roulettecasino:croupier_badge", Msg.ITEM_CROUPIER_BADGE, null),
+    /** The croupier's one trade (24 emeralds); used on a croupier it hires him for a badge (games.md 10.2-10.3). */
+    CROUPIER_HIRING_CARD("croupier_hiring_card", "roulettecasino:croupier_hiring_card", Msg.ITEM_HIRING_CARD, null),
+    /** The casino guide book (games.md 11): opens the guide dialog. */
+    CASINO_GUIDE("casino_guide", "roulettecasino:casino_guide", Msg.ITEM_CASINO_GUIDE, null),
+    /**
+     * The croupier's hand (games.md 10.5, 20.1): admins in creative set up the machines with it
+     * ({@code de.tigges.kaboofcasino.admin}); stack size 1, uncommon, no recipe ({@code /casino give croupier_hand}).
+     */
+    CROUPIER_HAND("croupier_hand", "roulettecasino:croupier_hand", Msg.ITEM_CROUPIER_HAND, null),
     BLACKJACK_TABLE("blackjack_table", "roulettecasino:blackjack_table", Msg.ITEM_BLACKJACK_TABLE,
             MachineType.BLACKJACK_TABLE),
     POKER_TABLE("poker_table", "roulettecasino:poker_table", Msg.ITEM_POKER_TABLE, MachineType.POKER_TABLE),

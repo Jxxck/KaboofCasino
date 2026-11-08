@@ -17,7 +17,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Every state of the mod's blockstate files of the display decoration shows the same model with the same {@code y}
  * turn as {@link DecoModels} picks: the sofa's 576 states, tables, rope post and bars by connection, every facing,
- * count, open/closed, on/off and face, the slab types and the stair keys with their random variants.
+ * count, open/closed, on/off and face, the slab types and the stair keys with their random variants, every TV state
+ * (facing, on, screen, part) and the dealer station.
  */
 class DecoBlockstateTest {
 
@@ -222,6 +223,53 @@ class DecoBlockstateTest {
         }
     }
 
+    /**
+     * The TVs: every state of the mod's blockstates (facing x on x screen x part) shows the model and {@code y} of the
+     * display on that part's cell. {@code on=true, screen=0} (a legacy state the mod reads as channel 1) shows the
+     * channel 1 picture, {@code on=false} the off picture whatever the screen. The small TV's blockstate also lists
+     * parts 1..3, which the mod never places.
+     */
+    @Test
+    void televisionsEveryState() {
+        for (DecoType t : List.of(DecoType.CASINO_TV, DecoType.CASINO_TV_LARGE, DecoType.CASINO_TV_3X3)) {
+            JsonObject variants = ModAssets.blockstate(t.id()).getAsJsonObject("variants");
+            int columns = t.tvColumns();
+            int partsInState = t == DecoType.CASINO_TV_3X3 ? 9 : 4;
+            assertEquals(4 * 2 * 9 * partsInState, variants.size(), t.id());
+            int checked = 0;
+            for (Map.Entry<String, JsonElement> e : variants.entrySet()) {
+                Map<String, String> p = ModAssets.props(e.getKey());
+                int part = Integer.parseInt(p.get("part"));
+                if (part >= columns * columns) {
+                    continue;
+                }
+                boolean on = Boolean.parseBoolean(p.get("on"));
+                int screen = Integer.parseInt(p.get("screen"));
+                int channel = on ? (screen == 0 ? 1 : screen) : 0;
+                Facing f = facing(p.get("facing"));
+                List<DecoModels.Part> parts = DecoModels.parts(record(t, f, channel), null);
+                assertEquals(columns * columns, parts.size(), t.id());
+                DecoModels.Part shown = parts.get(part);
+                JsonObject entry = ModAssets.first(e.getValue());
+                assertEquals(ModAssets.displayKey(entry.get("model").getAsString()), shown.key(), e.getKey());
+                assertEquals(ModAssets.y(entry), shown.yRot(), e.getKey());
+                assertTrue(!entry.has("x"), e.getKey());
+                Pos cell = DecoGeometry.wallPart(AT, f, columns, part);
+                assertEquals(cell, AT.offset(shown.dx(), shown.dy(), shown.dz()), e.getKey());
+                assertEquals(DecoGeometry.cells(record(t, f, channel)).get(part), cell, e.getKey());
+                checked++;
+            }
+            assertEquals(4 * 2 * 9 * columns * columns, checked, t.id());
+        }
+    }
+
+    @Test
+    void dealerStation() {
+        JsonObject variants = ModAssets.blockstate(DecoType.DEALER_STATION.id()).getAsJsonObject("variants");
+        assertEquals(1, variants.size());
+        single(record(DecoType.DEALER_STATION, Facing.SOUTH, 0), ModAssets.first(variants.get("")), "dealer_station");
+    }
+
     /** Every type is a block of the mod (blockstate present) and every item model the inventory items use exists. */
     @Test
     void everyTypeIsAModBlock() {
@@ -231,6 +279,6 @@ class DecoBlockstateTest {
             assertTrue(ModAssets.all().containsKey("assets/" + t.id().substring(0, colon) + "/items/"
                     + t.id().substring(colon + 1) + ".json"), t.id());
         }
-        assertEquals(41, DecoType.values().length);
+        assertEquals(45, DecoType.values().length);
     }
 }

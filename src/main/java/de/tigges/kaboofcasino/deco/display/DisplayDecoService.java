@@ -43,8 +43,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
 /**
- * The display-entity decoration (step 4): every non-full-cube block of {@code casinodeco}, the casino chair and stool
- * and the speaker. Keeps the index of loaded decorations (records in the chunk PDC, cells as plain-int positions),
+ * The display-entity decoration (step 4, the TVs and the dealer station of step 8): every non-full-cube block of
+ * {@code casinodeco}, the casino chair and stool, the casino TVs, the dealer station and the speaker. Keeps the index of loaded decorations (records in the chunk PDC, cells as plain-int positions),
  * places and removes them, recomputes connections (tables, rope posts, bars, the sofa layout) and support when
  * neighbours change, verifies carriers and support round-robin (never loading a chunk), and runs the seats, the
  * candle flames and the break timers. Thread: MAIN.
@@ -77,6 +77,9 @@ public final class DisplayDecoService {
     private final Map<Pos, DecoBlock> byCell = new HashMap<>();
     /** Loaded candle blocks (chandelier, sconce): the only ones {@link DecoFlames} looks at. */
     private final Map<UUID, DecoBlock> candles = new java.util.LinkedHashMap<>();
+    /** Loaded dealer stations, for {@link #dealerStations()} and {@link #dealerStationsNear}. */
+    private final Map<UUID, DecoBlock> stations = new java.util.LinkedHashMap<>();
+    private DealerStationHook dealerHook = DealerStationHook.NONE;
     /** Loaded decorations by anchor chunk ({@code world chunkKey}), for chunk unloads. */
     private final Map<String, Set<UUID>> byChunk = new HashMap<>();
     private final Deque<UUID> pendingSpawns = new ArrayDeque<>();
@@ -145,6 +148,11 @@ public final class DisplayDecoService {
                 byId.size());
     }
 
+    /** Sets what happens when a dealer station is placed, removed or used ({@code null}: nothing, as in the mod). */
+    public void dealerStationHook(DealerStationHook hook) {
+        this.dealerHook = hook == null ? DealerStationHook.NONE : hook;
+    }
+
     /** Stands every seated player up (safe spot), removes every entity. */
     public void disable() {
         seats.disable();
@@ -156,6 +164,7 @@ public final class DisplayDecoService {
         byCell.clear();
         byChunk.clear();
         candles.clear();
+        stations.clear();
         pendingSpawns.clear();
         pendingChecks.clear();
         verifyQueue.clear();
@@ -187,6 +196,60 @@ public final class DisplayDecoService {
     /** The loaded chandeliers and sconces (live view; the flames only read it). */
     Collection<DecoBlock> flameBlocks() {
         return java.util.Collections.unmodifiableCollection(candles.values());
+    }
+
+    /** The loaded dealer stations (records at this moment, in load order). */
+    public List<DecoRecord> dealerStations() {
+        List<DecoRecord> out = new ArrayList<>(stations.size());
+        for (DecoBlock b : stations.values()) {
+            out.add(b.record());
+        }
+        return out;
+    }
+
+    /**
+     * The loaded dealer stations in {@code centre}'s world whose block centre lies within {@code radius} blocks of
+     * {@code centre}'s block centre, nearest first (equal distances in load order).
+     */
+    public List<DecoRecord> dealerStationsNear(Pos centre, double radius) {
+        return near(dealerStations(), centre, radius);
+    }
+
+    /** The records whose anchor lies within {@code radius} blocks of {@code centre}, nearest first (stable). Pure. */
+    static List<DecoRecord> near(List<DecoRecord> records, Pos centre, double radius) {
+        List<DecoRecord> out = new ArrayList<>();
+        for (DecoRecord r : records) {
+            if (distanceSquared(centre, r.anchor()) <= radius * radius) {
+                out.add(r);
+            }
+        }
+        out.sort(java.util.Comparator.comparingDouble(r -> distanceSquared(centre, r.anchor())));
+        return out;
+    }
+
+    /** Squared distance of two block positions; infinite between worlds. */
+    static double distanceSquared(Pos a, Pos b) {
+        if (!a.world().equals(b.world())) {
+            return Double.POSITIVE_INFINITY;
+        }
+        double dx = a.x() - b.x();
+        double dy = a.y() - b.y();
+        double dz = a.z() - b.z();
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    /** {@link DealerStationHook#onPlaced}, guarded. */
+    void dealerStationPlaced(DecoRecord station, Player placer) {
+        try {
+            dealerHook.onPlaced(station, placer);
+        } catch (RuntimeException e) {
+            Log.incident("dealer station hook (placed) at " + station.anchor(), e);
+        }
+    }
+
+    /** {@link DealerStationHook#onUse} (an exception goes to the caller, which reports it to the player). */
+    boolean dealerStationUsed(Player player, DecoBlock station) {
+        return dealerHook.onUse(player, station.record());
     }
 
     /** Live view for read-only loops that do not add or remove decorations. */
@@ -221,6 +284,9 @@ public final class DisplayDecoService {
         if (DecoFlames.burns(b.type())) {
             candles.put(b.id(), b);
         }
+        if (b.type() == DecoType.DEALER_STATION) {
+            stations.put(b.id(), b);
+        }
         byChunk.computeIfAbsent(chunkOf(b.anchor()), k -> new HashSet<>()).add(b.id());
         for (Pos p : b.cells()) {
             byCell.put(p, b);
@@ -231,6 +297,7 @@ public final class DisplayDecoService {
     private void unregister(DecoBlock b) {
         byId.remove(b.id());
         candles.remove(b.id());
+        stations.remove(b.id());
         Set<UUID> inChunk = byChunk.get(chunkOf(b.anchor()));
         if (inChunk != null) {
             inChunk.remove(b.id());
@@ -329,6 +396,13 @@ public final class DisplayDecoService {
                 } else {
                     world.dropItemNaturally(new Location(world, a.x() + 0.5, a.y() + 0.5, a.z() + 0.5), items);
                 }
+            }
+        }
+        if (b.type() == DecoType.DEALER_STATION) {
+            try {
+                dealerHook.onRemoved(b.record());
+            } catch (RuntimeException e) {
+                Log.incident("dealer station hook (removed) at " + b.anchor(), e);
             }
         }
         checkAround(b.cells());
@@ -627,6 +701,7 @@ public final class DisplayDecoService {
             case CASINO_CHANDELIER -> DecoGeometry.chandelierChain(r, cell) ? 0 : 14;
             case CHANDELIER_WALL_SCONCE -> waterlogged ? 0 : 14;
             case CASINO_SPEAKER -> r.on() ? 2 : 0;
+            case CASINO_TV, CASINO_TV_LARGE, CASINO_TV_3X3 -> r.tvOn() ? r.type().light() : 0;
             default -> r.type().light();
         };
     }
@@ -677,6 +752,17 @@ public final class DisplayDecoService {
                 }
                 yield true;
             }
+            case TV -> {
+                // CasinoTelevisionBlock.tick: every cell keeps a sturdy wall behind it
+                int columns = r.type().tvColumns();
+                for (int part = 0; part < columns * columns; part++) {
+                    if (!wallOrUnloaded(w, DecoGeometry.wallPart(a, r.facing(), columns, part), r.facing())) {
+                        yield false;
+                    }
+                }
+                yield true;
+            }
+            case FREE -> true;
             case SPEAKER -> switch (r.face()) {
                 case DecoRecord.FACE_CEILING -> sturdy(w, a.offset(0, 1, 0), BlockFace.DOWN, false);
                 case DecoRecord.FACE_WALL -> wall(w, a, r.facing());
@@ -725,6 +811,8 @@ public final class DisplayDecoService {
             case WALNUT_BAR, IVORY_MARBLE_BAR, BLACK_MARBLE_BAR -> true;
             case WOOD_TABLE, GLASS_TABLE -> face == BlockFace.UP;
             case VELVET_ROPE_POST -> face == BlockFace.UP && centre;
+            // DealerStationBlock: the 12 px post reaches the bottom (centre support below), the top ends at 11.7 px
+            case DEALER_STATION -> face == BlockFace.DOWN && centre;
             default -> false;
         };
     }

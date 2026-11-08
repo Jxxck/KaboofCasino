@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The display decoration's pack part: the uv-locked stair bake (template UVs, every state's shape against vanilla's
  * stair rule), the merged sign and chandelier models (inside the model range, every part present), one display model
- * per blockstate model, the placing items and their names.
+ * per blockstate model (the TVs' per cell and channel), the placing items and their names.
  */
 class DecoDisplayPackTest {
 
@@ -206,7 +206,7 @@ class DecoDisplayPackTest {
         }
     }
 
-    /** One display model per block model of the blockstates, the 41 placing items, their names in every language. */
+    /** One display model per block model of the blockstates, the 45 placing items, their names in every language. */
     @Test
     void displayModelsItemsAndNames() {
         assertTrue(PackTreeHas.item(tree, "kaboofcasino:deco/sofa_a0"));
@@ -220,12 +220,60 @@ class DecoDisplayPackTest {
         }
         assertTrue(tree.has("assets/roulettecasino/items/casino_chair.json"));
         assertTrue(tree.has("assets/casinosound/items/casino_speaker.json"));
-        assertEquals(41, DecoDisplayPack.LANG_PREFIXES.size());
+        for (String id : java.util.List.of("casino_tv", "casino_tv_large", "casino_tv_3x3", "dealer_station")) {
+            assertTrue(tree.has("assets/roulettecasino/items/" + id + ".json"), id);
+            assertTrue(DecoDisplayPack.LANG_PREFIXES.contains("block.roulettecasino." + id + "="), id);
+        }
+        assertTrue(PackTreeHas.item(tree, "kaboofcasino:deco/dealer_station"));
+        assertEquals(45, DecoDisplayPack.LANG_PREFIXES.size());
         // the glass models' sprite objects became plain sprite ids
         JsonObject sconce = Json.parse(tree.get("assets/casinodeco/models/block/chandelier_wall_sconce.json"));
         for (Map.Entry<String, JsonElement> t : sconce.getAsJsonObject("textures").entrySet()) {
             assertTrue(t.getValue().isJsonPrimitive(), t.getKey());
         }
+    }
+
+    /**
+     * The TVs: every model the blockstates pick for a cell the mod places (all parts of the large and 3 x 3 TV, part 0
+     * of the small one) is shipped verbatim with a display definition; the small TV's unused parts 1..3 are not. The
+     * screen pictures are atlas sprites whose sides are multiples of 16 (no padding, mip level kept).
+     */
+    @Test
+    void televisionCellModels() {
+        int shipped = 0;
+        for (Map.Entry<String, Integer> tv : DecoDisplayPack.TV_COLUMNS.entrySet()) {
+            int cells = tv.getValue() * tv.getValue();
+            Set<String> used = new TreeSet<>();
+            JsonObject variants = Json.parse(jar.bytes("assets/roulettecasino/blockstates/" + tv.getKey() + ".json"))
+                    .getAsJsonObject("variants");
+            for (Map.Entry<String, JsonElement> v : variants.entrySet()) {
+                int part = Integer.parseInt(v.getKey().replaceAll(".*part=(\\d+).*", "$1"));
+                if (part < cells) {
+                    used.add(v.getValue().getAsJsonObject().get("model").getAsString());
+                }
+            }
+            assertEquals(DecoDisplayPack.TV_CHANNELS * cells, used.size(), tv.getKey());
+            for (String model : used) {
+                String name = model.substring("roulettecasino:block/".length());
+                String path = "assets/roulettecasino/models/block/" + name + ".json";
+                assertArrayEquals(jar.bytes(path), tree.get(path), path);
+                assertTrue(PackTreeHas.item(tree, "kaboofcasino:deco/" + name), name);
+                shipped++;
+            }
+            for (int part = cells; part < 4 && tv.getValue() == 1; part++) {
+                assertTrue(!PackTreeHas.item(tree, "kaboofcasino:deco/casino_tv_screen1_" + part), "unused part");
+            }
+        }
+        assertEquals(9 * (1 + 4 + 9), shipped);
+        for (String screen : java.util.List.of("off", "info", "roulette", "blackjack", "slot_machine",
+                "fortune_wheel", "duck_derby", "plinko", "poker")) {
+            String path = "assets/roulettecasino/textures/block/casino_tv_" + screen + ".png";
+            assertTrue(tree.has(path), path);
+            java.awt.image.BufferedImage image = Images.read(tree.get(path));
+            assertEquals(0, image.getWidth() % 16, path);
+            assertEquals(0, image.getHeight() % 16, path);
+        }
+        assertTrue(!tree.has("assets/roulettecasino/textures/block/casino_tv_on.png"), "no channel uses it");
     }
 
     /** Small helper: an item definition exists in the tree. */

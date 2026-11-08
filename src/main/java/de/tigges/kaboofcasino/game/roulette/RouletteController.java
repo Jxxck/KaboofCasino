@@ -7,6 +7,7 @@ import de.tigges.kaboofcasino.game.GameMenu;
 import de.tigges.kaboofcasino.game.MachineController;
 import de.tigges.kaboofcasino.game.StakeMenu;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.PlayerAccount;
@@ -186,7 +187,8 @@ public final class RouletteController extends MachineController {
             m.actionBar(player, Msg.ROULETTE_SEVERAL);
             return;
         }
-        int pocket = RouletteGame.draw(colour, ctx.config().get().roulette().winChance(), ctx.random()::nextInt);
+        int pocket = RouletteGame.draw(colour, MachineSettings.winChance(ctx.config().get(), machine),
+                ctx.random()::nextInt);
         RouletteSpin.Plan plan = RouletteSpin.plan(frame, pocket);
         long ends = ctx.clock().getAsLong() + plan.resultTick() * 50L;
         List<WagerEngine.Request> requests = new ArrayList<>();

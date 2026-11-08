@@ -1,7 +1,6 @@
 package de.tigges.kaboofcasino.game.derby;
 
 import de.tigges.kaboofcasino.CasinoContext;
-import de.tigges.kaboofcasino.config.CasinoConfig;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.game.GameMenu;
@@ -12,6 +11,7 @@ import de.tigges.kaboofcasino.gui.MenuService;
 import de.tigges.kaboofcasino.gui.Usability;
 import de.tigges.kaboofcasino.machine.Heartbeat;
 import de.tigges.kaboofcasino.machine.Machine;
+import de.tigges.kaboofcasino.machine.MachineSettings;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.LedgerCodec;
@@ -299,7 +299,7 @@ public final class DerbyController extends MachineController {
             m.actionBar(player, Msg.DERBY_NO_BET);
             return;
         }
-        int chance = ctx.config().get().derby().winChance();
+        int chance = MachineSettings.winChance(ctx.config().get(), machine);
         DerbyRules.Race drawn = DerbyRules.draw(false, lane, chance, ctx.random()::nextInt, ctx.random()::nextLong);
         int second = drawn.second();
         long ends = ctx.clock().getAsLong() + drawn.plan().endTick() * 50L + RECORD_ENDS_MILLIS;
@@ -336,7 +336,7 @@ public final class DerbyController extends MachineController {
             return;
         }
         long now = world.getGameTime();
-        if (!DerbyRules.groupAllowed(ctx.config().get().derby().winChance())) {
+        if (!DerbyRules.groupAllowed(MachineSettings.winChance(ctx.config().get(), machine))) {
             m.actionBar(player, Msg.DERBY_GROUP_UNAVAILABLE);
             return;
         }
@@ -481,8 +481,8 @@ public final class DerbyController extends MachineController {
      * plan drawn; each entrant's records get his result in his own ledger write.
      */
     private void launchGroup(World world, long now) {
-        CasinoConfig.Slot settings = ctx.config().get().derby();
-        if (!DerbyRules.groupAllowed(settings.winChance())) {
+        int chance = MachineSettings.winChance(ctx.config().get(), machine);
+        if (!DerbyRules.groupAllowed(chance)) {
             for (Entrant e : List.copyOf(entrants.values())) {
                 settle(e, SettleReason.NORMAL, false);
             }
@@ -494,7 +494,7 @@ public final class DerbyController extends MachineController {
         long tPlan;
         DerbyRules.Race drawn;
         try {
-            drawn = DerbyRules.draw(true, -1, settings.winChance(), ctx.random()::nextInt, ctx.random()::nextLong);
+            drawn = DerbyRules.draw(true, -1, chance, ctx.random()::nextInt, ctx.random()::nextLong);
         } catch (IllegalStateException e) {
             // 16 seeds without a plan (about 1e-81 each): no race, everybody gets the refund
             for (Entrant en : List.copyOf(entrants.values())) {
@@ -739,8 +739,9 @@ public final class DerbyController extends MachineController {
             return;
         }
         owedCache.remove(e.player);
-        long delivered = done.deliveredCount();
-        if (done.paid() > delivered) {
+        // only this race's items count as "received" (deliverOwed may also hand out older owed items)
+        long delivered = WagerEngine.deliveredOf(done);
+        if (!done.rounds().isEmpty()) {
             try {
                 List<ItemAmount> owed = account.ledger().owed();
                 if (!owed.isEmpty()) {
@@ -914,7 +915,7 @@ public final class DerbyController extends MachineController {
         Entrant own = enrolling() ? entrants.get(viewer.getUniqueId()) : null;
         int credits = owedEntries(viewer, now);
         return new DerbySnapshot(race != null, enrolling(), seconds, own != null,
-                DerbyRules.groupAllowed(ctx.config().get().derby().winChance()), credits,
+                DerbyRules.groupAllowed(MachineSettings.winChance(ctx.config().get(), machine)), credits,
                 entrants.values().stream().map(Entrant::member).toList(), own == null ? -1 : own.lane,
                 own == null ? List.of() : own.seats.stream().map(Seat::stake).toList(), now);
     }

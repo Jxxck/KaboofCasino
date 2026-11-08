@@ -137,6 +137,21 @@ final class DecoPlacer {
                 }
                 yield null;
             }
+            case TV -> {
+                // CasinoTelevisionBlock.getStateForPlacement: the clicked side, a sturdy wall behind every cell
+                if (face == BlockFace.UP || face == BlockFace.DOWN) {
+                    yield null;
+                }
+                Facing f = Facing.of(face);
+                int columns = type.tvColumns();
+                for (int part = 0; part < columns * columns; part++) {
+                    if (!service.wall(w, DecoGeometry.wallPart(pos, f, columns, part), f)) {
+                        yield null;
+                    }
+                }
+                yield plan(type, pos, f, 0, w);
+            }
+            case FREE -> plan(type, pos, Facing.SOUTH, 0, w);
             case CHANDELIER -> {
                 // the clicked cell is the top (under the ceiling); the body hangs 1 or 2 chain blocks lower
                 if (!service.sturdy(w, pos.offset(0, 1, 0), BlockFace.DOWN, true)) {
@@ -211,8 +226,10 @@ final class DecoPlacer {
     Result place(Player player, Plan plan, Block clicked, EquipmentSlot hand, ItemStack item) {
         World w = clicked.getWorld();
         if (plan.cells().size() > 1) {
-            int[] shift = DecoGeometry.chunkFit(plan.cells(), plan.type() == DecoType.CASINO_SIGN
-                    ? List.of(DecoGeometry.ccw(plan.facing())) : List.of(new int[] {1, 0}, new int[] {0, 1}));
+            boolean onWall = plan.type().place() == DecoType.Place.LARGE_SIGN
+                    || plan.type().place() == DecoType.Place.TV;
+            int[] shift = DecoGeometry.chunkFit(plan.cells(), onWall ? List.of(DecoGeometry.ccw(plan.facing()))
+                    : List.of(new int[] {1, 0}, new int[] {0, 1}));
             if (shift != null) {
                 lastShift = shift;
                 return Result.CHUNK_BORDER;
@@ -270,6 +287,9 @@ final class DecoPlacer {
                 player.getUniqueId(), System.currentTimeMillis());
         service.add(record, w);
         placeSound(plan.type(), w, plan.anchor());
+        if (plan.type() == DecoType.DEALER_STATION) {
+            service.dealerStationPlaced(record, player);
+        }
         Log.get().debug("{} placed {} at {} facing {}", player.getName(), plan.type().id(), plan.anchor(),
                 plan.facing());
         return Result.PLACED;

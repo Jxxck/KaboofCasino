@@ -522,7 +522,19 @@ public final class MachineService {
 
     /** Persists game data in the record (chunk PDC). */
     public void saveData(Machine machine, String data) {
-        MachineRecord updated = machine.record().withData(data);
+        persist(machine, machine.record().withData(data));
+    }
+
+    /**
+     * Persists the croupier's-hand settings (name, win chance, bias) in the record (chunk PDC); the games read them
+     * at their next round ({@link MachineSettings}).
+     */
+    public void saveOwn(Machine machine, MachineSettings.Own own) {
+        Threads.requireMain();
+        persist(machine, machine.record().withOwn(own));
+    }
+
+    private void persist(Machine machine, MachineRecord updated) {
         machine.record(updated);
         World world = Bukkit.getWorld(org.bukkit.NamespacedKey.fromString(updated.anchor().world()));
         if (world != null && world.isChunkLoaded(updated.anchor().chunkX(), updated.anchor().chunkZ())) {

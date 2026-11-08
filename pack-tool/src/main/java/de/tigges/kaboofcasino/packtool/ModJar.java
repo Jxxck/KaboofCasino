@@ -102,7 +102,8 @@ final class ModJar {
     /** The mod's recipes and recipe advancements of its three namespaces (the rest of data/ is not read). */
     static boolean modData(String name) {
         for (String ns : new String[] {"roulettecasino", "casinodeco", "casinosound"}) {
-            if (name.startsWith("data/" + ns + "/recipe/") || name.startsWith("data/" + ns + "/advancement/recipes/")) {
+            if (name.startsWith("data/" + ns + "/recipe/") || name.startsWith("data/" + ns + "/advancement/recipes/")
+                    || name.startsWith("data/" + ns + "/tags/item/")) {
                 return true;
             }
         }

@@ -144,11 +144,14 @@ final class DecoBreaks {
         return !data.requiresCorrectToolForDrops() || data.isPreferredTool(tool);
     }
 
-    /** Vanilla {@code getDestroyProgress} per tick for the mod's block. */
+    /**
+     * Vanilla {@code getDestroyProgress} per tick for the mod's block (a block in no {@code mineable/*} tag:
+     * {@link DecoType#anyTool()}, every tool digs at hand speed, without efficiency).
+     */
     static double progress(DecoType type, Player player) {
         ItemStack tool = player.getInventory().getItemInMainHand();
         BlockData data = type.material().createBlockData();
-        double speed = data.getDestroySpeed(tool, true);
+        double speed = type.anyTool() ? 1.0 : data.getDestroySpeed(tool, true);
         PotionEffect haste = player.getPotionEffect(PotionEffectType.HASTE);
         PotionEffect fatigue = player.getPotionEffect(PotionEffectType.MINING_FATIGUE);
         if (haste != null) {

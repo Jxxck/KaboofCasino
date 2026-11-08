@@ -37,7 +37,9 @@ import org.bukkit.potion.PotionEffectType;
  * ({@code BlockDamageEvent}) starts the plugin's own break timer with oak-plank speed (hardness 3.0) and shows the
  * cracks with {@code sendBlockDamage}; {@code BlockDamageAbortEvent} stops it. Only the placer and ops may break
  * (config {@code machines.break}); a running round refuses. At 100 % the machine drops its item at the anchor.
- * Creative players (placer or op) remove it at once without a drop. Thread: MAIN.
+ * Creative players (placer or op) remove it at once without a drop. With {@code machines.breakable: false} only
+ * creative players break machines, and nobody breaks one with the croupier's hand in the main hand
+ * ({@link ProtectionRules#mayMine}). Thread: MAIN.
  */
 public final class BreakListener implements Listener {
 
@@ -66,6 +68,12 @@ public final class BreakListener implements Listener {
         this.messages = messages;
     }
 
+    /** The world setting and the croupier's hand ({@link ProtectionRules#mayMine}); silent like the mod. */
+    private boolean mayMine(Player player) {
+        return ProtectionRules.mayMine(player.getGameMode() == GameMode.CREATIVE, config.get().machines().breakable(),
+                CasinoItems.of(player.getInventory().getItemInMainHand()).orElse(null) == CasinoItem.CROUPIER_HAND);
+    }
+
     private boolean mayBreak(Player player, Machine machine) {
         return player.isOp() || player.hasPermission("kaboofcasino.admin")
                 || config.get().machines().anyoneMayBreak() || machine.record().placer().equals(player.getUniqueId());
@@ -78,7 +86,7 @@ public final class BreakListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        if (FakePlayers.isFake(player) || player.getGameMode() == GameMode.ADVENTURE) {
+        if (FakePlayers.isFake(player) || player.getGameMode() == GameMode.ADVENTURE || !mayMine(player)) {
             return;
         }
         if (!refused(player, machine.get())) {
@@ -118,7 +126,7 @@ public final class BreakListener implements Listener {
         }
         event.setCancelled(true);
         Player player = event.getPlayer();
-        if (player.getGameMode() == GameMode.CREATIVE && !refused(player, machine.get())) {
+        if (player.getGameMode() == GameMode.CREATIVE && mayMine(player) && !refused(player, machine.get())) {
             machines.remove(machine.get(), "broken in creative by " + player.getName(), null);
         }
     }
@@ -131,7 +139,8 @@ public final class BreakListener implements Listener {
             World machineWorld = Bukkit.getWorld(org.bukkit.NamespacedKey.fromString(task.machine.anchor().world()));
             if (player == null || !machines.byId(task.machine.id()).isPresent() || player.isDead()
                     || machineWorld == null || !player.getWorld().equals(machineWorld)
-                    || player.getLocation().distanceSquared(center(task.block, machineWorld)) > 49) {
+                    || player.getLocation().distanceSquared(center(task.block, machineWorld)) > 49
+                    || !mayMine(player)) {
                 stop(e.getKey(), task);
                 continue;
             }

@@ -40,6 +40,7 @@ import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -51,10 +52,11 @@ import org.bukkit.inventory.ItemStack;
 
 /**
  * Player and world events of the display decoration: placing (plugin carriers from paper items; stairs/slabs through
- * vanilla with the casino's rules on top), using (sit, chip case, stacking, speaker), breaking (barrier timer,
- * Interaction hits, creative, vanilla carriers with the deco item instead of the carrier's drop), explosions (vanilla
- * carriers are blown up by the plugin with the mod's {@code survives_explosion}/{@code explosion_decay} drop), creative
- * pick-block, chunk load/unload, and the neighbour checks every block change queues. Thread: MAIN.
+ * vanilla with the casino's rules on top), using (sit, chip case, stacking, speaker, TV channels, the dealer station's
+ * hook), breaking (barrier timer, Interaction hits, creative, vanilla carriers with the deco item instead of the
+ * carrier's drop), explosions (vanilla carriers are blown up by the plugin with the mod's
+ * {@code survives_explosion}/{@code explosion_decay} drop), creative pick-block, chunk load/unload, and the neighbour
+ * checks every block change queues. Thread: MAIN.
  */
 final class DecoListener implements Listener {
 
@@ -164,6 +166,10 @@ final class DecoListener implements Listener {
         if (type.seat()) {
             return service.seats().sit(player, deco);
         }
+        if (type == DecoType.DEALER_STATION) {
+            // the mod's station has no use; the croupier's module may take the click (DealerStationHook)
+            return player.getGameMode() != GameMode.SPECTATOR && service.dealerStationUsed(player, deco);
+        }
         if (type == DecoType.CHIP_CASE && player.getGameMode() != GameMode.SPECTATOR) {
             boolean opening = !deco.record().open();
             service.update(deco, deco.record().withState(opening ? 1 : 0), world);
@@ -174,7 +180,10 @@ final class DecoListener implements Listener {
         return false;
     }
 
-    /** Right click on a light carrier's Interaction: the speaker toggles ({@code SpeakerBlock.useWithoutItem}). */
+    /**
+     * Right click on a light carrier's Interaction: the speaker toggles ({@code SpeakerBlock.useWithoutItem}), a TV
+     * switches to its next channel ({@code CasinoTelevisionBlock.useWithoutItem}: not while sneaking).
+     */
     @EventHandler(priority = EventPriority.HIGH)
     public void onInteractEntity(PlayerInteractEntityEvent event) {
         if (!(event.getRightClicked() instanceof Interaction interaction)) {
@@ -195,7 +204,38 @@ final class DecoListener implements Listener {
                 || !player.getInventory().getItemInOffHand().isEmpty();
         if (deco.get().type() == DecoType.CASINO_SPEAKER && !(player.isSneaking() && hands)) {
             toggleSpeaker(deco.get());
+        } else if (deco.get().type().place() == DecoType.Place.TV && !player.isSneaking()) {
+            nextChannel(deco.get(), clickedCell(event, interaction, deco.get()));
         }
+    }
+
+    /**
+     * {@code CasinoTelevisionBlock.useWithoutItem}: the next channel ({@link DecoRecord#nextChannel}) on every cell
+     * (one record: models and light carriers follow it), the lever click at the clicked cell (volume 0.25, pitch 0.8
+     * when the TV is on afterwards, 0.65 when off).
+     */
+    void nextChannel(DecoBlock deco, Pos clicked) {
+        World world = DisplayDecoService.world(deco.anchor());
+        DecoRecord r = deco.record();
+        int channel = DecoRecord.nextChannel(r.channel());
+        service.update(deco, r.withState(channel), world);
+        world.playSound(center(clicked, world), Sound.BLOCK_LEVER_CLICK, SoundCategory.BLOCKS, 0.25F,
+                channel != 0 ? 0.8F : 0.65F);
+    }
+
+    /**
+     * The cell of a multi-cell decoration the click hit: the Interaction's position plus the clicked point (Paper's
+     * {@code PlayerInteractAtEntityEvent}); the anchor if that is not one of its cells.
+     */
+    static Pos clickedCell(PlayerInteractEntityEvent event, Interaction interaction, DecoBlock deco) {
+        if (event instanceof PlayerInteractAtEntityEvent at) {
+            Location point = interaction.getLocation().add(at.getClickedPosition());
+            Pos cell = Pos.of(point);
+            if (deco.cells().contains(cell)) {
+                return cell;
+            }
+        }
+        return deco.anchor();
     }
 
     /** {@code SpeakerBlock.useWithoutItem}: station, block state (light 2 when on), lever click 0.22 / 1.1 or 0.8. */

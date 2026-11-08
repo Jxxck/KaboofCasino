@@ -29,7 +29,7 @@ final class ModRecipes {
             "duck_derby_mechanism_order_15", "duck_derby_mechanism_order_16", "duck_derby_mechanism_order_17",
             "duck_derby_mechanism_order_18", "duck_derby_mechanism_order_19", "duck_derby_mechanism_order_20",
             "duck_derby_mechanism_order_21", "duck_derby_mechanism_order_22", "duck_derby_mechanism_order_23",
-            "duck_derby");
+            "duck_derby", "casino_guide", "dealer_station", "casino_tv", "casino_tv_large", "casino_tv_3x3");
     /** Namespaces whose recipes all ship (step 4: every deco block and the speaker). */
     static final List<String> ALL_OF = List.of("casinodeco", "casinosound");
 
@@ -91,6 +91,26 @@ final class ModRecipes {
     }
 
     /**
+     * One unlock item; an item tag of the mod (the derby mechanism's {@code #roulettecasino:derby_ducks}) is expanded
+     * to its items from {@code data/<ns>/tags/item/<path>.json}, since a held item is matched by its id. Other tags
+     * stay as they are.
+     */
+    private static void addUnlock(ModJar jar, JsonArray found, String id) {
+        if (id.startsWith("#")) {
+            String tag = id.substring(1);
+            int colon = tag.indexOf(':');
+            String file = "data/" + tag.substring(0, colon) + "/tags/item/" + tag.substring(colon + 1) + ".json";
+            if (jar.has(file)) {
+                for (JsonElement e : Json.parse(jar.bytes(file)).getAsJsonArray("values")) {
+                    addUnlock(jar, found, e.getAsString());
+                }
+                return;
+            }
+        }
+        found.add(id);
+    }
+
+    /**
      * The items of the advancement's one inventory_changed criterion (named has_ingredient or has_<item>): one id, or
      * several of which any unlocks (glass display shelf, serving tray). No advancement (the 23 other duck orders of
      * the derby mechanism): no unlock, like the mod (craftable, never shown by the recipe book on its own).
@@ -115,10 +135,10 @@ final class ModRecipes {
             found = new JsonArray();
             if (ids.isJsonArray()) {
                 for (JsonElement id : ids.getAsJsonArray()) {
-                    found.add(id.getAsString());
+                    addUnlock(jar, found, id.getAsString());
                 }
             } else {
-                found.add(ids.getAsString());
+                addUnlock(jar, found, ids.getAsString());
             }
         }
         if (found == null) {

@@ -15,6 +15,15 @@ public final class ProtectionRules {
     }
 
     /**
+     * Whether a player may mine a machine at all (before the owner rule): never with the croupier's hand in the main
+     * hand ({@code CroupierHandItem.canDestroyBlock}); outside creative only while the world setting "breakable in
+     * survival" is on (games.md 21.2: destroy progress 0, no message). Creative players always may.
+     */
+    public static boolean mayMine(boolean creative, boolean breakable, boolean croupierHand) {
+        return !croupierHand && (creative || breakable);
+    }
+
+    /**
      * A piston event must be cancelled if it moves a carrier or if any of the piston's 6 neighbours is a carrier
      * (the headless/permanent-break exploits arrive with an empty block list, PostMarkt B9).
      */
