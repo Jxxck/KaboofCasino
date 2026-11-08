@@ -101,6 +101,23 @@ class CashierConfigTest {
     }
 
     @Test
+    void theHandWritesTheChipShopOverridesAndKeepsEveryComment() throws IOException {
+        String text = ConfigEdits.apply(shipped(), Map.of());
+        List<de.tigges.kaboofcasino.chipshop.ChipShopSettings.Item> next = List.of(
+                new de.tigges.kaboofcasino.chipshop.ChipShopSettings.Item("roulettecasino:slot_machine", 500, 1, false),
+                new de.tigges.kaboofcasino.chipshop.ChipShopSettings.Item("casinodeco:ruby_velvet", 0, 0, true));
+        String after = ConfigEdits.apply(text, Map.of("chipshop.items", next.stream()
+                .map(de.tigges.kaboofcasino.chipshop.ChipShopSettings.Item::toYaml).toList()));
+        assertEquals(comments(text), comments(after));
+        List<String> warnings = new ArrayList<>();
+        CasinoConfig c = ConfigLoader.read(YamlFiles.parse(after, "test"), warnings);
+        assertEquals(List.of(), warnings);
+        assertEquals(next, c.chipshop().items());
+        assertEquals(CashierSettings.DEFAULT_SHOP, c.cashier().shop(), "the cashier's prizes stay");
+        assertEquals(de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULT_VALUES, c.chipshop().values());
+    }
+
+    @Test
     void theHandWritesThePrizeListWholeAndKeepsEveryComment() throws IOException {
         String text = ConfigEdits.apply(shipped(), Map.of());
         assertEquals(text, ConfigEdits.apply(text, Map.of()));

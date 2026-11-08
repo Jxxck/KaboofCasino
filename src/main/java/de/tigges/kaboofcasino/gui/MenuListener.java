@@ -69,6 +69,10 @@ public final class MenuListener implements Listener {
                 button = null;
             }
         }
+        if (button != null && button.commit() && button.shift()
+                && (event.getClick() == ClickType.SHIFT_LEFT || event.getClick() == ClickType.SHIFT_RIGHT)) {
+            shortcut = true; // a commit that takes Shift (the Chip-Shop's stack): guard and busy still apply
+        }
         long tick = currentTick.getAsInt();
         ClickRoute.Click click = new ClickRoute.Click(event.getClick(), event.getAction(), raw, topSize,
                 event.getSlot(), button != null, button != null && button.commit(), Usability.usable(player),

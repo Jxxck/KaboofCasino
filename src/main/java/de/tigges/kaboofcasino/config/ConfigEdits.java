@@ -27,7 +27,7 @@ public final class ConfigEdits {
     public static final Set<String> EDITABLE = Set.of("roulette.win-chance", "blackjack.bias", "poker.bias",
             "derby.win-chance", "slot.win-chance", "wheel.win-chance", "plinko.win-chance", "machines.breakable");
     /** The lists the croupier's hand edits: the cashier's prizes (a list of maps, written whole). */
-    public static final Set<String> EDITABLE_LISTS = Set.of("shop.items");
+    public static final Set<String> EDITABLE_LISTS = Set.of("shop.items", "chipshop.items");
 
     private ConfigEdits() {
     }

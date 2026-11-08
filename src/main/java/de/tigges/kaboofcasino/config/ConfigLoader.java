@@ -79,7 +79,8 @@ public final class ConfigLoader {
                         100)),
                 new CasinoConfig.Music(r.bool("music.enabled", d.music().enabled())),
                 de.tigges.kaboofcasino.cashier.CashierSettings.read(y, warnings),
-                leaderboard(r, d.leaderboard()));
+                leaderboard(r, d.leaderboard()),
+                de.tigges.kaboofcasino.chipshop.ChipShopSettings.read(y, warnings));
     }
 
     private static CasinoConfig.Leaderboard leaderboard(Reader r, CasinoConfig.Leaderboard d) {

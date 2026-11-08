@@ -1390,6 +1390,55 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
     "Zeitraum: automatisch" or one period, the current choices marked; a click applies at once (machine record data
     `cat=<id>;period=<id>`, logged), "Fertig"/ESC closes.
 
+### Step 11 (part 2: the Chip-Shop; PLAN-2 C6)
+
+- **Machine** `CHIP_SHOP` (item `chip_shop` "Chip-Shop", `/casino give chip_shop`; recipe `kaboofcasino:chip_shop`
+  only with `chipshop.craftable: true`: glass pane, small casino sign, glass pane over black marble bar, chip pile,
+  black marble bar; unlocks with a chip pile): the cashier's footprint and rules (2 wide x 1 deep x 2 tall, both bottom
+  cells on support, chunk fit, clearance, logout spots, spawn protection, breaking, verify), no game, one player at a
+  time, idle close after `gui.idle-close-seconds`. Look (`ChipShopRig`): the cashier's marble counter, the pack's
+  glass display case `kaboofcasino:chipshop/display` on it and the CHIP-SHOP sign `kaboofcasino:chipshop/sign`.
+- **Catalog** (`chipshop/ChipShopCatalog`, built from the item catalog, rebuilt after a reload): every deco block
+  (full blocks, stairs, slabs), seats and sofa, the speaker, the TVs, the dealer station, the guide, and the machines
+  without a croupier's badge with all their parts (slot machine, reel and mechanism, roulette mechanism, wheel, Plinko,
+  roulette table, the four ducks, derby mechanism, duck derby); never the chips, the croupier's badge, hiring card and
+  hand, the cashier, the leaderboards, the shop itself; the blackjack and poker tables only with `chipshop.tables`.
+  Tabs (`ChipShopCategory`): Böden & Wände, Möbel, Bar & Tische, Licht & Schilder, Technik, Maschinen.
+- **Prices** (`ChipShopPrices`): an item's cost is the cheapest of its mod recipes, the sum of its ingredients per
+  crafted item; ores at the cashier's rates (`cashier.rates`, nuggets a ninth of the ingot), the other ingredients from
+  `chipshop.values` (wool 1, dye 0.5, planks 0.25, paper 0.5, glass 0.5, glowstone 4, piston 6, ...), casino items by
+  their own cost (repeated relaxation: recipe cycles such as block and slab never loop). Price = cost x
+  `chipshop.markup` (default 1.25), rounded below 25 to whole chips, below 250 to 5, else to 25, at least 1.
+  `chipshop.items` fixes a price per item, a daily limit (pieces per player and Berlin day) or hides it.
+- **Menu** (`ChipShopMenu`, the cashier's 9x6 layout and side panel): the six tabs in slots 0-5 (the tab's item icon,
+  the active one glinting), the tab's items in 9-44 (36 a page, pages 45/46), the amount toggle 47 (one piece or a
+  stack), KAUFEN 48-51, the price of the choice (52) and the player's chips (53). A click chooses an item (glint);
+  KAUFEN buys the amount, Umschalt-click always a stack (the item's stack size; the shop's KAUFEN is the only commit
+  button that takes Shift-clicks, `Button.commitWithShift`, click guard and busy flag still apply); a second purchase
+  within 10 ticks is ignored; if the price, limit or offer changed since it was shown, nothing is bought ("Das Angebot hat sich
+  inzwischen geändert.").
+- **Purchase** (`ChipShopService.buy`): the cashier's atomic `Cashbox.buy` with the article as a one-off prize: daily
+  limit (pieces, PDC `kaboofcasino:chipshop_limits`), ledger read, payment plan with change, room for the goods and the
+  change, or refused before anything moves; then pay, change in chips (what does not fit is owed), the goods into the
+  storage slots (a rest the room check missed is dropped at the feet, locked to the buyer). Logged at INFO and in
+  `casino.db` table `chipshop` (schema 5: player, name, machine, item, quantity, unit price, price, chips paid, change,
+  owed, time). The cashier's Prämien stay for the admin's special prizes.
+- **Croupier's hand** on a Chip-Shop (`admin/ChipShopEditor`, `ChipShopDialogs`): six items a page (hidden ones too)
+  with icon, current price ("automatisch" or fixed), limit and hidden; inputs price (empty = automatic), limit and
+  "ausblenden"; Speichern / pages / Fertig (ESC applies valid inputs). Written into `chipshop.items` with
+  `ConfigEdits` (comments, mode, owner kept), reloaded, every change logged; a stale page writes nothing.
+
+#### Step 11 ships as 0.11.0 (deploy and rollback)
+
+- **Schema 5** (`V5__chipshop.sql`: table `chipshop`) is applied at the first start; 0.10.0 refuses a newer schema.
+  Rollback: restore `casino.db`, or `DELETE FROM schema_version WHERE version = 5;` (the table stays, unused).
+- **Chip-Shops under 0.10.0**: unknown machine kind, logged CRITICAL `MACHINE_RECORD_UNREADABLE`, barriers stay (as
+  the boards under 0.9.1). Items bought in the shop are ordinary casino items and stay valid.
+- **Texts and config**: the sections `chipshop:` (messages) and `chipshop:` (config: markup 1.25, tables false,
+  values, items []) are new and merge in; nothing existing changes. Prices can be tuned before the first deploy in
+  `chipshop.markup`, `chipshop.values` or per item in `chipshop.items` (or later with the croupier's hand).
+- **Pack**: new models, GUI art and glyphs (appended code points); clients download the new pack once.
+
 #### Step 10 ships as 0.10.0 (deploy and rollback)
 
 - **Schema 4** (`V4__leaderboard.sql`: columns `play` and `refund` on `rounds`, index `rounds_board`, tables

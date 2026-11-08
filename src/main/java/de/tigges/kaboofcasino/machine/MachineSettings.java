@@ -113,7 +113,7 @@ public final class MachineSettings {
             case SLOT_MACHINE -> "slots";
             case FORTUNE_WHEEL -> "wheel";
             case PLINKO -> "plinko";
-            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN ->
+            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN, CHIP_SHOP ->
                     throw new IllegalArgumentException(type + " is no game");
         };
     }
@@ -128,7 +128,7 @@ public final class MachineSettings {
             case SLOT_MACHINE -> "slot.win-chance";
             case FORTUNE_WHEEL -> "wheel.win-chance";
             case PLINKO -> "plinko.win-chance";
-            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN ->
+            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN, CHIP_SHOP ->
                     throw new IllegalArgumentException(type + " has no win chance");
         };
     }
@@ -143,7 +143,7 @@ public final class MachineSettings {
             case SLOT_MACHINE -> config.slot().winChance();
             case FORTUNE_WHEEL -> config.wheel().winChance();
             case PLINKO -> config.plinko().winChance();
-            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN ->
+            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN, CHIP_SHOP ->
                     throw new IllegalArgumentException(type + " has no win chance");
         };
     }

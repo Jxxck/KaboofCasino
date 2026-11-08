@@ -73,6 +73,7 @@ final class AdminLabels {
             case CASHIER -> new double[] {0.5, 2.6, 0.5};
             case LEADERBOARD_WALL -> new double[] {0.5, 2.5, 0.5};
             case LEADERBOARD_COLUMN -> new double[] {0.5, 3.5, 0.5};
+            case CHIP_SHOP -> new double[] {0.5, 2.6, 0.5};
         };
     }
 
@@ -85,6 +86,7 @@ final class AdminLabels {
             case CASHIER -> "Kasse";
             case LEADERBOARD_WALL -> "Bestenliste (Wandtafel)";
             case LEADERBOARD_COLUMN -> "Bestenliste (Säule)";
+            case CHIP_SHOP -> "Chip-Shop";
             default -> AdminTexts.GERMAN.get("block.roulettecasino." + type.id());
         };
         return german + " #" + number;

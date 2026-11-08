@@ -160,7 +160,7 @@ public final class Prizes {
     }
 
     /** The purchase's prize side for {@link Cashbox#buy}: room check and delivery into the storage slots. */
-    static Cashbox.Goods goods(Player player, ItemStack one, int count) {
+    public static Cashbox.Goods goods(Player player, ItemStack one, int count) {
         return new Cashbox.Goods() {
             @Override
             public int slotsNeeded() {

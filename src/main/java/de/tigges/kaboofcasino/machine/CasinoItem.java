@@ -51,7 +51,9 @@ public enum CasinoItem {
             MachineType.LEADERBOARD_WALL),
     /** The leaderboard column (step 10): {@code /casino give leaderboard_column}; a recipe only if configured. */
     LEADERBOARD_COLUMN("leaderboard_column", "kaboofcasino:leaderboard_column", Msg.BOARD_ITEM_COLUMN,
-            MachineType.LEADERBOARD_COLUMN);
+            MachineType.LEADERBOARD_COLUMN),
+    /** The Chip-Shop (step 11): {@code /casino give chip_shop}; a recipe only if configured. */
+    CHIP_SHOP("chip_shop", "kaboofcasino:chip_shop", Msg.CHIPSHOP_ITEM, MachineType.CHIP_SHOP);
 
     private final String id;
     private final String model;

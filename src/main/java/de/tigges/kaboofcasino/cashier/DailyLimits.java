@@ -91,8 +91,13 @@ public record DailyLimits(LocalDate day, Map<String, Integer> counts) {
 
     /** One more purchase of {@code key}. */
     public DailyLimits plus(String key) {
+        return plus(key, 1);
+    }
+
+    /** {@code n} more of {@code key} (the Chip-Shop counts pieces). */
+    public DailyLimits plus(String key, int n) {
         Map<String, Integer> next = new LinkedHashMap<>(counts);
-        next.merge(key, 1, Integer::sum);
+        next.merge(key, n, Integer::sum);
         return new DailyLimits(day, next);
     }
 

@@ -56,7 +56,12 @@ public enum MachineType {
      * The leaderboard column (step 10): 1x1x3 like the slot machine, a post with a sign board on the upper two cells;
      * the bottom cell needs support.
      */
-    LEADERBOARD_COLUMN("leaderboard_column", new int[][] {{0, 0, 0}, {0, 1, 0}, {0, 2, 0}}, 0, false, true);
+    LEADERBOARD_COLUMN("leaderboard_column", new int[][] {{0, 0, 0}, {0, 1, 0}, {0, 2, 0}}, 0, false, true),
+    /**
+     * The Chip-Shop (step 11, PLAN-2 C6; no game): the cashier's footprint, 2 wide x 1 deep x 2 tall, the counter with
+     * its display case and the sign above; both bottom cells need support.
+     */
+    CHIP_SHOP("chip_shop", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 0, false, true);
 
     private final String id;
     private final int[][] footprint;
@@ -78,9 +83,12 @@ public enum MachineType {
         this.wall = wall;
     }
 
-    /** True for the seven games; false for the cashier and the leaderboards (no rounds, no win chance or bias). */
+    /**
+     * True for the seven games; false for the cashier, the leaderboards and the Chip-Shop (no rounds, no win chance or
+     * bias).
+     */
     public boolean isGame() {
-        return this != CASHIER && !isBoard();
+        return this != CASHIER && this != CHIP_SHOP && !isBoard();
     }
 
     /** The two leaderboard kinds (step 10). */

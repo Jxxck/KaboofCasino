@@ -158,6 +158,86 @@ leaderboard:
   # Nach jeder Woche (Montag 00:00 Berlin) stehen die Sieger einmal im Server-Log (zum Posten auf Discord).
   weekly-log: true
 
+chipshop:
+  # Der Chip-Shop (Schritt 11): Casino-Deko, Möbel, Technik und Maschinen für Chips. Aufstellen: /casino give chip_shop.
+  # true: auch craftbar (Rezept kaboofcasino:chip_shop).
+  craftable: false
+  # Preis = Wert der Rezept-Zutaten in Chips x Aufschlag (1.0 bis 10.0), gerundet (unter 25 auf 1, unter 250 auf 5,
+  # sonst auf 25 Chips), mindestens 1. Erze zählen zum Kurs der Kasse (cashier.rates).
+  markup: 1.25
+  # true: auch Blackjack- und Pokertisch (sonst nur über das Croupier-Abzeichen).
+  tables: false
+  # Werte der übrigen Zutaten (Chips pro Stück; #name = ein Item-Tag). Eine Liste: gelöschte Einträge fehlen dann.
+  values:
+  - item: '#minecraft:planks'
+    value: 0.25
+  - item: minecraft:dark_oak_planks
+    value: 0.25
+  - item: '#minecraft:wooden_slabs'
+    value: 0.125
+  - item: '#minecraft:signs'
+    value: 0.75
+  - item: minecraft:stick
+    value: 0.125
+  - item: minecraft:torch
+    value: 0.5
+  - item: minecraft:black_wool
+    value: 1
+  - item: minecraft:blue_wool
+    value: 1
+  - item: minecraft:green_wool
+    value: 1
+  - item: minecraft:red_wool
+    value: 1
+  - item: minecraft:white_wool
+    value: 1
+  - item: minecraft:black_dye
+    value: 0.5
+  - item: minecraft:green_dye
+    value: 0.5
+  - item: minecraft:red_dye
+    value: 0.5
+  - item: minecraft:white_dye
+    value: 0.5
+  - item: minecraft:yellow_dye
+    value: 0.5
+  - item: minecraft:leather
+    value: 1
+  - item: minecraft:paper
+    value: 0.5
+  - item: minecraft:clay_ball
+    value: 0.25
+  - item: minecraft:glass
+    value: 0.5
+  - item: minecraft:green_stained_glass
+    value: 0.75
+  - item: minecraft:tinted_glass
+    value: 2.5
+  - item: minecraft:glass_bottle
+    value: 0.5
+  - item: minecraft:amethyst_shard
+    value: 1
+  - item: minecraft:calcite
+    value: 0.5
+  - item: minecraft:glowstone_dust
+    value: 1
+  - item: minecraft:glowstone
+    value: 4
+  - item: minecraft:iron_chain
+    value: 5
+  - item: minecraft:dropper
+    value: 2
+  - item: minecraft:piston
+    value: 6
+  - item: roulettecasino:croupier_badge
+    value: 384
+  # Pro Artikel (schreibt auch die Hand des Croupiers am Chip-Shop): price = fester Stückpreis (0 = automatisch),
+  # limit = Stück pro Spieler und Tag (0 = keins), hidden: true = nicht im Shop. Beispiel:
+  #   - item: roulettecasino:slot_machine
+  #     price: 500
+  #     limit: 1
+  items: []
+
 cashier:
   # Die Kasse (Schritt 9): Erze in Chips wechseln, Kleingeld, Preis-Shop. Aufstellen: /casino give cashier.
   # true: auch craftbar (Rezept kaboofcasino:cashier, schaltet mit einer Registrierkasse frei:

@@ -36,7 +36,8 @@ public final class Database implements AutoCloseable {
     }
 
     static final List<String> MIGRATIONS = List.of("db/migration/V1__init.sql", "db/migration/V2__logouts.sql",
-            "db/migration/V3__cashier.sql", "db/migration/V4__leaderboard.sql");
+            "db/migration/V3__cashier.sql", "db/migration/V4__leaderboard.sql",
+            "db/migration/V5__chipshop.sql");
 
     private final HikariDataSource pool;
     private final ExecutorService worker;

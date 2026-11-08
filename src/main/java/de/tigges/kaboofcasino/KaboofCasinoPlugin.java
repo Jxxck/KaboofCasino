@@ -74,6 +74,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private de.tigges.kaboofcasino.admin.AdminService admin;
     private de.tigges.kaboofcasino.cashier.CashierService cashier;
     private de.tigges.kaboofcasino.board.BoardService boards;
+    private de.tigges.kaboofcasino.chipshop.ChipShopService chipShop;
     private LedgerListener ledger;
     private MenuService menus;
 
@@ -153,6 +154,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         cashier = new de.tigges.kaboofcasino.cashier.CashierService(ctx,
                 new de.tigges.kaboofcasino.cashier.CashierLog(db));
         boards = new de.tigges.kaboofcasino.board.BoardService(ctx, db);
+        chipShop = new de.tigges.kaboofcasino.chipshop.ChipShopService(ctx,
+                new de.tigges.kaboofcasino.chipshop.ChipShopLog(db));
         roundLog.afterSettle(boards::roundSettled);
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
@@ -164,6 +167,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             case DUCK_DERBY -> new de.tigges.kaboofcasino.game.derby.DerbyController(machine, ctx);
             case CASHIER -> cashier.controller(machine);
             case LEADERBOARD_WALL, LEADERBOARD_COLUMN -> boards.controller(machine);
+            case CHIP_SHOP -> chipShop.controller(machine);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         de.tigges.kaboofcasino.music.MusicOptOut musicOptOut = new de.tigges.kaboofcasino.music.MusicOptOut(this);
@@ -192,6 +196,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         Recipes.load(getClassLoader());
         cashier.enable();
         boards.enable();
+        chipShop.enable();
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload, () -> fullDeco.status());
         command.boards(boards);
@@ -274,6 +279,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             }
             if (boards != null) {
                 boards.reloaded();
+            }
+            if (chipShop != null) {
+                chipShop.reloaded();
             }
             return fullDeco == null ? warnings : warnings + fullDeco.reloaded();
         } catch (RuntimeException e) {

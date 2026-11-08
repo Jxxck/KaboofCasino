@@ -129,6 +129,9 @@ public final class PackTool {
         CashierGui.add(jar, tree, font, text);
         // step 10: the leaderboards (wall board, column post and board, the two placing items)
         LeaderboardPack.add(jar, tree, packSrc);
+        // step 11: the chip shop (sign and display case models, item, menu art)
+        ChipShopPack.add(jar, tree, packSrc);
+        ChipShopGui.add(jar, tree, font, text);
         stakeMarker(tree);
         List<String> events = new java.util.ArrayList<>(SlotMachinePack.SOUND_EVENTS);
         events.addAll(WheelPack.SOUND_EVENTS);
@@ -142,6 +145,7 @@ public final class PackTool {
         events.addAll(DecoDisplayPack.SOUND_EVENTS);
         events.addAll(ChipPack.SOUND_EVENTS);
         events.addAll(LeaderboardPack.SOUND_EVENTS);
+        events.addAll(ChipShopPack.SOUND_EVENTS);
         Sounds.write(jar, tree, events);
         List<String> prefixes = new java.util.ArrayList<>(SlotMachinePack.LANG_PREFIXES);
         prefixes.addAll(WheelPack.LANG_PREFIXES);
@@ -156,6 +160,7 @@ public final class PackTool {
         prefixes.addAll(DecoDisplayPack.LANG_PREFIXES);
         prefixes.addAll(ChipPack.LANG_PREFIXES);
         prefixes.addAll(LeaderboardPack.LANG_PREFIXES);
+        prefixes.addAll(ChipShopPack.LANG_PREFIXES);
         Lang.filter(jar, tree, "roulettecasino", prefixes);
         // the deco and speaker texts live in the mod's other two namespaces
         for (String ns : List.of("casinodeco", "casinosound")) {

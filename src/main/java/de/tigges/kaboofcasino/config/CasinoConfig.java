@@ -17,12 +17,14 @@ import java.util.Objects;
  * @param music    the speakers' lounge music and its optional pack (render.md 6)
  * @param cashier  the cashier: exchange rates, craftable, the prize shop (PLAN-2 C3)
  * @param leaderboard the leaderboard boards and {@code /casino top} (PLAN-2 C4)
+ * @param chipshop the Chip-Shop: markup, ingredient values, per-item prices, limits and hiding (PLAN-2 C6)
  */
 public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
                            Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker,
                            Slot derby,
                            Lights lights, Music music,
-                           de.tigges.kaboofcasino.cashier.CashierSettings cashier, Leaderboard leaderboard) {
+                           de.tigges.kaboofcasino.cashier.CashierSettings cashier, Leaderboard leaderboard,
+                           de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop) {
 
     /**
      * The leaderboard (step 10, PLAN-2 C4).
@@ -185,5 +187,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Lights(4),
             new Music(true),
             de.tigges.kaboofcasino.cashier.CashierSettings.DEFAULTS,
-            new Leaderboard(false, 30, 15, 25, true));
+            new Leaderboard(false, 30, 15, 25, true),
+            de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULTS);
 }
