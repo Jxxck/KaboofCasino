@@ -18,7 +18,7 @@ import java.util.Map;
  *       coordinates in the anchor cell's frame (x 0..32 over both cells from the viewer's left, y 16..32 the upper
  *       block, z 16 the front). Two brass posts at the counter's front corners and a brass rail carry a sign built
  *       like the cashier's KASSE sign (walnut back, the mod's dark green sign panel, brass frame, warm bulbs) whose red
- *       LEDs spell {@value #WORD} in the mod's 7-row LED letters at half a pixel per LED. No glass: the display case
+ *       LEDs spell {@value #WORD} in the mod's 7-row LED letters at 0.4 pixels per LED. No glass: the display case
  *       stands behind the posts;</li>
  *   <li>{@code kaboofcasino:chipshop/display}, placed like the cashier's register
  *       ({@code Part(model, 0, 0, 1.5, -0.06)}): its y 0 is the counter top, x 0..32 both cells, z = the counter's z
@@ -60,8 +60,8 @@ final class ChipShopPack {
             '-', new String[] {"...", "...", "...", "###", "...", "...", "..."});
 
     // ---- the sign (anchor cell frame) ------------------------------------------------------------------------------
-    /** LED pitch (px), the cashier's. */
-    static final double LED = 0.5;
+    /** LED pitch (px): finer than the cashier's 0.5, so the nine letters keep the same air around them. */
+    static final double LED = 0.4;
     /** Posts and rail: the cashier screen's. */
     static final double POST_Z0 = 14;
     static final double POST_Z1 = 15.25;

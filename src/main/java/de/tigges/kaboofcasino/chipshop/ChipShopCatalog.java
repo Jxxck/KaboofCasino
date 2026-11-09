@@ -20,8 +20,17 @@ import java.util.Set;
  */
 public final class ChipShopCatalog {
 
-    /** One article: the casino id, its tab, the price of one, the daily limit (0 = none), automatic or fixed. */
-    public record Entry(String id, ChipShopCategory category, long price, int limit, boolean fixed) {
+    /**
+     * One article: the casino id, its tab, the price of one, the daily limit (0 = none), automatic or fixed; for an
+     * automatic price the value per piece (cost x markup) and the tab's minimum per piece, so a stack is priced as a
+     * whole ({@link #total}).
+     */
+    public record Entry(String id, ChipShopCategory category, long price, int limit, boolean fixed, double perPiece,
+                        long min) {
+        /** The price of {@code pieces} at once: fixed prices per piece, automatic ones rounded as a whole. */
+        public long total(int pieces) {
+            return fixed ? price * pieces : ChipShopPrices.total(perPiece, min, pieces);
+        }
     }
 
     /** The catalog: entries by tab (catalog order), and the ids that could not be priced. */
@@ -102,7 +111,10 @@ public final class ChipShopCatalog {
         for (ChipShopCategory c : ChipShopCategory.values()) {
             for (String id : ids) {
                 if (sellable(id, shop.tables()) && ChipShopCategory.of(id) == c) {
-                    out.add(new Row(id, c, ChipShopPrices.price(costs, id, shop.markup()), shop.item(id)));
+                    Double cost = costs.get(id);
+                    ChipShopSettings.Pricing pr = shop.pricing(c);
+                    out.add(new Row(id, c, cost == null ? OptionalLong.empty()
+                            : OptionalLong.of(ChipShopPrices.price(cost, pr.markup(), pr.min(id))), shop.item(id)));
                 }
             }
         }
@@ -122,15 +134,23 @@ public final class ChipShopCatalog {
             if (o.hidden()) {
                 continue;
             }
-            OptionalLong auto = ChipShopPrices.price(costs, id, shop.markup());
-            long price = o.price() > 0 ? o.price() : auto.orElse(0);
-            if (price <= 0) {
+            ChipShopCategory c = ChipShopCategory.of(id);
+            ChipShopSettings.Pricing pr = shop.pricing(c);
+            Double cost = costs.get(id);
+            if (o.price() <= 0 && cost == null) {
                 unpriced.add(id);
                 continue;
             }
-            ChipShopCategory c = ChipShopCategory.of(id);
-            by.computeIfAbsent(c, k -> new ArrayList<>()).add(new Entry(id, c, price, o.limit(), o.price() > 0));
+            double perPiece = cost == null ? 0 : cost * pr.markup();
+            long min = pr.min(id);
+            long price = o.price() > 0 ? o.price() : ChipShopPrices.total(perPiece, min, 1);
+            by.computeIfAbsent(c, k -> new ArrayList<>()).add(new Entry(id, c, price, o.limit(), o.price() > 0,
+                    perPiece, min));
         }
+        by.computeIfPresent(ChipShopCategory.MACHINES, (k, l) -> {
+            l.sort(java.util.Comparator.comparing(e -> !e.id().equals(ChipShopCategory.GUIDE)));
+            return l;
+        });
         return new Catalog(by, unpriced);
     }
 }

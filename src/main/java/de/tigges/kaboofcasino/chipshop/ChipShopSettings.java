@@ -13,14 +13,54 @@ import org.bukkit.configuration.ConfigurationSection;
 /**
  * The Chip-Shop's settings ({@code chipshop:} in config.yml, PLAN-2 C6).
  *
- * @param craftable true: the shop counter has a recipe; false (default): only {@code /casino give chip_shop}
- * @param markup    price = recipe cost x markup (1.0..10.0, default 1.25)
- * @param tables    true: the blackjack and poker tables are sold too (default false: they stay badge-bound)
+ * @param craftable  true (default): the shop counter has a recipe like the machines; false: only {@code /casino give chip_shop}
+ * @param categories per tab: price = recipe cost x markup, at least the minimum per piece
+ *                   ({@code chipshop.categories.<tab>.markup / min-price / min-price-stairs / min-price-slab})
+ * @param tables     true: the blackjack and poker tables are sold too (default false: they stay badge-bound)
  * @param values    chip values of the ingredients that are no ores (the ores count at {@code cashier.rates})
  * @param items     per item: a fixed price, a daily limit, hidden (a list, written by the croupier's hand)
  */
-public record ChipShopSettings(boolean craftable, double markup, boolean tables, Map<String, Double> values,
-                               List<Item> items) {
+public record ChipShopSettings(boolean craftable, Map<ChipShopCategory, Pricing> categories, boolean tables,
+                               Map<String, Double> values, List<Item> items) {
+
+    /**
+     * One tab's pricing: the markup on the recipe cost (1.0..20.0) and the minimum price per piece (0..1 000 000;
+     * stairs and slabs may have their own, 0 = the general one).
+     */
+    public record Pricing(double markup, long minPrice, long minStairs, long minSlab) {
+        /** The minimum price per piece of {@code id}. */
+        public long min(String id) {
+            if (id.endsWith("_stairs") && minStairs > 0) {
+                return minStairs;
+            }
+            if (id.endsWith("_slab") && minSlab > 0) {
+                return minSlab;
+            }
+            return minPrice;
+        }
+    }
+
+    /**
+     * Jack's prices (2026-11-09, "Deko teurer machen"): floors and walls at 1.25 but at least 5 a block, 4 a stair,
+     * 3 a slab; furniture, bar and tables, lights and signs, technology at 3.75 and at least 5; machines at 1.25.
+     */
+    public static final Map<ChipShopCategory, Pricing> DEFAULT_CATEGORIES = defaultCategories();
+
+    private static Map<ChipShopCategory, Pricing> defaultCategories() {
+        Map<ChipShopCategory, Pricing> m = new java.util.EnumMap<>(ChipShopCategory.class);
+        m.put(ChipShopCategory.FLOORS, new Pricing(1.25, 5, 4, 3));
+        for (ChipShopCategory c : List.of(ChipShopCategory.FURNITURE, ChipShopCategory.BAR, ChipShopCategory.LIGHTS,
+                ChipShopCategory.TECH)) {
+            m.put(c, new Pricing(3.75, 5, 0, 0));
+        }
+        m.put(ChipShopCategory.MACHINES, new Pricing(1.25, 0, 0, 0));
+        return java.util.Collections.unmodifiableMap(m);
+    }
+
+    /** The pricing of {@code c} (the default if the config misses it). */
+    public Pricing pricing(ChipShopCategory c) {
+        return categories.getOrDefault(c, DEFAULT_CATEGORIES.get(c));
+    }
 
     /** One item's overrides: {@code price} 0 = automatic, {@code limit} 0 = none. */
     public record Item(String item, long price, int limit, boolean hidden) {
@@ -51,10 +91,11 @@ public record ChipShopSettings(boolean craftable, double markup, boolean tables,
     /** The default values (chips per item) of the mod recipes' ingredients that are no ores. */
     public static final Map<String, Double> DEFAULT_VALUES = defaults();
 
-    public static final ChipShopSettings DEFAULTS = new ChipShopSettings(false, 1.25, false, DEFAULT_VALUES,
-            List.of());
+    public static final ChipShopSettings DEFAULTS = new ChipShopSettings(true, DEFAULT_CATEGORIES, false,
+            DEFAULT_VALUES, List.of());
 
     public ChipShopSettings {
+        categories = Map.copyOf(categories);
         values = Map.copyOf(values);
         items = List.copyOf(items);
     }
@@ -64,9 +105,9 @@ public record ChipShopSettings(boolean craftable, double markup, boolean tables,
         v.put("#minecraft:planks", 0.25);
         v.put("minecraft:dark_oak_planks", 0.25);
         v.put("#minecraft:wooden_slabs", 0.125);
-        v.put("#minecraft:signs", 0.75);
+        v.put("#minecraft:signs", 0.54);
         v.put("minecraft:stick", 0.125);
-        v.put("minecraft:torch", 0.5);
+        v.put("minecraft:torch", 0.28);
         for (String c : List.of("black", "blue", "green", "red", "white")) {
             v.put("minecraft:" + c + "_wool", 1.0);
         }
@@ -105,16 +146,31 @@ public record ChipShopSettings(boolean craftable, double markup, boolean tables,
     public static ChipShopSettings read(ConfigurationSection y, List<String> warnings) {
         boolean craftable = bool(y, "chipshop.craftable", DEFAULTS.craftable(), warnings);
         boolean tables = bool(y, "chipshop.tables", DEFAULTS.tables(), warnings);
-        double markup = DEFAULTS.markup();
-        Object m = y.get("chipshop.markup");
-        if (m instanceof Number n && n.doubleValue() >= 1.0 && n.doubleValue() <= 10.0) {
-            markup = n.doubleValue();
-        } else if (m != null) {
-            warnings.add("config.yml: chipshop.markup must be a number from 1.0 to 10.0 (got " + m + "); using "
-                    + markup);
+        Map<ChipShopCategory, Pricing> categories = new java.util.EnumMap<>(ChipShopCategory.class);
+        for (ChipShopCategory c : ChipShopCategory.values()) {
+            Pricing d = DEFAULT_CATEGORIES.get(c);
+            String base = "chipshop.categories." + c.id() + ".";
+            categories.put(c, new Pricing(number(y, base + "markup", d.markup(), 1.0, 20.0, warnings),
+                    (long) number(y, base + "min-price", d.minPrice(), 0, 1_000_000, warnings),
+                    (long) number(y, base + "min-price-stairs", d.minStairs(), 0, 1_000_000, warnings),
+                    (long) number(y, base + "min-price-slab", d.minSlab(), 0, 1_000_000, warnings)));
         }
-        return new ChipShopSettings(craftable, markup, tables, values(y.get("chipshop.values"), warnings),
+        return new ChipShopSettings(craftable, categories, tables, values(y.get("chipshop.values"), warnings),
                 items(y.get("chipshop.items"), warnings));
+    }
+
+    private static double number(ConfigurationSection y, String path, double def, double min, double max,
+                                 List<String> warnings) {
+        Object v = y.get(path);
+        if (v == null) {
+            return def;
+        }
+        if (v instanceof Number n && n.doubleValue() >= min && n.doubleValue() <= max) {
+            return n.doubleValue();
+        }
+        warnings.add("config.yml: " + path + " must be a number from " + min + " to " + max + " (got " + v
+                + "); using " + def);
+        return def;
     }
 
     private static boolean bool(ConfigurationSection y, String path, boolean def, List<String> warnings) {

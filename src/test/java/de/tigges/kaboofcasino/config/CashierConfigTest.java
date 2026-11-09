@@ -59,7 +59,7 @@ class CashierConfigTest {
         assertEquals(c3.size(), c.cashier().rates().size());
         c3.forEach((item, rate) -> assertEquals(rate, c.cashier().rate("minecraft:" + item).orElseThrow(), item));
         assertTrue(c.cashier().rate("minecraft:dirt").isEmpty());
-        assertTrue(c.cashier().shop().size() >= 3, "a few example prizes");
+        assertTrue(c.cashier().shop().isEmpty(), "no example prizes: the deco is in the Chip-Shop");
     }
 
     @Test

@@ -75,14 +75,11 @@ public record CashierSettings(List<Rate> rates, boolean craftable, List<ShopEntr
             new Rate("minecraft:diamond", 32), new Rate("minecraft:diamond_block", 288),
             new Rate("minecraft:netherite_ingot", 256), new Rate("minecraft:netherite_block", 2304));
 
-    /** A few casino decorations as examples; Jack fills in the rest. */
-    public static final List<ShopEntry> DEFAULT_SHOP = List.of(
-            new ShopEntry("roulettecasino:casino_chair", 1, 64, 0),
-            new ShopEntry("roulettecasino:casino_stool", 1, 48, 0),
-            new ShopEntry("casinodeco:casino_chip_pile", 1, 32, 0),
-            new ShopEntry("casinodeco:small_casino_sign", 1, 96, 0),
-            new ShopEntry("casinodeco:casino_bottles", 1, 24, 0),
-            new ShopEntry("casinodeco:champagne_coupes", 1, 24, 0));
+    /**
+     * No prizes by default (step 11 review): the deco is sold in the Chip-Shop; the cashier's Prämien are the admin's
+     * special prizes. (0.9.0-0.11.0 shipped six examples, see the step 11 ship notes.)
+     */
+    public static final List<ShopEntry> DEFAULT_SHOP = List.of();
 
     public static final CashierSettings DEFAULTS = new CashierSettings(DEFAULT_RATES, false, DEFAULT_SHOP);
 

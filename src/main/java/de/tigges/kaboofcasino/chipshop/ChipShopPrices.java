@@ -11,8 +11,9 @@ import java.util.OptionalLong;
  * Chip-Shop prices from the mod's recipes (PLAN-2 C6): an item's cost is the cheapest of its recipes, the sum of its
  * ingredients' values per crafted item; ingredients are valued from {@code values} (ores at the cashier's rates, the
  * rest from {@code chipshop.values}) or, for casino items, by their own cost (found by repeated relaxation, so recipe
- * cycles such as block and slab never loop). The price is cost x markup, rounded to round amounts (below 25 to whole
- * chips, below 250 to 5, else to 25), at least 1. Pure.
+ * cycles such as block and slab never loop). A price is cost x markup x pieces, rounded UP to round amounts (below 25
+ * to whole chips, below 250 to 5, else to 25, so nothing sells below its ingredients), at least the tab's minimum per
+ * piece times the pieces and at least 1; a stack is priced as a whole. Pure.
  */
 public final class ChipShopPrices {
 
@@ -80,17 +81,23 @@ public final class ChipShopPrices {
         return out;
     }
 
-    /** A cost times the markup, rounded to the 1/5/25 grid, at least 1 chip. */
-    public static long price(double cost, double markup) {
-        double p = cost * markup;
+    /** A value rounded up to the 1/5/25 grid (by the value itself), at least 1 chip. */
+    public static long roundUp(double p) {
         long step = p < 25 ? 1 : p < 250 ? 5 : 25;
-        long rounded = Math.round(p / step) * step;
-        return Math.max(1, rounded);
+        long up = (long) Math.ceil(p / step - 1e-9) * step;
+        return Math.max(1, up);
     }
 
-    /** The automatic price of {@code id}, if its cost is known. */
-    public static OptionalLong price(Map<String, Double> costs, String id, double markup) {
-        Double c = costs.get(id);
-        return c == null ? OptionalLong.empty() : OptionalLong.of(price(c, markup));
+    /** One piece: cost times markup rounded up, at least {@code min}. */
+    public static long price(double cost, double markup, long min) {
+        return total(cost * markup, min, 1);
+    }
+
+    /**
+     * {@code pieces} at once: the value per piece ({@code cost x markup}) times the pieces, rounded up as a whole, at
+     * least {@code min x pieces}.
+     */
+    public static long total(double perPiece, long min, int pieces) {
+        return Math.max(roundUp(perPiece * pieces), min * pieces);
     }
 }

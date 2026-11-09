@@ -90,11 +90,10 @@ class ChipShopArtPreviewTest {
     static final TextColor BRAND = TextColor.color(0xEACD83);
     static final TextColor CREAM = TextColor.color(0xF3E7BF);
     static final TextColor MUTED = TextColor.color(0xB5C5A6);
-    static final String[] CATEGORIES = {"Böden & Wände", "Möbel", "Bar & Tische", "Licht & Schilder",
+    static final String[] CATEGORIES = {"Böden und Wände", "Möbel", "Bar & Tische", "Licht & Schilder",
         "Technik", "Maschinen"};
-    /** Sample help (each line at most 88 px like the cashier's: the receipt's text room is 90 px). */
-    static final String HELP = "Oben: Kategorie,\ndann ein Teil und\nKAUFEN. Menge:\n1× oder 64.\n"
-            + "Rückgeld in Chips.";
+    /** The shipped {@code chipshop.help} (each line at most 88 px like the cashier's: the receipt's text room is 90 px). */
+    static final String HELP = "Wähle einen\nArtikel, dann\nKAUFEN.\nUmschalt-Klick:\nein Stapel.";
 
     private Component title(int tab) {
         TitleBuilder t = new TitleBuilder(layout);

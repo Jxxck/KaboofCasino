@@ -103,6 +103,9 @@ public final class ChipShopController extends MachineController {
             return;
         }
         Player p = Bukkit.getPlayer(claimant);
+        if (p != null && MenuService.openMenu(p) instanceof ChipShopMenu open && open.controller() == this) {
+            open.tick(Bukkit.getCurrentTick());
+        }
         int idle = ctx.config().get().gui().idleCloseSeconds();
         if (p != null && idle > 0 && MenuService.openMenu(p) instanceof ChipShopMenu menu && menu.controller() == this
                 && Bukkit.getCurrentTick() - menu.lastAction() >= idle * 20L) {

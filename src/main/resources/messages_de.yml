@@ -118,7 +118,7 @@ chipshop:
   in-use: "<yellow><name> kauft gerade am Chip-Shop."
   brand: "CHIP-SHOP"
   category:
-    boeden: "Böden & Wände"
+    boeden: "Böden und Wände"
     moebel: "Möbel"
     bar: "Bar & Tische"
     licht: "Licht & Schilder"
@@ -141,6 +141,11 @@ chipshop:
   qty-lore: "<gray>Klicke hier, um die Menge zu wechseln.\n<gray>Umschalt-Klick auf KAUFEN kauft immer einen Stapel."
   buy-button: "Kaufen"
   buy-lore: "<gray><count>× <item> für <price> kaufen."
+  buy-shift-lore: "<dark_gray>Umschalt: <count> Stück für <price>"
+  # über 1.000 Chips: der erste Klick fragt nach, der zweite (innerhalb von 3 s) kauft
+  confirm: "Nochmal klicken: <price>"
+  confirm-hint: "<yellow>Nochmal auf KAUFEN klicken, um für <price> zu kaufen."
+  too-expensive: "<red>Stapel zu teuer – kauf einzeln."
   none-selected: "<yellow>Wähle erst einen Artikel."
   bought: "<green>Gekauft: <count>× <item> für <price>."
   not-enough: "<red>Dafür reichen deine Chips nicht (<price>)."
@@ -357,7 +362,7 @@ guide:
   note-bets: "<gray><i>Hier nicht im Fenster: Einsätze und Auszahlungen stehen in der config.yml."
   note-names: "<gray><i>Hier: das Feld „Name“ im Fenster der Maschine."
   note-number: "<gray><i>Hier nur der Balken, keine Zahleneingabe."
-  note-chips: "<gray><i>Hier spielst du mit Chips: Erze tauschst du an der Kasse in Chips, Gewinne gibt es in Chips."
+  note-chips: "<gray><i>Hier spielst du mit Chips: Erze tauschst du an der Kasse in Chips, Gewinne gibt es in Chips. Deko und Maschinen kaufst du am Chip-Shop."
 
 # the croupier counter: answers to a right click on a free counter (option A: a click converts the villager on it)
 croupier:

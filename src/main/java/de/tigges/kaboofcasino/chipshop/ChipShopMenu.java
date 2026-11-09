@@ -53,6 +53,15 @@ final class ChipShopMenu extends GameMenu {
     private int page;
     private boolean stack;
     private ChipShopCatalog.Entry chosen;
+    /** A purchase above {@link #CONFIRM_ABOVE} waiting for its second click: what, how many, the total, since when. */
+    private Pending pending;
+
+    /** Purchases above this total (chips) need a second click within {@link #CONFIRM_TICKS}. */
+    static final long CONFIRM_ABOVE = 1000;
+    static final int CONFIRM_TICKS = 60;
+
+    record Pending(String id, int amount, long total, long tick) {
+    }
 
     ChipShopMenu(ChipShopCategory category, UUID viewer, ChipShopController controller, CasinoContext ctx) {
         super(viewer, title(ctx.layout(), ctx.messages().get()::raw, category));
@@ -157,6 +166,7 @@ final class ChipShopMenu extends GameMenu {
             set(CashierView.PRIZES_FIRST + k, Button.of(icon(viewer, e, e.equals(chosen)), (p, click) -> {
                 touch();
                 chosen = e;
+                pending = null;
                 p.playSound(p, Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
                 render();
             }));
@@ -179,19 +189,29 @@ final class ChipShopMenu extends GameMenu {
                 m.lines(Msg.CHIPSHOP_QTY_LORE)), (p, click) -> {
                     touch();
                     stack = !stack;
+                    pending = null;
                     p.playSound(p, Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
                     render();
                 }));
         int amount = chosen == null ? 0 : amount(chosen, stack);
+        int stackAmount = chosen == null ? 0 : amount(chosen, true);
         Component name = chosen == null ? Component.empty() : ChipShopService.name(controller.service()
                 .one(chosen.id()), chosen.id());
-        List<Component> buyLore = chosen == null ? m.lines(Msg.CHIPSHOP_NONE_SELECTED) : m.lines(Msg.CHIPSHOP_BUY_LORE,
-                Messages.text("count", ChipText.number(amount)), Messages.component("item", name),
-                Messages.text("price", ChipText.chips(chosen.price() * amount)));
+        List<Component> buyLore = new ArrayList<>();
+        if (chosen == null) {
+            buyLore.addAll(m.lines(Msg.CHIPSHOP_NONE_SELECTED));
+        } else {
+            buyLore.addAll(m.lines(Msg.CHIPSHOP_BUY_LORE, Messages.text("count", ChipText.number(amount)),
+                    Messages.component("item", name), Messages.text("price", ChipText.chips(chosen.total(amount)))));
+            buyLore.addAll(m.lines(Msg.CHIPSHOP_BUY_SHIFT_LORE, Messages.text("count", ChipText.number(stackAmount)),
+                    Messages.text("price", ChipText.chips(chosen.total(stackAmount)))));
+        }
+        Component buyName = pending != null && confirmable(Bukkit.getCurrentTick())
+                ? m.render(Msg.CHIPSHOP_CONFIRM, Messages.text("price", ChipText.chips(pending.total())))
+                : m.render(Msg.CHIPSHOP_BUY_BUTTON);
         for (int slot : CashierView.COMMIT) {
             String art = chosen != null ? "kaboofcasino:gui/cashier/buy_on" : "kaboofcasino:gui/cashier/buy_off";
-            ItemStack icon = DisplayCopies.model(slot == CashierView.COMMIT_ART ? art : BLANK,
-                    m.render(Msg.CHIPSHOP_BUY_BUTTON), buyLore);
+            ItemStack icon = DisplayCopies.model(slot == CashierView.COMMIT_ART ? art : BLANK, buyName, buyLore);
             set(slot, Button.commitWithShift(icon, (p, click) -> {
                 touch();
                 buy(p, click.isShiftClick());
@@ -199,7 +219,23 @@ final class ChipShopMenu extends GameMenu {
         }
         number(true, ChipShopService.balance(viewer));
         if (chosen != null) {
-            number(false, chosen.price() * amount);
+            number(false, chosen.total(amount));
+        }
+    }
+
+    /** True while the pending purchase may still be confirmed. */
+    private boolean confirmable(long now) {
+        return pending != null && now - pending.tick() <= CONFIRM_TICKS;
+    }
+
+    /** Every tick from the controller: a confirmation that ran out turns the button back. */
+    void tick(long now) {
+        if (pending != null && !confirmable(now)) {
+            pending = null;
+            Player viewer = Bukkit.getPlayer(viewer());
+            if (viewer != null && isOpenFor(viewer)) {
+                render();
+            }
         }
     }
 
@@ -216,11 +252,11 @@ final class ChipShopMenu extends GameMenu {
         Optional<ItemStack> one = controller.service().one(e.id());
         List<Component> lore = new ArrayList<>();
         lore.add(Component.empty());
-        lore.add(m.render(Msg.CHIPSHOP_PRICE_LORE, Messages.text("price", ChipText.chips(e.price()))));
+        lore.add(m.render(Msg.CHIPSHOP_PRICE_LORE, Messages.text("price", ChipText.chips(e.total(1)))));
         int max = one.map(ItemStack::getMaxStackSize).orElse(1);
         if (max > 1) {
             lore.add(m.render(Msg.CHIPSHOP_STACK_LORE, Messages.text("count", ChipText.number(max)),
-                    Messages.text("price", ChipText.chips(e.price() * max))));
+                    Messages.text("price", ChipText.chips(e.total(max)))));
         }
         if (e.limit() > 0) {
             lore.add(m.render(Msg.CHIPSHOP_LIMIT_LORE, Messages.text("left", ChipText.number(
@@ -272,8 +308,22 @@ final class ChipShopMenu extends GameMenu {
             render();
             return;
         }
-        Cashbox.Outcome outcome = controller.service().buy(player, controller.machine(), chosen,
-                amount(chosen, shift || stack));
+        int amount = amount(chosen, shift || stack);
+        long total = chosen.total(amount);
+        boolean armed = confirmable(now) && pending.id().equals(chosen.id()) && pending.amount() == amount;
+        if (armed && now - pending.tick() < BUY_GAP_TICKS) {
+            return; // the second half of a double click confirms nothing
+        }
+        if (total > CONFIRM_ABOVE && !armed) {
+            // a big purchase: the first click only arms it, a second click within 3 s buys
+            pending = new Pending(chosen.id(), amount, total, now);
+            messages().actionBar(player, Msg.CHIPSHOP_CONFIRM_HINT, Messages.text("price", ChipText.chips(total)));
+            player.playSound(player, Sound.BLOCK_NOTE_BLOCK_HAT, 0.6f, 1.4f);
+            render();
+            return;
+        }
+        pending = null;
+        Cashbox.Outcome outcome = controller.service().buy(player, controller.machine(), chosen, amount);
         if (outcome instanceof Cashbox.Bought) {
             lastBuy = now;
         }

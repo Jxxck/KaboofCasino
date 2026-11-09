@@ -3,7 +3,8 @@ package de.tigges.kaboofcasino.chipshop;
 import java.util.Set;
 
 /**
- * The Chip-Shop's tabs (PLAN-2 C6), in tab order, each with the item whose icon its tab shows. Which item belongs where
+ * The Chip-Shop's tabs (PLAN-2 C6; the guide and the dealer station with the machines since the step 11 review), in
+ * tab order, each with the item whose icon its tab shows. Which item belongs where
  * is decided by {@link #of}. Pure.
  */
 public enum ChipShopCategory {
@@ -20,9 +21,11 @@ public enum ChipShopCategory {
             "casinodeco:casino_chandelier", "casinodeco:chandelier_wall_sconce", "casinodeco:reception_plaque",
             "casinodeco:vip_only_plaque");
     private static final Set<String> TECH_IDS = Set.of("casinosound:casino_speaker", "roulettecasino:casino_tv",
-            "roulettecasino:casino_tv_large", "roulettecasino:casino_tv_3x3", "roulettecasino:dealer_station",
-            "roulettecasino:casino_guide");
-    private static final Set<String> MACHINE_IDS = Set.of("roulettecasino:slot_machine",
+            "roulettecasino:casino_tv_large", "roulettecasino:casino_tv_3x3");
+    /** The guide is listed first in its tab (review: it explains the machines). */
+    public static final String GUIDE = "roulettecasino:casino_guide";
+    private static final Set<String> MACHINE_IDS = Set.of(GUIDE, "roulettecasino:dealer_station",
+            "roulettecasino:slot_machine",
             "roulettecasino:slot_machine_reel", "roulettecasino:slot_machine_mechanism",
             "roulettecasino:roulette_mechanism", "roulettecasino:fortune_wheel", "roulettecasino:plinko",
             "roulettecasino:roulette_table", "roulettecasino:blackjack_table", "roulettecasino:poker_table",

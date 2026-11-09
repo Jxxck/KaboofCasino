@@ -159,12 +159,35 @@ leaderboard:
   weekly-log: true
 
 chipshop:
-  # Der Chip-Shop (Schritt 11): Casino-Deko, Möbel, Technik und Maschinen für Chips. Aufstellen: /casino give chip_shop.
-  # true: auch craftbar (Rezept kaboofcasino:chip_shop).
-  craftable: false
-  # Preis = Wert der Rezept-Zutaten in Chips x Aufschlag (1.0 bis 10.0), gerundet (unter 25 auf 1, unter 250 auf 5,
-  # sonst auf 25 Chips), mindestens 1. Erze zählen zum Kurs der Kasse (cashier.rates).
-  markup: 1.25
+  # Der Chip-Shop (Schritt 11): Casino-Deko, Möbel, Technik und Maschinen für Chips. Aufstellen: /casino give chip_shop
+  # oder craften (Rezept kaboofcasino:chip_shop: Glasscheibe, kleines Casino-Schild, Glasscheibe über schwarzer
+  # Marmor-Bar, Chip-Stapel, schwarzer Marmor-Bar). false: nur per /casino give, wie die Kasse.
+  craftable: true
+  # Preis = Wert der Rezept-Zutaten in Chips x Aufschlag der Kategorie, aufgerundet (unter 25 auf 1, unter 250 auf 5,
+  # sonst auf 25 Chips), mindestens min-price pro Stück. Ein Stapel wird als Ganzes gerechnet. Erze zählen zum Kurs der
+  # Kasse (cashier.rates). Kategorien: boeden, moebel, bar, licht, technik, maschinen.
+  categories:
+    boeden:
+      markup: 1.25
+      # pro Stück: Blöcke, Treppen, Stufen
+      min-price: 5
+      min-price-stairs: 4
+      min-price-slab: 3
+    moebel:
+      markup: 3.75
+      min-price: 5
+    bar:
+      markup: 3.75
+      min-price: 5
+    licht:
+      markup: 3.75
+      min-price: 5
+    technik:
+      markup: 3.75
+      min-price: 5
+    maschinen:
+      markup: 1.25
+      min-price: 0
   # true: auch Blackjack- und Pokertisch (sonst nur über das Croupier-Abzeichen).
   tables: false
   # Werte der übrigen Zutaten (Chips pro Stück; #name = ein Item-Tag). Eine Liste: gelöschte Einträge fehlen dann.
@@ -176,11 +199,11 @@ chipshop:
   - item: '#minecraft:wooden_slabs'
     value: 0.125
   - item: '#minecraft:signs'
-    value: 0.75
+    value: 0.54
   - item: minecraft:stick
     value: 0.125
   - item: minecraft:torch
-    value: 0.5
+    value: 0.28
   - item: minecraft:black_wool
     value: 1
   - item: minecraft:blue_wool
@@ -285,33 +308,14 @@ cashier:
     value: 2304
 
 shop:
-  # Preis-Shop der Kasse. Je Preis: item = ein Casino-Item (z. B. roulettecasino:casino_chair, casinodeco:...) oder
+  # Prämien der Kasse. Je Prämie: item = ein Casino-Item (z. B. roulettecasino:casino_chair, casinodeco:...) oder
   # ein Vanilla-Item, auch mit Komponenten wie bei /give (z. B. "minecraft:diamond_sword[enchantments={sharpness:5}]");
   # count = Anzahl pro Kauf (1-64); price = Preis in Chips; limit = Käufe pro Spieler und Tag (Datum in Berlin),
   # 0 = unbegrenzt. Chips selbst sind kein Preis. Bearbeiten: hier (danach /casino reload) oder in Kreativ mit der
   # Hand des Croupiers an einer Kasse. Eine Liste: Einträge, die du löschst, kommen nicht wieder.
-  items:
-  - item: roulettecasino:casino_chair
-    count: 1
-    price: 64
-    limit: 0
-  - item: roulettecasino:casino_stool
-    count: 1
-    price: 48
-    limit: 0
-  - item: casinodeco:casino_chip_pile
-    count: 1
-    price: 32
-    limit: 0
-  - item: casinodeco:small_casino_sign
-    count: 1
-    price: 96
-    limit: 0
-  - item: casinodeco:casino_bottles
-    count: 1
-    price: 24
-    limit: 0
-  - item: casinodeco:champagne_coupes
-    count: 1
-    price: 24
-    limit: 0
+  # Die Casino-Deko gibt es im Chip-Shop; hier stehen die Sonder-Prämien des Admins. Beispiel:
+  #   - item: minecraft:diamond_sword[enchantments={sharpness:5}]
+  #     count: 1
+  #     price: 4000
+  #     limit: 1
+  items: []

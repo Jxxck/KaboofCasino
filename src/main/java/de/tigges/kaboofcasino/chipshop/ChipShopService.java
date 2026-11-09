@@ -151,7 +151,7 @@ public final class ChipShopService {
     public Cashbox.Outcome buy(Player player, Machine machine, ChipShopCatalog.Entry entry, int quantity) {
         Messages m = ctx.messages().get();
         Optional<ItemStack> one = one(entry.id());
-        if (one.isEmpty() || quantity < 1 || quantity > one.get().getMaxStackSize()) {
+        if (one.isEmpty() || quantity < 1) {
             m.actionBar(player, Msg.CHIPSHOP_UNAVAILABLE);
             return new Cashbox.Refused(Cashbox.Refusal.NOT_ACCEPTED, entry.id());
         }
@@ -160,7 +160,12 @@ public final class ChipShopService {
             m.actionBar(player, Msg.CHIPSHOP_LIMIT, Messages.text("left", ChipText.number(left)));
             return new Cashbox.Refused(Cashbox.Refusal.LIMIT, entry.id());
         }
-        long price = entry.price() * quantity;
+        long price = entry.total(quantity);
+        if (quantity > ShopEntry.MAX_COUNT || price > ShopEntry.MAX_PRICE) {
+            // more than a purchase can hold: a normal answer, never an internal error
+            m.actionBar(player, Msg.CHIPSHOP_TOO_EXPENSIVE);
+            return new Cashbox.Refused(Cashbox.Refusal.NOT_ACCEPTED, entry.id());
+        }
         // the cashier's purchase with this article as a one-off prize (no prize limit: the shop counts pieces)
         ShopEntry article = new ShopEntry(entry.id(), quantity, price, 0);
         Cashbox.Outcome outcome;
@@ -178,7 +183,7 @@ public final class ChipShopService {
                         limits(player).plus(limitKey(entry.id()), quantity).encode());
             }
             log.log(new ChipShopLog.Entry(player.getUniqueId(), player.getName(), machine.id(), entry.id(), quantity,
-                    entry.price(), price, CashierLog.items(done.paid()), done.change(), done.owed(),
+                    entry.total(1), price, CashierLog.items(done.paid()), done.change(), done.owed(),
                     ctx.clock().getAsLong()));
             if (done.goodsLeft() > 0 || done.owed() > 0) {
                 Log.critical("CHIPSHOP_ROOM_CHECK", "chip shop purchase of {}x {} by {}: {} item(s) and {} chips did "

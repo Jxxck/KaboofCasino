@@ -1393,8 +1393,9 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
 ### Step 11 (part 2: the Chip-Shop; PLAN-2 C6)
 
 - **Machine** `CHIP_SHOP` (item `chip_shop` "Chip-Shop", `/casino give chip_shop`; recipe `kaboofcasino:chip_shop`
-  only with `chipshop.craftable: true`: glass pane, small casino sign, glass pane over black marble bar, chip pile,
-  black marble bar; unlocks with a chip pile): the cashier's footprint and rules (2 wide x 1 deep x 2 tall, both bottom
+  with `chipshop.craftable` (default true since the fix round, Jack: "fit in ... Crafting"; `false` = `/casino give`
+  only, like the cashier): glass pane, small casino sign, glass pane over black marble bar, chip pile, black marble
+  bar; unlocks with a chip pile): the cashier's footprint and rules (2 wide x 1 deep x 2 tall, both bottom
   cells on support, chunk fit, clearance, logout spots, spawn protection, breaking, verify), no game, one player at a
   time, idle close after `gui.idle-close-seconds`. Look (`ChipShopRig`): the cashier's marble counter, the pack's
   glass display case `kaboofcasino:chipshop/display` on it and the CHIP-SHOP sign `kaboofcasino:chipshop/sign`.
@@ -1403,26 +1404,35 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   without a croupier's badge with all their parts (slot machine, reel and mechanism, roulette mechanism, wheel, Plinko,
   roulette table, the four ducks, derby mechanism, duck derby); never the chips, the croupier's badge, hiring card and
   hand, the cashier, the leaderboards, the shop itself; the blackjack and poker tables only with `chipshop.tables`.
-  Tabs (`ChipShopCategory`): Böden & Wände, Möbel, Bar & Tische, Licht & Schilder, Technik, Maschinen.
+  Tabs (`ChipShopCategory`): Böden und Wände, Möbel, Bar & Tische, Licht & Schilder, Technik, Maschinen.
 - **Prices** (`ChipShopPrices`): an item's cost is the cheapest of its mod recipes, the sum of its ingredients per
   crafted item; ores at the cashier's rates (`cashier.rates`, nuggets a ninth of the ingot), the other ingredients from
-  `chipshop.values` (wool 1, dye 0.5, planks 0.25, paper 0.5, glass 0.5, glowstone 4, piston 6, ...), casino items by
-  their own cost (repeated relaxation: recipe cycles such as block and slab never loop). Price = cost x
-  `chipshop.markup` (default 1.25), rounded below 25 to whole chips, below 250 to 5, else to 25, at least 1.
-  `chipshop.items` fixes a price per item, a daily limit (pieces per player and Berlin day) or hides it.
+  `chipshop.values` (wool 1, dye 0.5, planks 0.25, signs 0.54, torch 0.28, paper 0.5, glass 0.5, glowstone 4, piston
+  6, ...), casino items by their own cost (repeated relaxation: recipe cycles such as block and slab never loop).
+  Per tab (`chipshop.categories.<tab>`, Jack 2026-11-09 "Deko teurer machen"): Böden und Wände markup 1.25 but at
+  least 5 a block, 4 a stair, 3 a slab; Möbel, Bar & Tische, Licht & Schilder, Technik markup 3.75 and at least 5;
+  Maschinen 1.25 without a minimum. A purchase of n pieces costs cost x markup x n rounded UP as a whole (below 25 to
+  whole chips, below 250 to 5, else to 25: nothing sells below its ingredients), at least min x n; a fixed price from
+  `chipshop.items` is per piece and wins. The stack lore and the side panel show the total.
 - **Menu** (`ChipShopMenu`, the cashier's 9x6 layout and side panel): the six tabs in slots 0-5 (the tab's item icon,
   the active one glinting), the tab's items in 9-44 (36 a page, pages 45/46), the amount toggle 47 (one piece or a
-  stack), KAUFEN 48-51, the price of the choice (52) and the player's chips (53). A click chooses an item (glint);
+  stack), KAUFEN 48-51, the price of the choice (52, the total) and the player's chips (53). The guide (first) and
+  the dealer station are listed with the machines. A click chooses an item (glint);
   KAUFEN buys the amount, Umschalt-click always a stack (the item's stack size; the shop's KAUFEN is the only commit
   button that takes Shift-clicks, `Button.commitWithShift`, click guard and busy flag still apply); a second purchase
-  within 10 ticks is ignored; if the price, limit or offer changed since it was shown, nothing is bought ("Das Angebot hat sich
+  within 10 ticks is ignored; KAUFEN's lore names both amounts ("Umschalt: 64 Stück für X"); a purchase above
+  1.000 chips needs a second click 0.5 to 3 s after the first (the button then reads "Nochmal klicken: X Chips", the
+  first click buys nothing, a reflex double click confirms nothing, a new choice or amount disarms it); the amount
+  toggle's art says "64", not "Stapel": the word needs 30 px of the button's 14 and everything on sale stacks to 64
+  (its name says "Menge: ein Stapel"); more than 64 pieces or a total above 100.000.000 is refused ("Stapel zu teuer – kauf einzeln."); if the price, limit or offer changed since it was shown, nothing is bought ("Das Angebot hat sich
   inzwischen geändert.").
 - **Purchase** (`ChipShopService.buy`): the cashier's atomic `Cashbox.buy` with the article as a one-off prize: daily
   limit (pieces, PDC `kaboofcasino:chipshop_limits`), ledger read, payment plan with change, room for the goods and the
   change, or refused before anything moves; then pay, change in chips (what does not fit is owed), the goods into the
   storage slots (a rest the room check missed is dropped at the feet, locked to the buyer). Logged at INFO and in
   `casino.db` table `chipshop` (schema 5: player, name, machine, item, quantity, unit price, price, chips paid, change,
-  owed, time). The cashier's Prämien stay for the admin's special prizes.
+  owed, time). The cashier's Prämien stay for the admin's special prizes; since the step 11 review the jar ships none
+  (the six examples are gone, the deco is in the Chip-Shop).
 - **Croupier's hand** on a Chip-Shop (`admin/ChipShopEditor`, `ChipShopDialogs`): six items a page (hidden ones too)
   with icon, current price ("automatisch" or fixed), limit and hidden; inputs price (empty = automatic), limit and
   "ausblenden"; Speichern / pages / Fertig (ESC applies valid inputs). Written into `chipshop.items` with
@@ -1434,10 +1444,18 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   Rollback: restore `casino.db`, or `DELETE FROM schema_version WHERE version = 5;` (the table stays, unused).
 - **Chip-Shops under 0.10.0**: unknown machine kind, logged CRITICAL `MACHINE_RECORD_UNREADABLE`, barriers stay (as
   the boards under 0.9.1). Items bought in the shop are ordinary casino items and stay valid.
-- **Texts and config**: the sections `chipshop:` (messages) and `chipshop:` (config: markup 1.25, tables false,
-  values, items []) are new and merge in; nothing existing changes. Prices can be tuned before the first deploy in
-  `chipshop.markup`, `chipshop.values` or per item in `chipshop.items` (or later with the croupier's hand).
+- **Texts and config**: the sections `chipshop:` (messages) and `chipshop:` (config: craftable true, categories,
+  tables false, values, items []) are new and merge in. Prices can be tuned in `chipshop.categories.<tab>`,
+  `chipshop.values` or per item in `chipshop.items` (or later with the croupier's hand). `guide.note-chips` changed
+  (names the Chip-Shop): delete that key from the live `messages_de.yml` before the start so the new text merges in.
 - **Pack**: new models, GUI art and glyphs (appended code points); clients download the new pack once.
+- **The cashier's sample Prämien**: 0.9.0 to 0.11.0 (before the review) shipped six examples in `shop.items`; the
+  live config got them at the first 0.9.0 start. Delete exactly these from the live `shop.items` (keep anything else,
+  Jack's own prizes): `roulettecasino:casino_chair` count 1 price 64 limit 0; `roulettecasino:casino_stool` count 1
+  price 48 limit 0; `casinodeco:casino_chip_pile` count 1 price 32 limit 0; `casinodeco:small_casino_sign` count 1
+  price 96 limit 0; `casinodeco:casino_bottles` count 1 price 24 limit 0; `casinodeco:champagne_coupes` count 1 price
+  24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
+  the empty default does not remove them by itself.
 
 #### Step 10 ships as 0.10.0 (deploy and rollback)
 
