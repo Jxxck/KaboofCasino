@@ -122,9 +122,14 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      * The derby's win chance applies to solo races only; group races always use natural odds and are allowed only
      * at -1 or 25 ({@code DuckDerbyBlockEntity.groupAllowed}).
      *
-     * @param winChance -1 = natural odds (the mod's default); 0..100 = forced pools (CasinoOdds)
+     * @param winChance        -1 = natural odds (the mod's default); 0..100 = forced pools (CasinoOdds)
+     * @param countdownSeconds the roulette's betting window when others stand at the table (0 = every spin at once)
      */
-    public record Slot(int winChance, int idleLightTicks, int idleLightRange, boolean needsSupport) {
+    public record Slot(int winChance, int idleLightTicks, int idleLightRange, boolean needsSupport,
+                       int countdownSeconds) {
+        public Slot(int winChance, int idleLightTicks, int idleLightRange, boolean needsSupport) {
+            this(winChance, idleLightTicks, idleLightRange, needsSupport, 0);
+        }
     }
 
     /**
@@ -180,7 +185,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Slot(-1, 4, 16, true),
             new Slot(-1, 4, 16, true),
             new Slot(-1, 4, 16, true),
-            new Slot(-1, 0, 16, true),
+            new Slot(-1, 0, 16, true, 15),
             new Blackjack(0, true),
             new Poker(0, true),
             new Slot(-1, 4, 16, true),

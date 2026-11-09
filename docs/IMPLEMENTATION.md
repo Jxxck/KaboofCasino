@@ -1457,6 +1457,21 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
   the empty default does not remove them by itself.
 
+### Multiplayer roulette (step 12, 0.13.0; PLAN-2 C5, not in MineVegas)
+
+- Whoever stands alone at the table spins at once, exactly as before (one DECIDED record per slot). With another usable
+  player within 8 blocks, the first bet opens a window of `roulette.countdown-seconds` (default 15, 0 = always alone),
+  up to 8 players, each with his own colour and slots. The window is never extended; it shortens to 2 s once nobody
+  near is still without a bet. Everybody has his own menu (`holdsClaim`), one bet per player and spin.
+- Until the window closes each bet is a PLAYING record paying the stake back (`"refund until the start"`, so the boards
+  skip it if it stays one), the chips have left the inventory. Quit, death, stop, crash and table removal therefore
+  refund through the existing hooks. Only after the window closes is the pocket drawn (natural odds, once) and
+  `WagerEngine.revise` gives each player's records their result in his own ledger write; a player whose records are gone
+  drops out without touching the others. Forced odds (`win-chance >= 0`) are per colour, so such tables only spin alone.
+- The table cannot be broken during the window. The chunk is held from the window's start to the end of the payout. The
+  panel shows the seconds left and one line per player (`RoulettePanel.table`); the mod's panel stays for a solo spin.
+  Payout coins fly to their own winner. Bot: `testing/roulette-mp-test.sh`.
+
 ### The recipe book (0.12.1)
 
 Bukkit recipes and the native recipe book work on materials, and casino items share them (chips, machines and most deco

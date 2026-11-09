@@ -238,6 +238,11 @@ roulette:
   no-bet: "<yellow>Setze einen Einsatz, bevor du das Roulette drehst."
   busy: "<yellow>Das Roulette dreht sich."
   several: "<yellow>Nur eine Farbe behalten"
+  # mehrere Spieler an einem Tisch (seconds: bis die Kugel rollt)
+  joined: "<gold>Du bist dabei.</gold> <gray>Die Kugel rollt in <seconds> s."
+  already: "<yellow>Du hast schon gesetzt. Die Kugel rollt in <seconds> s."
+  full: "<yellow>An diesem Tisch spielen schon 8 Leute mit."
+  countdown: "<gold>Einsätze noch <seconds> s"
 
 blackjack:
   # message.roulettecasino.blackjack.busy / no_bet / cannot_double / timeout

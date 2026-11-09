@@ -176,7 +176,7 @@ public abstract class MachineController implements MachineGame {
             m.actionBar(player, busyMessage());
             return false;
         }
-        if (!Usability.usable(player) || !player.getUniqueId().equals(claimant)) {
+        if (!Usability.usable(player) || !holdsClaim(player)) {
             return false;
         }
         if (!ctx.menus().safe(player)) {
@@ -185,6 +185,11 @@ public abstract class MachineController implements MachineGame {
             return false;
         }
         return true;
+    }
+
+    /** True if {@code player} may commit at this machine: the claimant (a table with several players overrides it). */
+    protected boolean holdsClaim(Player player) {
+        return player.getUniqueId().equals(claimant);
     }
 
     /**

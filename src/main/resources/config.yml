@@ -86,6 +86,10 @@ roulette:
   # true: mindestens eines der vier Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
   # Leere). false = wie im Mod, ganz ohne Stütze.
   needs-support: true
+  # Stehen andere Spieler am Tisch, wartet die Kugel so viele Sekunden auf ihre Einsätze (bis zu 8 Spieler, eine
+  # Drehung für alle). Wer allein am Tisch steht, dreht sofort. 0 = immer sofort, nur ein Spieler pro Drehung.
+  # Mit einer erzwungenen win-chance gibt es keine gemeinsamen Drehungen.
+  countdown-seconds: 15
   # Das Roulette hat keine Lichter.
   idle-light-ticks: 0
   idle-light-range: 16

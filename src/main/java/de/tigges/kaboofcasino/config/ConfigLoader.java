@@ -98,7 +98,9 @@ public final class ConfigLoader {
                 r.integer(section + ".idle-light-range", d.idleLightRange(), 0, 128),
                 // the roulette and the derby have the switch (the other machines always need support)
                 section.equals("roulette") || section.equals("derby")
-                        ? r.bool(section + ".needs-support", d.needsSupport()) : d.needsSupport());
+                        ? r.bool(section + ".needs-support", d.needsSupport()) : d.needsSupport(),
+                section.equals("roulette") ? r.integer("roulette.countdown-seconds", d.countdownSeconds(), 0, 120)
+                        : d.countdownSeconds());
     }
 
     /** Typed, range-checked reads with warnings. */
