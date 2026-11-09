@@ -166,7 +166,14 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             case POKER_TABLE -> new de.tigges.kaboofcasino.game.poker.PokerController(machine, ctx);
             case DUCK_DERBY -> new de.tigges.kaboofcasino.game.derby.DerbyController(machine, ctx);
             case CASHIER -> cashier.controller(machine);
-            case LEADERBOARD_WALL, LEADERBOARD_COLUMN -> boards.controller(machine);
+            case LEADERBOARD_WALL, LEADERBOARD_WALL_2X2,
+                    LEADERBOARD_WALL_3X3,
+                    LEADERBOARD_WALL_4X3,
+                    LEADERBOARD_WALL_4X4,
+                    LEADERBOARD_WALL_5X3,
+                    LEADERBOARD_WALL_5X4,
+                    LEADERBOARD_WALL_6X4,
+                    LEADERBOARD_COLUMN -> boards.controller(machine);
             case CHIP_SHOP -> chipShop.controller(machine);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);

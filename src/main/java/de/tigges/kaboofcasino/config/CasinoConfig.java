@@ -140,7 +140,10 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      *                     not apply to blackjack in the mod
      * @param needsSupport at least one of the eight cells needs solid ground below (false = the mod)
      */
-    public record Blackjack(int bias, boolean needsSupport) {
+    public record Blackjack(int bias, boolean needsSupport, int countdownSeconds) {
+        public Blackjack(int bias, boolean needsSupport) {
+            this(bias, needsSupport, 15);
+        }
     }
 
     /**

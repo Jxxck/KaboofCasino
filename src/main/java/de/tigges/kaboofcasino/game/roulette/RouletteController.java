@@ -6,10 +6,8 @@ import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.game.GameMenu;
 import de.tigges.kaboofcasino.game.MachineController;
 import de.tigges.kaboofcasino.game.StakeMenu;
-import de.tigges.kaboofcasino.gui.Usability;
 import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.MachineSettings;
-import de.tigges.kaboofcasino.util.FakePlayers;
 import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.Ledger;
@@ -78,7 +76,6 @@ public final class RouletteController extends MachineController {
     private long windowEnd = -1;
     /** The seconds the panel shows now. */
     private long shownSeconds = -1;
-    private boolean chunkHeld;
 
     /** One filled bet slot; its payout is empty until the pocket is drawn. */
     private record Slip(int slot, ItemAmount stake, List<ItemAmount> payout, UUID round) {
@@ -248,7 +245,7 @@ public final class RouletteController extends MachineController {
         spin = null;
         windowEnd = -1;
         bettors.clear();
-        holdChunk(false);
+        keepChunkLoaded(false);
         claimant = null;
         closeMenus();
     }
@@ -260,19 +257,6 @@ public final class RouletteController extends MachineController {
             }
             b.settled = true;
         }
-    }
-
-    private void holdChunk(boolean hold) {
-        World w = world();
-        if (w == null || hold == chunkHeld) {
-            return;
-        }
-        if (hold) {
-            ctx.machines().holdChunk(w, machine.anchor().chunkX(), machine.anchor().chunkZ(), ctx.plugin());
-        } else {
-            ctx.machines().releaseChunk(w, machine.anchor().chunkX(), machine.anchor().chunkZ(), ctx.plugin());
-        }
-        chunkHeld = hold;
     }
 
     // ---- SPIN ------------------------------------------------------------------------------------------------------
@@ -321,10 +305,7 @@ public final class RouletteController extends MachineController {
 
     /** Players near the table who could still bet ({@code self} and those who have bet do not count). */
     private long waiting(World world, UUID self) {
-        Location c = centre(world);
-        return world.getPlayers().stream().filter(p -> !p.getUniqueId().equals(self)
-                && !bettors.containsKey(p.getUniqueId()) && !FakePlayers.isFake(p) && Usability.usable(p)
-                && p.getLocation().distanceSquared(c) <= NEAR * NEAR).count();
+        return playersNear(world, NEAR, id -> id.equals(self) || bettors.containsKey(id));
     }
 
     /** The mod's spin: draw, commit every filled slot (one tick), start the 160-tick spin. */
@@ -375,7 +356,7 @@ public final class RouletteController extends MachineController {
         }
         if (!window()) {
             windowEnd = until;
-            holdChunk(true);
+            keepChunkLoaded(true);
             panelUntil = -1;
             Log.get().info("roulette #{}: betting window opened by {}", machine.record().number(), player.getName());
         }
@@ -464,7 +445,7 @@ public final class RouletteController extends MachineController {
         windowEnd = -1;
         shownSeconds = -1;
         bettors.clear();
-        holdChunk(false);
+        keepChunkLoaded(false);
         rig.hidePanel();
         Log.get().info("roulette #{}: betting window closed without a spin ({})", machine.record().number(), why);
     }
@@ -598,7 +579,7 @@ public final class RouletteController extends MachineController {
             } else {
                 spin = null;
                 bettors.clear();
-                holdChunk(false);
+                keepChunkLoaded(false);
                 claimant = null;
             }
         }

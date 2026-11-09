@@ -1,5 +1,7 @@
 package de.tigges.kaboofcasino.game.blackjack;
 
+import de.tigges.kaboofcasino.config.Messages;
+import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.game.PanelText;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import java.util.ArrayList;
@@ -54,6 +56,78 @@ public final class BlackjackPanel {
             Objects.requireNonNull(name, "name");
             stakes = List.copyOf(stakes);
         }
+    }
+
+    /** One player's line on a table with several: stakes, total (-1 = no card yet), result code, whose turn it is. */
+    public record SeatLine(UUID player, String name, List<ItemAmount> stakes, int total, int result, boolean acting) {
+        public SeatLine {
+            stakes = List.copyOf(stakes);
+        }
+    }
+
+    /** The panel of a table with several players: {@code dealer} -1 = no total yet, {@code seconds} -1 = no countdown. */
+    public record TableContent(List<SeatLine> seats, int dealer, long seconds) {
+        public TableContent {
+            seats = List.copyOf(seats);
+        }
+    }
+
+    /** The total of the cards at {@code spot} as the panel shows them (see {@link #totals}), -1 before the first. */
+    static int seatTotal(BlackjackTableState view, int spot, double now) {
+        return total(view, card -> !card.toDealer && card.spot == spot, now);
+    }
+
+    /** The dealer's total as the panel shows it, -1 before his first card shows. */
+    static int dealerTotal(BlackjackTableState view, double now) {
+        return total(view, card -> card.toDealer, now);
+    }
+
+    private static int total(BlackjackTableState view, java.util.function.Predicate<BlackjackCardMotion.Card> which,
+                             double now) {
+        List<Integer> cards = new ArrayList<>();
+        for (BlackjackCardMotion.Card card : view.cards) {
+            if (which.test(card) && !(now - (double) card.dealtAt < 22.0)) {
+                cards.add(card.flipAt >= 0L && now - (double) card.flipAt < 10.0 ? -1 : card.value);
+            }
+        }
+        return cards.isEmpty() ? -1 : BlackjackCards.total(cards);
+    }
+
+    /** One line per player under the time left to bet, the dealer's total last. */
+    static Component table(Messages m, TableContent c) {
+        TextComponent.Builder text = Component.text();
+        boolean first = true;
+        if (c.seconds() >= 0) {
+            text.append(m.render(Msg.BLACKJACK_COUNTDOWN, Messages.text("seconds", Long.toString(c.seconds()))));
+            first = false;
+        }
+        for (SeatLine l : c.seats()) {
+            if (!first) {
+                text.append(Component.newline());
+            }
+            first = false;
+            if (l.acting()) {
+                text.append(Component.text("» ", GOLD));
+            }
+            text.append(PanelText.header(l.player(), l.name())).append(Component.text("  "))
+                    .append(PanelText.stakes(l.stakes()));
+            if (l.total() >= 0) {
+                text.append(Component.text("  " + l.total(), l.total() > 21 ? BUST : GOLD));
+            }
+            if (l.result() != 0) {
+                int code = Math.min(l.result(), RESULT_COLORS.length - 1);
+                text.append(Component.text("  ")).append(Component.text()
+                        .append(word("gui.roulettecasino.blackjack.result_" + code, RESULTS[code]))
+                        .color(TextColor.color(RESULT_COLORS[code])).decorate(TextDecoration.BOLD).build());
+            }
+        }
+        if (c.dealer() >= 0) {
+            text.append(Component.newline()).append(Component.text()
+                    .append(word("gui.roulettecasino.blackjack.dealer", DEALER))
+                    .append(Component.text(" " + c.dealer()))
+                    .color(c.dealer() > 21 ? BUST : PanelText.WHITE).build());
+        }
+        return text.build();
     }
 
     /** What the view shows at a moment: totals (-1 = none) and the result code (0 = none yet). */

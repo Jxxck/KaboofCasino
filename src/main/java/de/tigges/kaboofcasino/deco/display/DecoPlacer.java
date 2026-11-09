@@ -154,6 +154,19 @@ final class DecoPlacer {
                 }
                 yield plan(type, pos, f, 0, w);
             }
+            case SQUARE_SIGN -> {
+                if (face == BlockFace.UP || face == BlockFace.DOWN) {
+                    yield null;
+                }
+                Facing f = Facing.of(face);
+                int columns = type.signColumns();
+                for (int part = 0; part < columns * columns; part++) {
+                    if (!service.wall(w, DecoGeometry.wallPart(pos, f, columns, part), f)) {
+                        yield null;
+                    }
+                }
+                yield plan(type, pos, f, 0, w);
+            }
             case FREE -> plan(type, pos, Facing.SOUTH, 0, w);
             case CHANDELIER -> {
                 // the clicked cell is the top (under the ceiling); the body hangs 1 or 2 chain blocks lower
@@ -230,7 +243,8 @@ final class DecoPlacer {
         World w = clicked.getWorld();
         if (plan.cells().size() > 1) {
             boolean onWall = plan.type().place() == DecoType.Place.LARGE_SIGN
-                    || plan.type().place() == DecoType.Place.TV;
+                    || plan.type().place() == DecoType.Place.TV
+                    || plan.type().place() == DecoType.Place.SQUARE_SIGN;
             int[] shift = DecoGeometry.chunkFit(plan.cells(), onWall ? List.of(DecoGeometry.ccw(plan.facing()))
                     : List.of(new int[] {1, 0}, new int[] {0, 1}));
             if (shift != null) {

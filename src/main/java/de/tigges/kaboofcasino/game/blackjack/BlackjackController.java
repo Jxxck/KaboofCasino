@@ -21,7 +21,12 @@ import de.tigges.kaboofcasino.wager.SettleReason;
 import de.tigges.kaboofcasino.wager.WagerEngine;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -49,7 +54,15 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
  *       free 15 ticks after the round is over and the coins are out (or at once on the owner's next click).</li>
  * </ul>
  * The listener mirrors the mod's {@code Events}: the table view ({@link BlackjackTableState}) for the rig, sounds at
- * their scheduled round ticks, confetti on a win. Thread: MAIN.
+ * their scheduled round ticks, confetti on a win.
+ *
+ * <p>Several players (PLAN-2 C5, not in the mod): alone at the table everything above applies. With somebody else near,
+ * the first bet opens a window of {@code blackjack.countdown-seconds}, up to five players take a spot each; until it
+ * closes a bet is a PLAYING record paying the stake back, so quit, death or stop refund it. Then one
+ * {@link BlackjackTableRound} runs: each seat's records hold what it gets if nobody draws another card (rewritten for
+ * everybody when somebody draws), the seats play in spot order, one dealer plays for all, and each seat is confirmed,
+ * settled and paid on its own; quit or death of one settles his records as they stand and his hand stands, the others
+ * play on. Thread: MAIN.
  */
 public final class BlackjackController extends MachineController {
 
@@ -65,6 +78,12 @@ public final class BlackjackController extends MachineController {
     static final double RANGE = 8.0;
     /** A PLAYING record's watchdog end: this long after its last revision (the controller owns it while it ticks). */
     static final long RECORD_ENDS_MILLIS = 60_000;
+    /** Five seats of 30 s each plus the deal: a table's records may wait this long for their next rewrite. */
+    static final long TABLE_RECORD_ENDS_MILLIS = 300_000;
+    /** Whoever stands this near the table (blocks) makes a hand wait for bets. */
+    static final double NEAR = 8.0;
+    /** Once everybody near has bet, the cards come this soon (ticks). */
+    static final int LAST_CALL_TICKS = 40;
     private static final Particle.DustOptions RED_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xDF3B4B), 1.15f);
     private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xFFD168), 1.25f);
     private static final Particle.DustOptions GREEN_CONFETTI = new Particle.DustOptions(Color.fromRGB(0x36D886),
@@ -76,6 +95,225 @@ public final class BlackjackController extends MachineController {
     private Hand hand;
     private final BlackjackTableState idleView = new BlackjackTableState();
     private BlackjackPanel.Content shownPanel;
+    /** A running round with several seats. */
+    private Table table;
+    /** Who has bet in the open window, in the order they joined. */
+    private final Map<UUID, TableSeat> waiting = new LinkedHashMap<>();
+    /** The game tick the betting window closes at, -1 when none is open. */
+    private long windowEnd = -1;
+    private BlackjackPanel.TableContent shownTable;
+
+    /** One player's place at a table with several players. */
+    private static final class TableSeat {
+        final UUID player;
+        final String name;
+        final int spot;
+        final long seed;
+        List<Seat> stakes;
+        long endsMillis;
+        boolean gone;
+        BlackjackRound.Result result = BlackjackRound.Result.NONE;
+
+        TableSeat(UUID player, String name, int spot, long seed, List<Seat> stakes, long endsMillis) {
+            this.player = player;
+            this.name = name;
+            this.spot = spot;
+            this.seed = seed;
+            this.stakes = stakes;
+            this.endsMillis = endsMillis;
+        }
+
+        boolean holds(UUID round) {
+            return stakes.stream().anyMatch(s -> s.round().equals(round));
+        }
+
+        List<ItemAmount> staked() {
+            return ItemAmount.merge(stakes.stream().map(Seat::stake).toList());
+        }
+    }
+
+    private record TableCoin(String item, int spot, UUID player) {
+    }
+
+    /** A running round with several seats: what {@link Hand} is for one. */
+    private final class Table implements BlackjackTableRound.Listener {
+        final List<TableSeat> seats;
+        final long start;
+        long ticked;
+        final BlackjackTableState view;
+        final List<ScheduledSound> sounds = new ArrayList<>();
+        final Set<String> resultSounds = new HashSet<>();
+        final ArrayDeque<TableCoin> coins = new ArrayDeque<>();
+        BlackjackTableRound round;
+        boolean decided;
+        int payoutWait;
+        boolean settled;
+        int endHold;
+
+        Table(List<TableSeat> seats, long start) {
+            this.seats = seats;
+            this.start = start;
+            this.ticked = start;
+            this.view = new BlackjackTableState(start, seats.getFirst().spot);
+            this.view.phaseChanged(BlackjackRound.Phase.DEALING, 0);
+        }
+
+        int index(UUID player) {
+            for (int i = 0; i < seats.size(); i++) {
+                if (seats.get(i).player.equals(player)) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private void schedule(int at, String id, float volume, float pitch) {
+            sounds.add(new ScheduledSound(at, id, volume, pitch));
+        }
+
+        @Override
+        public void shuffled(int at) {
+            view.shuffled(at);
+            schedule(at, "card_shuffle", 0.9f, 1.0f);
+        }
+
+        @Override
+        public void cardDealt(int seat, int index, int card, boolean faceUp, int at) {
+            boolean toDealer = seat == BlackjackTableRound.DEALER;
+            if (!toDealer) {
+                view.spot = seats.get(seat).spot;
+            }
+            view.cardDealt(toDealer, index, card, faceUp, at);
+            float pitch = 0.94f + index * 0.04f + (toDealer ? 0.05f : 0.0f);
+            schedule(at + 7, "card_flip", 0.3f, 0.75f);
+            schedule(at + 14, "card_deal", 0.8f, pitch);
+        }
+
+        @Override
+        public void holeCardRevealed(int card, int at) {
+            view.holeCardRevealed(card, at);
+            schedule(at + 4 + 2, "card_flip", 0.9f, 1.0f);
+        }
+
+        @Override
+        public void dealerPeek(boolean blackjack, int at) {
+            view.dealerPeek(blackjack, at);
+            schedule(at + 5, "card_flip", 0.4f, 0.7f);
+        }
+
+        @Override
+        public void turnOpened(int seat, int deadline, int at) {
+            view.spot = seats.get(seat).spot;
+            view.turnOpened(deadline, at);
+            schedule(at, "tick", 0.5f, 1.5f);
+            Messages m = ctx.messages().get();
+            TableSeat acting = seats.get(seat);
+            Log.get().info("blackjack #{}: turn of {}", machine.record().number(), acting.name);
+            for (TableSeat s : seats) {
+                Player p = Bukkit.getPlayer(s.player);
+                if (p != null && !s.gone) {
+                    if (s == acting) {
+                        m.actionBar(p, Msg.BLACKJACK_YOUR_TURN);
+                    } else {
+                        m.actionBar(p, Msg.BLACKJACK_WAITING, Messages.text("name", acting.name));
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void turnTimedOut(int seat, int at) {
+            view.turnTimedOut(at);
+            TableSeat s = seats.get(seat);
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && !s.gone) {
+                ctx.messages().get().actionBar(p, Msg.BLACKJACK_TIMEOUT);
+            }
+        }
+
+        @Override
+        public void phaseChanged(BlackjackRound.Phase phase, int at) {
+            view.phaseChanged(phase, at);
+        }
+
+        @Override
+        public void decided(int seat, BlackjackRound.Result result, int at) {
+            view.decided(result, at);
+            TableSeat s = seats.get(seat);
+            s.result = result;
+            decided = true;
+            payoutWait = PAYOUT_DELAY;
+            Log.get().info("blackjack #{}: hand of {} ends {} (player {} = {}, dealer {} = {}{}{})",
+                    machine.record().number(), s.name, result, cards(round.hand(seat)),
+                    BlackjackCards.total(round.hand(seat)), cards(round.dealer()),
+                    BlackjackCards.total(round.dealer()), round.doubled(seat) ? ", doubled" : "",
+                    s.gone ? ", owner gone" : "");
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && !p.isDead() && !s.gone) {
+                reviseSeat(p, this, seat, s.stakes, z -> BlackjackPayout.payout(z.stake(), result,
+                        BlackjackPayout.roll(s.seed, z.slot())), "result " + result, List.of());
+            }
+            World world = world();
+            if (world != null) {
+                String sound = result.isWin() ? "win" : result.isPush() ? "blackjack_push" : "lose";
+                if (result.isWin()) {
+                    celebrate(world, s.spot, result == BlackjackRound.Result.BLACKJACK);
+                }
+                if (resultSounds.add(sound)) {
+                    schedule(at + 6, sound, result.isWin() ? 1.1f : 0.95f, 1.0f);
+                }
+            }
+        }
+
+        @Override
+        public void reaction(BlackjackRound.Reaction reaction, int at) {
+            view.reaction(reaction, at);
+        }
+
+        @Override
+        public void cleared(int at) {
+            view.cleared(at);
+            schedule(at + 7, "card_deal", 0.55f, 0.8f);
+        }
+
+        BlackjackPanel.TableContent content(long now) {
+            List<BlackjackPanel.SeatLine> lines = new ArrayList<>();
+            for (int i = 0; i < seats.size(); i++) {
+                TableSeat s = seats.get(i);
+                int result = view.resultAt >= 0 && now >= view.resultAt + 4 ? s.result.code : 0;
+                lines.add(new BlackjackPanel.SeatLine(s.player, s.name, s.staked(),
+                        BlackjackPanel.seatTotal(view, s.spot, now), result, round.currentSeat() == i));
+            }
+            return new BlackjackPanel.TableContent(lines, BlackjackPanel.dealerTotal(view, now), -1);
+        }
+
+        BlackjackSnapshot snapshot(int seat, Player viewer, long now) {
+            TableSeat s = seats.get(seat);
+            BlackjackTableRound r = round;
+            boolean mine = r.currentSeat() == seat;
+            int phase = switch (r.phase()) {
+                case DEALING -> BlackjackSnapshot.PHASE_DEALING;
+                case PLAYER_TURN -> mine ? BlackjackSnapshot.PHASE_TURN : BlackjackSnapshot.PHASE_DEALING;
+                case PLAYER_DRAW -> mine ? BlackjackSnapshot.PHASE_DRAWING : BlackjackSnapshot.PHASE_DEALING;
+                case DEALER_TURN -> BlackjackSnapshot.PHASE_DEALER;
+                default -> BlackjackSnapshot.PHASE_RESULT;
+            };
+            List<Long> playerAt = new ArrayList<>();
+            List<Long> dealerAt = new ArrayList<>();
+            for (BlackjackCardMotion.Card c : view.cards) {
+                if (c.toDealer) {
+                    dealerAt.add(c.dealtAt);
+                } else if (c.spot == s.spot) {
+                    playerAt.add(c.dealtAt);
+                }
+            }
+            int left = mine && r.phase() == BlackjackRound.Phase.PLAYER_TURN ? Math.max(0, r.deadline() - r.now()) : 0;
+            List<ItemAmount> shown = s.stakes.stream().map(Seat::stake).toList();
+            return new BlackjackSnapshot(phase, r.hand(seat), r.dealerVisible(), playerAt, dealerAt, left,
+                    r.result(seat).code, r.canHit(seat), r.canStand(seat), r.canDouble(seat), r.doubled(seat),
+                    r.canDouble(seat) && afford(viewer, shown), shown, now);
+        }
+    }
 
     /** One filled bet slot of the running hand. */
     record Seat(int slot, ItemAmount stake, UUID round) {
@@ -230,7 +468,23 @@ public final class BlackjackController extends MachineController {
 
     @Override
     protected boolean running() {
-        return hand != null;
+        return hand != null || table != null;
+    }
+
+    private boolean windowOpen() {
+        return windowEnd >= 0;
+    }
+
+    /** Breaking is refused while cards are out or bets wait for them (their records are open). */
+    @Override
+    public boolean busy() {
+        return running() || windowOpen();
+    }
+
+    /** Everybody opens his own betting menu: nobody holds the table. */
+    @Override
+    protected boolean holdsClaim(Player player) {
+        return true;
     }
 
     @Override
@@ -247,7 +501,9 @@ public final class BlackjackController extends MachineController {
     @Override
     protected GameMenu newMenu(Player player) {
         Hand h = hand;
-        if (h != null && h.player.equals(player.getUniqueId())) {
+        Table t = table;
+        if (h != null && h.player.equals(player.getUniqueId()) || waiting.containsKey(player.getUniqueId())
+                || t != null && t.index(player.getUniqueId()) >= 0) {
             return new BlackjackRoundMenu(player.getUniqueId(), this, ctx);
         }
         return new BlackjackBetMenu(player.getUniqueId(), this, ctx);
@@ -261,6 +517,25 @@ public final class BlackjackController extends MachineController {
     public void interact(Player player) {
         Messages m = ctx.messages().get();
         UUID id = player.getUniqueId();
+        Table t = table;
+        if (t != null) {
+            if (t.index(id) < 0) {
+                m.actionBar(player, Msg.BLACKJACK_BUSY, Messages.text("name", t.seats.getFirst().name));
+            } else if (mayOpen(player)) {
+                ctx.menus().open(player, newMenu(player));
+            }
+            return;
+        }
+        if (waiting.containsKey(id)) {
+            if (mayOpen(player)) {
+                ctx.menus().open(player, newMenu(player));
+            }
+            return;
+        }
+        if (waiting.size() >= BlackjackLayout.SPOTS) {
+            m.actionBar(player, Msg.BLACKJACK_FULL);
+            return;
+        }
         Hand h = hand;
         if (h != null && h.player.equals(id) && h.round.isOver() && h.settled && h.coins.isEmpty()) {
             finish();
@@ -268,11 +543,6 @@ public final class BlackjackController extends MachineController {
         }
         if (h != null && !h.player.equals(id)) {
             m.actionBar(player, Msg.BLACKJACK_BUSY, Messages.text("name", h.name));
-            return;
-        }
-        if (h == null && claimant != null && !claimant.equals(id) && claimantActive()) {
-            Player other = Bukkit.getPlayer(claimant);
-            m.actionBar(player, Msg.BLACKJACK_BUSY, Messages.text("name", other == null ? "?" : other.getName()));
             return;
         }
         if (!mayOpen(player)) {
@@ -303,6 +573,10 @@ public final class BlackjackController extends MachineController {
         if (h != null && !h.player.equals(player.getUniqueId())) {
             return false;
         }
+        Table t = table;
+        if (t != null && t.index(player.getUniqueId()) < 0) {
+            return false;
+        }
         return player.getLocation().distanceSquared(at(w, RANGE_POINT)) <= RANGE * RANGE;
     }
 
@@ -319,6 +593,7 @@ public final class BlackjackController extends MachineController {
         }
         rig.spawn();
         shownPanel = null;
+        shownTable = null;
     }
 
     @Override
@@ -331,6 +606,20 @@ public final class BlackjackController extends MachineController {
 
     @Override
     public boolean ownsRound(UUID roundId) {
+        long clock = ctx.clock().getAsLong();
+        for (TableSeat s : waiting.values()) {
+            if (s.holds(roundId)) {
+                return owns(heartbeat, clock, s.endsMillis, false);
+            }
+        }
+        Table t = table;
+        if (t != null) {
+            for (TableSeat s : t.seats) {
+                if (s.holds(roundId)) {
+                    return owns(heartbeat, clock, s.endsMillis, t.settled);
+                }
+            }
+        }
         Hand h = hand;
         return h != null && owns(heartbeat, ctx.clock().getAsLong(), h.endsMillis, h.settled)
                 && h.seats.stream().anyMatch(s -> s.round().equals(roundId));
@@ -377,6 +666,32 @@ public final class BlackjackController extends MachineController {
             h.round.abort();
         }
         hand = null;
+        for (TableSeat s : waiting.values()) {
+            for (Seat z : s.stakes) {
+                settleRound(s.player, s.name, z.round(), SettleReason.MACHINE_GONE);
+            }
+        }
+        waiting.clear();
+        windowEnd = -1;
+        Table t = table;
+        if (t != null) {
+            if (!t.settled) {
+                t.settled = true;
+                for (int i = 0; i < t.seats.size(); i++) {
+                    TableSeat s = t.seats.get(i);
+                    Player p = Bukkit.getPlayer(s.player);
+                    if (!t.decided && p != null && !p.isDead()) {
+                        reviseSeat(p, t, i, s.stakes, z -> List.of(z.stake()), "refund (table removed)", List.of());
+                    }
+                    for (Seat z : s.stakes) {
+                        settleRound(s.player, s.name, z.round(), SettleReason.MACHINE_GONE);
+                    }
+                }
+            }
+            t.round.abort();
+            table = null;
+        }
+        keepChunkLoaded(false);
         claimant = null;
         closeMenus();
     }
@@ -392,6 +707,14 @@ public final class BlackjackController extends MachineController {
         List<StakeMenu.Stake> stakes = menu.stakes();
         if (stakes.isEmpty()) {
             m.actionBar(player, Msg.BLACKJACK_NO_BET);
+            return;
+        }
+        if (waiting.containsKey(player.getUniqueId())) {
+            m.actionBar(player, Msg.BLACKJACK_ALREADY, Messages.text("seconds", Long.toString(secondsLeft())));
+            return;
+        }
+        if (windowOpen() || playsWithOthers(player)) {
+            join(player, menu, stakes);
             return;
         }
         if (shoe == null) {
@@ -437,8 +760,348 @@ public final class BlackjackController extends MachineController {
         ctx.menus().open(player, new BlackjackRoundMenu(player.getUniqueId(), this, ctx));
     }
 
+    // ---- a table with several players ---------------------------------------------------------------------------------
+
+    /** True if this bet waits for others: the window exists, nobody forces the cards, and somebody else is near. */
+    private boolean playsWithOthers(Player player) {
+        var config = ctx.config().get();
+        return config.blackjack().countdownSeconds() > 0 && MachineSettings.bias(config, machine) == 0
+                && othersWaiting(player.getWorld(), player.getUniqueId()) > 0;
+    }
+
+    private long othersWaiting(World world, UUID self) {
+        return playersNear(world, NEAR, id -> id.equals(self) || waiting.containsKey(id));
+    }
+
+    private long secondsLeft() {
+        World w = world();
+        return windowOpen() && w != null ? Math.max(0, windowEnd - w.getGameTime() + 19) / 20 : 0;
+    }
+
+    /** The free spot nearest to where the player stands. */
+    private int freeSpot(Player player) {
+        double[] p = tablePosition(player.getLocation());
+        int best = BlackjackLayout.nearestSpot(p[0], p[1]);
+        Set<Integer> taken = new HashSet<>();
+        waiting.values().forEach(s -> taken.add(s.spot));
+        for (int d = 0; d < BlackjackLayout.SPOTS; d++) {
+            for (int spot : new int[] {best - d, best + d}) {
+                if (spot >= 0 && spot < BlackjackLayout.SPOTS && !taken.contains(spot)) {
+                    return spot;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** A bet into the betting window (opened by the first): the chips leave now, as records paying them back. */
+    private void join(Player player, StakeMenu menu, List<StakeMenu.Stake> stakes) {
+        Messages m = ctx.messages().get();
+        int spot = freeSpot(player);
+        if (waiting.size() >= BlackjackLayout.SPOTS || spot < 0) {
+            m.actionBar(player, Msg.BLACKJACK_FULL);
+            return;
+        }
+        World world = player.getWorld();
+        long now = world.getGameTime();
+        long until = windowOpen() ? windowEnd : now + ctx.config().get().blackjack().countdownSeconds() * 20L;
+        long ends = ctx.clock().getAsLong() + (until - now) * 50L + TABLE_RECORD_ENDS_MILLIS;
+        List<WagerEngine.Request> requests = new ArrayList<>();
+        for (StakeMenu.Stake s : stakes) {
+            requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(), List.of(s.amount()), ends,
+                    "slot=" + s.slot() + " refund until the start", RoundState.PLAYING).withTake(s.chips()));
+        }
+        List<UUID> rounds = commit(player, requests, Msg.BLACKJACK_NO_BET);
+        if (rounds == null) {
+            menu.render();
+            return;
+        }
+        if (!windowOpen()) {
+            windowEnd = until;
+            keepChunkLoaded(true);
+            Log.get().info("blackjack #{}: betting window opened by {}", machine.record().number(), player.getName());
+        }
+        List<Seat> seats = new ArrayList<>();
+        for (int i = 0; i < stakes.size(); i++) {
+            seats.add(new Seat(stakes.get(i).slot(), stakes.get(i).amount(), rounds.get(i)));
+        }
+        waiting.put(player.getUniqueId(), new TableSeat(player.getUniqueId(), player.getName(), spot,
+                ctx.random().nextLong(), seats, ends));
+        menu.clearStakes();
+        if (othersWaiting(world, player.getUniqueId()) == 0) {
+            windowEnd = Math.min(windowEnd, now + LAST_CALL_TICKS);
+        }
+        Log.get().info("{} joins blackjack #{} with {} at spot {} ({} player(s))", player.getName(),
+                machine.record().number(), stakes.stream().map(s -> s.amount().toString()).toList(), spot,
+                waiting.size());
+        // the round menu opens now, in the click: a menu may not open by itself later, and it stays open for the round
+        ctx.menus().open(player, new BlackjackRoundMenu(player.getUniqueId(), this, ctx));
+        m.actionBar(player, Msg.BLACKJACK_JOINED, Messages.text("seconds", Long.toString(secondsLeft())));
+    }
+
+    /** Every tick of the window: who quit or died was refunded by that hook; at its end the cards come. */
+    private void windowTick(World world, long now) {
+        waiting.values().removeIf(s -> {
+            Player p = Bukkit.getPlayer(s.player);
+            boolean gone = p == null || !p.isOnline() || p.isDead();
+            if (gone) {
+                Log.get().info("blackjack #{}: {} left the betting window (refunded by the quit/death)",
+                        machine.record().number(), s.name);
+            }
+            return gone;
+        });
+        if (waiting.isEmpty()) {
+            closeWindow("nobody left");
+        } else if (now >= windowEnd) {
+            startTable(world, now);
+        }
+    }
+
+    private void closeWindow(String why) {
+        windowEnd = -1;
+        waiting.clear();
+        keepChunkLoaded(false);
+        closeMenus();
+        Log.get().info("blackjack #{}: betting window closed without a hand ({})", machine.record().number(), why);
+    }
+
+    /** The window has closed: the round starts for everybody whose records are still open. */
+    private void startTable(World world, long now) {
+        windowEnd = -1;
+        if (MachineSettings.bias(ctx.config().get(), machine) != 0) {
+            // an admin set a bias during the window: it is for one hand, so nobody plays and all get their bet
+            for (TableSeat s : waiting.values()) {
+                for (Seat z : s.stakes) {
+                    settleRound(s.player, s.name, z.round(), SettleReason.NORMAL);
+                }
+            }
+            closeWindow("bias set meanwhile: refunded");
+            return;
+        }
+        List<TableSeat> seated = new ArrayList<>();
+        for (TableSeat s : waiting.values()) {
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && p.isOnline() && !p.isDead() && recordsOpen(p, s)) {
+                seated.add(s);
+            } else {
+                Log.get().info("blackjack #{}: {} drops out at the start (records already settled)",
+                        machine.record().number(), s.name);
+            }
+        }
+        if (seated.isEmpty()) {
+            closeWindow("nobody left at the start");
+            return;
+        }
+        seated.sort(Comparator.comparingInt(s -> s.spot));
+        if (shoe == null) {
+            shoe = new BlackjackShoe(new ShoeRandom(ctx.random().nextLong()));
+        }
+        // the live round shuffles in its constructor when the shoe is low: the copy does the same with the same random
+        BlackjackShoe sim = shoe.copy();
+        if (sim.needsShuffle()) {
+            sim.shuffle();
+        }
+        BlackjackRound.Result[] stand = BlackjackTableRound.standResultsAtStart(seated.size(), sim);
+        Table t = new Table(seated, now);
+        table = t;
+        waiting.clear();
+        t.round = new BlackjackTableRound(shoe, t, seated.size());
+        closeBetMenus();
+        for (int i = 0; i < seated.size(); i++) {
+            TableSeat s = seated.get(i);
+            BlackjackRound.Result mine = stand[i];
+            Player p = Bukkit.getPlayer(s.player);
+            if (p == null || reviseSeat(p, t, i, s.stakes, z -> BlackjackPayout.payout(z.stake(), mine,
+                    BlackjackPayout.roll(s.seed, z.slot())), "deal", List.of()) != WagerEngine.Revision.DONE) {
+                s.gone = true;
+                t.round.leave(i);
+            }
+        }
+        Log.get().info("blackjack #{}: round for {} player(s) (shoe {} cards)", machine.record().number(),
+                seated.size(), shoe.remaining());
+    }
+
+    /** The bets are closed: whoever is still choosing a bet has missed this round. */
+    private void closeBetMenus() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (MenuService.openMenu(p) instanceof BlackjackBetMenu menu && menu.controller() == this) {
+                p.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            }
+        }
+    }
+
+    private boolean recordsOpen(Player p, TableSeat s) {
+        try {
+            var ledger = new PlayerAccount(p).ledger();
+            return s.stakes.stream().allMatch(z -> ledger.round(z.round()).isPresent());
+        } catch (LedgerCodec.CorruptLedgerException e) {
+            Log.critical("LEDGER_UNREADABLE", "blackjack seat of {} dropped: {}", s.name, e.getMessage());
+            return false;
+        }
+    }
+
+    /** One seat's records: {@code stakes} and payouts from {@code pay}, plus {@code extra} taken, in one ledger write. */
+    private WagerEngine.Revision reviseSeat(Player player, Table t, int seat, List<Seat> stakes,
+                                           java.util.function.Function<Seat, List<ItemAmount>> pay, String why,
+                                           List<ItemAmount> extra) {
+        TableSeat s = t.seats.get(seat);
+        try {
+            PlayerAccount account = new PlayerAccount(player);
+            long ends = ctx.clock().getAsLong() + TABLE_RECORD_ENDS_MILLIS;
+            List<RoundRecord> revised = new ArrayList<>();
+            for (Seat z : stakes) {
+                RoundRecord old = account.ledger().round(z.round()).orElse(null);
+                if (old == null) {
+                    return WagerEngine.Revision.GONE;
+                }
+                revised.add(new RoundRecord(old.id(), old.machine(), old.game(), RoundState.PLAYING, z.stake(),
+                        pay.apply(z), old.created(), ends, detail(z.slot(), t.round.hand(seat), t.round.dealer(),
+                        t.round.doubled(seat) || !extra.isEmpty(), null, why)));
+            }
+            WagerEngine.Revision r = ctx.engine().revise(account, revised, extra);
+            if (r == WagerEngine.Revision.DONE) {
+                s.endsMillis = ends;
+            }
+            return r;
+        } catch (LedgerCodec.CorruptLedgerException e) {
+            Log.critical("LEDGER_UNREADABLE", "blackjack {} for {} refused: {}", why, s.name, e.getMessage());
+            return WagerEngine.Revision.GONE;
+        }
+    }
+
+    /** The seat of a player who may decide now, or -1. */
+    private int actingSeat(Player player, Table t) {
+        int seat = t.index(player.getUniqueId());
+        return seat >= 0 && !t.seats.get(seat).gone && Usability.usable(player) ? seat : -1;
+    }
+
+    /** HIT or DOUBLE at a table: the drawing seat's records first, then everybody's stored result, then the card. */
+    private void tableDraw(Player player, Table t, boolean doubling) {
+        int seat = actingSeat(player, t);
+        if (seat < 0 || !(doubling ? t.round.canDouble(seat) : t.round.canHit(seat)) || !safeDecision(player)) {
+            return;
+        }
+        TableSeat s = t.seats.get(seat);
+        BlackjackRound.Result[] next = t.round.standResults(shoe.copy(), seat);
+        BlackjackRound.Result mine = next[seat];
+        List<Seat> stakes = s.stakes;
+        List<ItemAmount> extra = List.of();
+        if (doubling) {
+            extra = s.stakes.stream().map(Seat::stake).toList();
+            stakes = s.stakes.stream().map(z -> new Seat(z.slot(), new ItemAmount(z.stake().item(),
+                    z.stake().count() * 2), z.round())).toList();
+        }
+        WagerEngine.Revision r = reviseSeat(player, t, seat, stakes, z -> BlackjackPayout.payout(z.stake(), mine,
+                BlackjackPayout.roll(s.seed, z.slot())), (doubling ? "double" : "hit") + ", then stand=" + mine, extra);
+        if (r == WagerEngine.Revision.NOT_ENOUGH) {
+            ctx.messages().get().actionBar(player, Msg.CHIPS_CANNOT_DOUBLE);
+            return;
+        }
+        if (r != WagerEngine.Revision.DONE) {
+            return;
+        }
+        s.stakes = new ArrayList<>(stakes);
+        for (int i = 0; i < t.seats.size(); i++) {
+            TableSeat other = t.seats.get(i);
+            Player p = Bukkit.getPlayer(other.player);
+            if (i != seat && !other.gone && p != null && !p.isDead()) {
+                BlackjackRound.Result theirs = next[i];
+                reviseSeat(p, t, i, other.stakes, z -> BlackjackPayout.payout(z.stake(), theirs,
+                        BlackjackPayout.roll(other.seed, z.slot())), "after " + s.name + " drew", List.of());
+            }
+        }
+        if (doubling) {
+            t.round.doubleDown(seat);
+        } else {
+            t.round.hit(seat);
+        }
+    }
+
+    private void runTable(World world, Table t, long now) {
+        for (int i = 0; i < t.seats.size(); i++) {
+            TableSeat s = t.seats.get(i);
+            Player p = Bukkit.getPlayer(s.player);
+            if (!s.gone && (p == null || !p.isOnline() || p.isDead())) {
+                // quit, kick or death settled his records as they stand; the others play on
+                s.gone = true;
+                t.round.leave(i);
+                Log.get().info("blackjack #{}: {} left the table, the hand stands", machine.record().number(), s.name);
+            }
+        }
+        if (now <= t.ticked) {
+            return;
+        }
+        t.ticked = now;
+        t.round.tick();
+        int at = t.round.now();
+        for (int i = t.sounds.size() - 1; i >= 0; i--) {
+            ScheduledSound s = t.sounds.get(i);
+            if (s.at() <= at) {
+                t.sounds.remove(i);
+                sound(world, s.id(), ANCHOR_CENTRE, s.volume(), s.pitch());
+            }
+        }
+        if (t.decided && (!t.settled || !t.coins.isEmpty()) && --t.payoutWait <= 0) {
+            if (!t.settled) {
+                t.settled = true;
+                for (TableSeat s : t.seats) {
+                    ArrayDeque<String> stacks = new ArrayDeque<>();
+                    for (Seat z : s.stakes) {
+                        settleRound(s.player, s.name, z.round(), SettleReason.NORMAL);
+                        if (!s.gone) {
+                            queueCoins(stacks, BlackjackPayout.payout(z.stake(), s.result,
+                                    BlackjackPayout.roll(s.seed, z.slot())));
+                        }
+                    }
+                    stacks.forEach(item -> t.coins.add(new TableCoin(item, s.spot, s.player)));
+                }
+            }
+            if (!t.coins.isEmpty()) {
+                TableCoin c = t.coins.poll();
+                rig.coin(c.item(), c.spot(), coinTarget(world, c.player()), now);
+                sound(world, "payout", ANCHOR_CENTRE, 0.43f, 0.95f + ctx.random().nextFloat() * 0.2f);
+            }
+            t.payoutWait = PAYOUT_STEP;
+        }
+        if (t.round.isOver() && t.settled && t.coins.isEmpty() && ++t.endHold > END_HOLD) {
+            finishTable(t);
+        }
+    }
+
+    private void finishTable(Table t) {
+        table = null;
+        claimant = null;
+        keepChunkLoaded(false);
+        for (TableSeat s : t.seats) {
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && MenuService.openMenu(p) instanceof BlackjackRoundMenu menu && menu.controller() == this) {
+                p.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            }
+        }
+    }
+
+    /** The panel of a table with several players, or of the betting window; sent only when something changed. */
+    private void tablePanel(Table t, long now) {
+        BlackjackPanel.TableContent content = null;
+        if (t != null) {
+            content = t.content(now);
+        } else if (windowOpen() && !waiting.isEmpty()) {
+            content = new BlackjackPanel.TableContent(waiting.values().stream().map(s -> new BlackjackPanel.SeatLine(
+                    s.player, s.name, s.staked(), -1, 0, false)).toList(), -1, secondsLeft());
+        }
+        if (content == null ? shownTable != null : !content.equals(shownTable)) {
+            rig.tablePanel(content == null ? null : BlackjackPanel.table(ctx.messages().get(), content));
+            shownTable = content;
+        }
+    }
+
     /** HIT (button 1): the records first (stand result after this card), then the live card. */
     void hit(Player player) {
+        Table t = table;
+        if (t != null) {
+            tableDraw(player, t, false);
+            return;
+        }
         Hand h = ownHand(player);
         if (h == null || !h.round.canHit() || !safeDecision(player)) {
             return;
@@ -454,6 +1117,14 @@ public final class BlackjackController extends MachineController {
 
     /** STAND (button 2): the records already hold the stand result. */
     void stand(Player player) {
+        Table t = table;
+        if (t != null) {
+            int seat = actingSeat(player, t);
+            if (seat >= 0) {
+                t.round.stand(seat);
+            }
+            return;
+        }
         Hand h = ownHand(player);
         if (h == null || !h.round.canStand()) {
             return;
@@ -468,6 +1139,11 @@ public final class BlackjackController extends MachineController {
      * message, nothing changes.
      */
     void doubleDown(Player player) {
+        Table t = table;
+        if (t != null) {
+            tableDraw(player, t, true);
+            return;
+        }
         Hand h = ownHand(player);
         if (h == null || !h.round.canDouble() || !safeDecision(player)) {
             return;
@@ -615,19 +1291,38 @@ public final class BlackjackController extends MachineController {
         }
         long now = world.getGameTime();
         rig.tickCoins(now);
+        if (windowOpen()) {
+            windowTick(world, now);
+        }
         Hand h = hand;
         if (h != null) {
             runHand(world, h, now);
         }
+        Table running = table;
+        if (running != null) {
+            runTable(world, running, now);
+        }
         heartbeat.beat(ctx.clock().getAsLong());
         Hand current = hand;
-        rig.update(current != null ? current.view : idleView, now);
+        Table currentTable = table;
+        rig.update(currentTable != null ? currentTable.view : current != null ? current.view : idleView, now);
         panel(current);
+        tablePanel(currentTable, now);
         if (current != null) {
             Player owner = Bukkit.getPlayer(current.player);
             if (owner != null && MenuService.openMenu(owner) instanceof BlackjackRoundMenu menu
                     && menu.controller() == this) {
                 menu.refresh(snapshot(owner));
+            }
+        }
+        List<TableSeat> seats = currentTable != null ? currentTable.seats : List.copyOf(waiting.values());
+        if (!seats.isEmpty()) {
+            for (TableSeat s : seats) {
+                Player p = Bukkit.getPlayer(s.player);
+                if (p != null && MenuService.openMenu(p) instanceof BlackjackRoundMenu menu
+                        && menu.controller() == this) {
+                    menu.refresh(snapshot(p));
+                }
             }
         }
     }
@@ -705,6 +1400,16 @@ public final class BlackjackController extends MachineController {
     BlackjackSnapshot snapshot(Player viewer) {
         World w = world();
         long now = w != null ? w.getGameTime() : viewer.getWorld().getGameTime();
+        Table t = table;
+        if (t != null) {
+            int seat = t.index(viewer.getUniqueId());
+            return seat >= 0 ? t.snapshot(seat, viewer, now) : BlackjackSnapshot.betting(now);
+        }
+        TableSeat waits = waiting.get(viewer.getUniqueId());
+        if (waits != null) {
+            return new BlackjackSnapshot(BlackjackSnapshot.PHASE_DEALING, List.of(), List.of(), List.of(), List.of(), 0,
+                    0, false, false, false, false, false, waits.stakes.stream().map(Seat::stake).toList(), now);
+        }
         Hand h = hand;
         if (h == null || !h.player.equals(viewer.getUniqueId())) {
             return BlackjackSnapshot.betting(now);
@@ -723,16 +1428,16 @@ public final class BlackjackController extends MachineController {
             (c.toDealer ? dealerAt : playerAt).add(c.dealtAt);
         }
         int left = r.phase() == BlackjackRound.Phase.PLAYER_TURN ? Math.max(0, r.deadline() - r.now()) : 0;
-        boolean afford = r.canDouble() && afford(viewer, h);
+        boolean afford = r.canDouble() && afford(viewer, h.seats.stream().map(Seat::stake).toList());
         return new BlackjackSnapshot(phase, r.player(), r.dealerVisible(), playerAt, dealerAt, left, r.result().code,
                 r.canHit(), r.canStand(), r.canDouble(), r.doubled(), afford,
                 h.seats.stream().map(Seat::stake).toList(), now);
     }
 
     /** {@code BlackjackMenu.canAffordDouble}: the same stakes again as plain items in the storage slots. */
-    private static boolean afford(Player player, Hand h) {
+    private static boolean afford(Player player, List<ItemAmount> stakes) {
         PlayerAccount account = new PlayerAccount(player);
-        for (ItemAmount need : ItemAmount.merge(h.seats.stream().map(Seat::stake).toList())) {
+        for (ItemAmount need : ItemAmount.merge(stakes)) {
             if (account.countPlain(need.item()) < need.count()) {
                 return false;
             }

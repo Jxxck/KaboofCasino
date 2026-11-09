@@ -49,6 +49,27 @@ public enum CasinoItem {
     /** The leaderboard wall board (step 10): {@code /casino give leaderboard_wall}; a recipe only if configured. */
     LEADERBOARD_WALL("leaderboard_wall", "kaboofcasino:leaderboard_wall", Msg.BOARD_ITEM_WALL,
             MachineType.LEADERBOARD_WALL),
+    /** Wall board 2 x 2: {@code /casino give leaderboard_wall_2x2}; a recipe only if configured. */
+    LEADERBOARD_WALL_2X2("leaderboard_wall_2x2", "kaboofcasino:leaderboard_wall_2x2", Msg.BOARD_ITEM_WALL_2X2,
+            MachineType.LEADERBOARD_WALL_2X2),
+    /** Wall board 3 x 3: {@code /casino give leaderboard_wall_3x3}; a recipe only if configured. */
+    LEADERBOARD_WALL_3X3("leaderboard_wall_3x3", "kaboofcasino:leaderboard_wall_3x3", Msg.BOARD_ITEM_WALL_3X3,
+            MachineType.LEADERBOARD_WALL_3X3),
+    /** Wall board 4 x 3: {@code /casino give leaderboard_wall_4x3}; a recipe only if configured. */
+    LEADERBOARD_WALL_4X3("leaderboard_wall_4x3", "kaboofcasino:leaderboard_wall_4x3", Msg.BOARD_ITEM_WALL_4X3,
+            MachineType.LEADERBOARD_WALL_4X3),
+    /** Wall board 4 x 4: {@code /casino give leaderboard_wall_4x4}; a recipe only if configured. */
+    LEADERBOARD_WALL_4X4("leaderboard_wall_4x4", "kaboofcasino:leaderboard_wall_4x4", Msg.BOARD_ITEM_WALL_4X4,
+            MachineType.LEADERBOARD_WALL_4X4),
+    /** Wall board 5 x 3: {@code /casino give leaderboard_wall_5x3}; a recipe only if configured. */
+    LEADERBOARD_WALL_5X3("leaderboard_wall_5x3", "kaboofcasino:leaderboard_wall_5x3", Msg.BOARD_ITEM_WALL_5X3,
+            MachineType.LEADERBOARD_WALL_5X3),
+    /** Wall board 5 x 4: {@code /casino give leaderboard_wall_5x4}; a recipe only if configured. */
+    LEADERBOARD_WALL_5X4("leaderboard_wall_5x4", "kaboofcasino:leaderboard_wall_5x4", Msg.BOARD_ITEM_WALL_5X4,
+            MachineType.LEADERBOARD_WALL_5X4),
+    /** Wall board 6 x 4: {@code /casino give leaderboard_wall_6x4}; a recipe only if configured. */
+    LEADERBOARD_WALL_6X4("leaderboard_wall_6x4", "kaboofcasino:leaderboard_wall_6x4", Msg.BOARD_ITEM_WALL_6X4,
+            MachineType.LEADERBOARD_WALL_6X4),
     /** The leaderboard column (step 10): {@code /casino give leaderboard_column}; a recipe only if configured. */
     LEADERBOARD_COLUMN("leaderboard_column", "kaboofcasino:leaderboard_column", Msg.BOARD_ITEM_COLUMN,
             MachineType.LEADERBOARD_COLUMN),

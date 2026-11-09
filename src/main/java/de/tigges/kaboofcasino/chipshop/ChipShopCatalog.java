@@ -62,6 +62,13 @@ public final class ChipShopCatalog {
 
     static final Set<String> NEVER = ids(CasinoItem.CROUPIER_BADGE, CasinoItem.CROUPIER_HIRING_CARD,
             CasinoItem.CROUPIER_HAND, CasinoItem.CASHIER, CasinoItem.LEADERBOARD_WALL, CasinoItem.LEADERBOARD_COLUMN,
+            CasinoItem.LEADERBOARD_WALL_2X2,
+            CasinoItem.LEADERBOARD_WALL_3X3,
+            CasinoItem.LEADERBOARD_WALL_4X3,
+            CasinoItem.LEADERBOARD_WALL_4X4,
+            CasinoItem.LEADERBOARD_WALL_5X3,
+            CasinoItem.LEADERBOARD_WALL_5X4,
+            CasinoItem.LEADERBOARD_WALL_6X4,
             CasinoItem.CHIP_SHOP);
     static final Set<String> TABLES = ids(CasinoItem.BLACKJACK_TABLE, CasinoItem.POKER_TABLE);
 

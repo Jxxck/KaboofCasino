@@ -100,6 +100,10 @@ blackjack:
   # Strategie). +1..+100 begünstigt die Spieler, -1..-100 den Croupier (bei jeder Karte mit dieser Stärke die
   # passendere der zwei obersten Karten). Eine Gewinnchance gibt es beim Blackjack im Mod nicht.
   bias: 0
+  # Stehen andere Spieler am Tisch, wartet der Croupier so viele Sekunden auf ihre Einsätze (bis zu 5 Plätze, eine
+  # Runde für alle, ein Croupier). Wer allein am Tisch steht, spielt sofort. 0 = immer nur ein Spieler.
+  # Mit einer Ausrichtung (bias nicht 0) gibt es keine gemeinsamen Runden.
+  countdown-seconds: 15
   # true: mindestens eines der acht Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
   # Leere). false = wie im Mod, ganz ohne Stütze.
   needs-support: true
@@ -148,8 +152,8 @@ music:
   enabled: true
 
 leaderboard:
-  # Die Bestenliste (Schritt 10): Tafeln an der Wand (3x2) und Säulen (1x3), dazu /casino top. Aufstellen:
-  # /casino give leaderboard_wall bzw. leaderboard_column. Gezählt werden nur Runden mit Chips.
+  # Die Bestenliste (Schritt 10): Tafeln an der Wand (2x2 bis 6x4) und Säulen (1x3), dazu /casino top. Aufstellen:
+  # /casino give leaderboard_wall (3x2), leaderboard_wall_4x4 usw. bzw. leaderboard_column. Gezählt werden nur Runden mit Chips.
   # true: beide Tafeln auch craftbar (Rezepte kaboofcasino:leaderboard_wall und kaboofcasino:leaderboard_column).
   craftable: false
   # Höchstens so oft (Sekunden, 30 bis 3600) rechnet die Bestenliste neu, und nur wenn seitdem gespielt wurde.

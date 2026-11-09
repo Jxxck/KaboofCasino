@@ -65,8 +65,10 @@ class MachineSettingsTest {
     @Test
     void typeValuesAndConfigPathsCoverEveryGameOnce() {
         // every game once; the cashier is no game (no win chance, no bias)
-        assertEquals(EnumSet.complementOf(EnumSet.of(MachineType.CASHIER, MachineType.LEADERBOARD_WALL,
-                MachineType.LEADERBOARD_COLUMN, MachineType.CHIP_SHOP)), EnumSet.copyOf(MachineSettings.MOD_ORDER));
+        assertEquals(java.util.Arrays.stream(MachineType.values()).filter(MachineType::isGame)
+                .collect(java.util.stream.Collectors.toCollection(() -> EnumSet.noneOf(MachineType.class))),
+                EnumSet.copyOf(MachineSettings.MOD_ORDER));
+        assertEquals(7, MachineSettings.MOD_ORDER.size());
         assertEquals(List.of("roulette", "blackjack", "poker", "derby", "slots", "wheel", "plinko"),
                 MachineSettings.MOD_ORDER.stream().map(MachineSettings::modType).toList());
         CasinoConfig d = CasinoConfig.DEFAULTS;
@@ -144,8 +146,8 @@ class MachineSettingsTest {
             }
         }
         assertEquals(List.of(), hits);
-        // slot, wheel, plinko, roulette solo + window close, blackjack, poker, derby solo + group allowed + group draw +
-        // lobby snapshot
-        assertEquals(11, asks);
+        // slot, wheel, plinko, roulette solo + window close, blackjack solo + window close, poker, derby solo + group
+        // allowed + group draw + lobby snapshot
+        assertEquals(12, asks);
     }
 }

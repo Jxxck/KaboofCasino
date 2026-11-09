@@ -113,8 +113,7 @@ final class DecoRig {
 
     private static ItemDisplay display(DecoBlock b, World world, DecoModels.Part part) {
         Pos a = b.anchor();
-        boolean body = part.key().endsWith("chandelier_body");
-        double lift = body ? 0.75 : 0.0;
+        double lift = part.lift();
         Location at = new Location(world, a.x() + part.dx() + 0.5, a.y() + part.dy() - lift, a.z() + part.dz() + 0.5);
         org.bukkit.util.Transformation transform = transformation(part);
         float[] cull = cull(b.type(), part);
@@ -137,8 +136,8 @@ final class DecoRig {
      */
     static org.bukkit.util.Transformation transformation(DecoModels.Part part) {
         org.bukkit.util.Transformation t = DecoModels.transformation(part.yRot(), part.modelScale());
-        if (part.key().endsWith("chandelier_body")) {
-            t = new org.bukkit.util.Transformation(t.getTranslation().add(0, 0.75f, 0), t.getLeftRotation(),
+        if (part.lift() > 0) {
+            t = new org.bukkit.util.Transformation(t.getTranslation().add(0, part.lift(), 0), t.getLeftRotation(),
                     t.getScale(), t.getRightRotation());
         }
         return t;
@@ -148,6 +147,8 @@ final class DecoRig {
     static float[] cull(DecoType type, DecoModels.Part part) {
         return switch (type) {
             case CASINO_SIGN -> new float[] {3.1f, 2.1f};
+            case CASINO_SIGN_2X2 -> new float[] {4.2f, 2.1f};
+            case CASINO_SIGN_4X4 -> new float[] {5.2f, 4.2f};
             case CASINO_CHANDELIER -> part.key().endsWith("chandelier_body") ? new float[] {3.0f, 1.8f}
                     : new float[] {1.0f, 1.1f};
             case CASINO_CHAIR, VELVET_ROPE_POST -> new float[] {1.0f, 1.5f};

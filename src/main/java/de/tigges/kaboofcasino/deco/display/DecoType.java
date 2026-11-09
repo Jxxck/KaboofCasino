@@ -167,7 +167,12 @@ public enum DecoType {
     CLASSIC_DARK_OAK_DIAMOND_PANEL_STAIRS("casinodeco:classic_dark_oak_diamond_panel_stairs", Material.WARPED_STAIRS, "classic_dark_oak_diamond_panel",
             "Treppe — Paneel aus Schwarzeichenholzbrettern mit Goldmedaillon"),
     CLASSIC_DARK_OAK_DIAMOND_PANEL_SLAB("casinodeco:classic_dark_oak_diamond_panel_slab", Material.WARPED_SLAB, "classic_dark_oak_diamond_panel",
-            "Stufe — Paneel aus Schwarzeichenholzbrettern mit Goldmedaillon");
+            "Stufe — Paneel aus Schwarzeichenholzbrettern mit Goldmedaillon"),
+    // ---- bigger casino signs (Jack 2026-11-09, not in the mod) --------------------------------------------------------
+    CASINO_SIGN_2X2("casinodeco:casino_sign_2x2", Carrier.LIGHT, Place.SQUARE_SIGN, Material.OAK_PLANKS,
+            Material.OAK_PLANKS, 1.5, 9, Connect.NONE, "Casino-Schild 2×2"),
+    CASINO_SIGN_4X4("casinodeco:casino_sign_4x4", Carrier.LIGHT, Place.SQUARE_SIGN, Material.OAK_PLANKS,
+            Material.OAK_PLANKS, 1.5, 13, Connect.NONE, "Casino-Schild 4×4");
 
     /** What stands in the world under the display. */
     public enum Carrier {
@@ -201,6 +206,8 @@ public enum DecoType {
         SIGN,
         /** {@link #SIGN} for all 6 parts of the 3 x 2 sign ({@code LargeCasinoSignBlock}). */
         LARGE_SIGN,
+        /** {@link #SIGN} for all cells of a square sign of {@link DecoType#signColumns()} columns (not in the mod). */
+        SQUARE_SIGN,
         /** Floor, wall or ceiling ({@code FaceAttachedHorizontalDirectionalBlock}). */
         SPEAKER,
         /** Hanging 3 x 3 body under 1-2 chain blocks ({@code CasinoChandelierBlock}). */
@@ -325,7 +332,16 @@ public enum DecoType {
 
     /** Stairs and slabs the mod does not have: their files come from the pack tool, their recipes from here. */
     public boolean own() {
-        return family != null && family.contains("dark_oak");
+        return family != null && family.contains("dark_oak") || place == Place.SQUARE_SIGN;
+    }
+
+    /** The columns (and rows) of a square sign, 0 for the rest. */
+    public int signColumns() {
+        return switch (this) {
+            case CASINO_SIGN_2X2 -> 2;
+            case CASINO_SIGN_4X4 -> 4;
+            default -> 0;
+        };
     }
 
     /** The texture family of stairs/slabs ({@code ivory_marble}); null for the rest. */
@@ -396,7 +412,7 @@ public enum DecoType {
             return 2.0f;
         }
         return switch (this) {
-            case CASINO_SIGN, CASINO_CHANDELIER, CASINO_TV_LARGE, CASINO_TV_3X3 -> 2.0f;
+            case CASINO_SIGN, CASINO_SIGN_2X2, CASINO_SIGN_4X4, CASINO_CHANDELIER, CASINO_TV_LARGE, CASINO_TV_3X3 -> 2.0f;
             case CASINO_BOTTLES, CHAMPAGNE_COUPES, SHOT_GLASSES, CASINO_CHIP_PILE, RECEPTION_PLAQUE, CASH_REGISTER,
                  SERVING_TRAY, VIP_ONLY_PLAQUE -> 0.75f;
             default -> 1.25f;

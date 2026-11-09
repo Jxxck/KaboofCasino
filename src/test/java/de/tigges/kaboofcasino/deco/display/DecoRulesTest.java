@@ -30,7 +30,7 @@ class DecoRulesTest {
             assertEquals(t, DecoType.byId(t.id()).orElseThrow());
         }
         // 38 non-full-cube casinodeco blocks + 26 own stairs and slabs + chair, stool, 3 TVs, dealer station + speaker
-        assertEquals(38 + 26, ids.stream().filter(i -> i.startsWith("casinodeco:")).count());
+        assertEquals(38 + 26 + 2, ids.stream().filter(i -> i.startsWith("casinodeco:")).count());
         assertEquals(Set.of("roulettecasino:casino_chair", "roulettecasino:casino_stool", "roulettecasino:casino_tv",
                 "roulettecasino:casino_tv_large", "roulettecasino:casino_tv_3x3", "roulettecasino:dealer_station"),
                 ids.stream().filter(i -> i.startsWith("roulettecasino:")).collect(java.util.stream.Collectors.toSet()));

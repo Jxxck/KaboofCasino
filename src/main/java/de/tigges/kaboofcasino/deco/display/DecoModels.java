@@ -27,7 +27,12 @@ public final class DecoModels {
     public record Part(String key, int yRot, int dx, int dy, int dz) {
         /** The model's own scale (the half-size chandelier body), before the carrier's. */
         public float modelScale() {
-            return key.endsWith("chandelier_body") ? BODY_SCALE : 1.0f;
+            return key.endsWith("chandelier_body") || key.endsWith("casino_sign_4x4") ? BODY_SCALE : 1.0f;
+        }
+
+        /** How far the entity stands below its cell, for a culling box that only grows upward (blocks). */
+        public float lift() {
+            return key.endsWith("chandelier_body") ? 0.75f : key.endsWith("casino_sign_4x4") ? 1.0f : 0.0f;
         }
     }
 
@@ -67,6 +72,11 @@ public final class DecoModels {
                 out.add(new Part(PREFIX + "casino_sign", y, c[0], 0, c[1]));
             }
             case SMALL_CASINO_SIGN -> out.add(new Part(PREFIX + "small_sign", y, 0, 0, 0));
+            case CASINO_SIGN_2X2 -> out.add(new Part(PREFIX + "casino_sign_2x2", y, 0, 0, 0));
+            case CASINO_SIGN_4X4 -> {
+                int[] c = DecoGeometry.ccw(r.facing());
+                out.add(new Part(PREFIX + "casino_sign_4x4", y, c[0], 1, c[1]));
+            }
             case WOOD_COFFEE_TABLE -> out.add(new Part(PREFIX + "table_wood_low_" + hex(r.mask()), 0, 0, 0, 0));
             case GLASS_COFFEE_TABLE -> out.add(new Part(PREFIX + "table_glass_low_" + hex(r.mask()), 0, 0, 0, 0));
             case WOOD_TABLE -> out.add(new Part(PREFIX + "table_wood_tall_" + hex(r.mask()), 0, 0, 0, 0));
@@ -248,6 +258,8 @@ public final class DecoModels {
             }
         }
         out.add(PREFIX + "dealer_station");
+        out.add(PREFIX + "casino_sign_2x2");
+        out.add(PREFIX + "casino_sign_4x4");
         for (DecoType t : DecoType.values()) {
             int variants = t.variants() ? 4 : 1;
             if (t.carrier() == DecoType.Carrier.STAIRS) {

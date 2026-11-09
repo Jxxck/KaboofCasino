@@ -27,11 +27,14 @@ public final class DecoItems {
     private DecoItems() {
     }
 
-    /** The stairs and slabs the mod does not have, from their block, shaped and counted like its marble ones. */
+    /**
+     * The stairs and slabs the mod does not have, from their block, shaped and counted like its marble ones, and the
+     * square signs: four small signs make a 2 x 2, four of those a 4 x 4.
+     */
     public static List<Recipes.Def> ownRecipes() {
         List<Recipes.Def> out = new ArrayList<>();
         for (DecoType t : DecoType.values()) {
-            if (t.own()) {
+            if (t.own() && t.family() != null) {
                 String block = "casinodeco:" + t.family();
                 boolean stairs = t.carrier() == DecoType.Carrier.STAIRS;
                 out.add(new Recipes.Def("casinodeco/" + t.path(), false,
@@ -39,6 +42,12 @@ public final class DecoItems {
                         stairs ? 4 : 6, List.of(block)));
             }
         }
+        out.add(new Recipes.Def("casinodeco/casino_sign_2x2", false, List.of("SS", "SS"),
+                Map.of('S', DecoType.SMALL_CASINO_SIGN.id()), List.of(), DecoType.CASINO_SIGN_2X2.id(), 1,
+                List.of(DecoType.SMALL_CASINO_SIGN.id())));
+        out.add(new Recipes.Def("casinodeco/casino_sign_4x4", false, List.of("SS", "SS"),
+                Map.of('S', DecoType.CASINO_SIGN_2X2.id()), List.of(), DecoType.CASINO_SIGN_4X4.id(), 1,
+                List.of(DecoType.CASINO_SIGN_2X2.id())));
         return List.copyOf(out);
     }
 

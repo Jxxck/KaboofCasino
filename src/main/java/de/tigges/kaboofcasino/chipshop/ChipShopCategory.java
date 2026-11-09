@@ -19,6 +19,7 @@ public enum ChipShopCategory {
     private static final Set<String> FURNITURE_IDS = Set.of("casinodeco:casino_sofa", "roulettecasino:casino_chair",
             "roulettecasino:casino_stool", "casinodeco:velvet_rope_post");
     private static final Set<String> LIGHT_IDS = Set.of("casinodeco:casino_sign", "casinodeco:small_casino_sign",
+            "casinodeco:casino_sign_2x2", "casinodeco:casino_sign_4x4",
             "casinodeco:casino_chandelier", "casinodeco:chandelier_wall_sconce", "casinodeco:reception_plaque",
             "casinodeco:vip_only_plaque");
     private static final Set<String> TECH_IDS = Set.of("casinosound:casino_speaker", "roulettecasino:casino_tv",

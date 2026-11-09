@@ -45,6 +45,7 @@ public abstract class MachineController implements MachineGame {
     protected final Heartbeat heartbeat = new Heartbeat();
     /** Tick of the last idle light update. */
     private long lastIdleLights = Long.MIN_VALUE / 2;
+    private boolean chunkKept;
 
     protected MachineController(Machine machine, CasinoContext ctx) {
         this.machine = machine;
@@ -156,6 +157,28 @@ public abstract class MachineController implements MachineGame {
         if (!running() && player.getUniqueId().equals(claimant)) {
             claimant = null;
         }
+    }
+
+    /** Keeps the machine's chunk loaded (a betting window with open records up to the payout) or lets it go. */
+    protected void keepChunkLoaded(boolean keep) {
+        World w = world();
+        if (w == null || keep == chunkKept) {
+            return;
+        }
+        if (keep) {
+            ctx.machines().holdChunk(w, machine.anchor().chunkX(), machine.anchor().chunkZ(), ctx.plugin());
+        } else {
+            ctx.machines().releaseChunk(w, machine.anchor().chunkX(), machine.anchor().chunkZ(), ctx.plugin());
+        }
+        chunkKept = keep;
+    }
+
+    /** Players within {@code radius} of the machine who could play and are not {@code excluded}. */
+    protected long playersNear(World world, double radius, java.util.function.Predicate<UUID> excluded) {
+        Location c = centre(world);
+        return world.getPlayers().stream().filter(p -> !excluded.test(p.getUniqueId())
+                && !de.tigges.kaboofcasino.util.FakePlayers.isFake(p) && Usability.usable(p)
+                && p.getLocation().distanceSquared(c) <= radius * radius).count();
     }
 
     /** Closes every open menu of this machine (spin start, removal). */

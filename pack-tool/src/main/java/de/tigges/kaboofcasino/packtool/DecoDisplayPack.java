@@ -123,6 +123,7 @@ final class DecoDisplayPack {
         merged(jar, copier, tree, "chandelier_body", "casinodeco:block/chandelier_", 9, 1);
         stairs(jar, copier, tree);
         ownStairsAndSlabs(jar, copier, tree);
+        CasinoSignPack.add(copier, tree);
         televisions(copier, tree);
     }
 

@@ -53,11 +53,18 @@ cashier:
   idle-closed: "<gray>Menü geschlossen: zu lange nichts getan. Die Kasse ist wieder frei."
   tray-full: "<yellow>Höchstens 18 Sorten auf einmal."
 
-# Bestenliste (Schritt 10): Tafeln (Wand 3x2, Säule 1x3) und /casino top. Gezählt werden nur Runden mit Chips.
+# Bestenliste (Schritt 10): Tafeln (Wand 2x2 bis 6x4, Säule 1x3) und /casino top. Gezählt werden nur Runden mit Chips.
 # Eine Runde = ein Spiel (ein Dreh mit allen Feldern, ein Entenrennen mit allen Enten, eine Blackjack-Hand).
 # Gewinn = Auszahlung minus Einsatz einer Runde; Multiplikator = Auszahlung / Einsatz (ab leaderboard.min-stake).
 board:
   item-wall: "Bestenliste (Wandtafel)"
+  item-wall-2x2: "Bestenliste (Wandtafel 2×2)"
+  item-wall-3x3: "Bestenliste (Wandtafel 3×3)"
+  item-wall-4x3: "Bestenliste (Wandtafel 4×3)"
+  item-wall-4x4: "Bestenliste (Wandtafel 4×4)"
+  item-wall-5x3: "Bestenliste (Wandtafel 5×3)"
+  item-wall-5x4: "Bestenliste (Wandtafel 5×4)"
+  item-wall-6x4: "Bestenliste (Wandtafel 6×4)"
   item-column: "Bestenliste (Säule)"
   item-lore: "<gray>Die besten Spieler des Casinos, in Chips"
   no-wall: "<red>Hänge die Tafel an eine Wand: Klicke die Seite eines festen Blocks an. Hinter allen sechs Feldern muss Wand sein."
@@ -250,6 +257,13 @@ blackjack:
   no-bet: "<yellow>Setze einen Einsatz, bevor du spielst."
   cannot-double: "<yellow>Du hast nicht genug Gegenstände zum Verdoppeln."
   timeout: "<yellow>Die Zeit ist um: Du bleibst stehen."
+  # mehrere Spieler an einem Tisch (seconds: bis ausgeteilt wird)
+  joined: "<gold>Du bist dabei.</gold> <gray>Es wird in <seconds> s ausgeteilt."
+  already: "<yellow>Du hast schon gesetzt. Es wird in <seconds> s ausgeteilt."
+  full: "<yellow>An diesem Tisch sind alle 5 Plätze besetzt."
+  your-turn: "<gold>Du bist dran!"
+  waiting: "<gray><name> ist dran."
+  countdown: "<gold>Einsätze noch <seconds> s"
 
 poker:
   # message.roulettecasino.poker.busy / no_bet / cannot_call / timeout

@@ -124,10 +124,21 @@ public final class BoardService implements Listener {
     /**
      * The optional recipes (namespace {@code kaboofcasino}): the wall board from gold, a small casino sign and green
      * wool (the felt); the column from a small casino sign, green wool and a black marble bar (the post). Both unlock
-     * with a small casino sign.
+     * with a small casino sign. The other sizes grow from a smaller board with gold and green wool: a row more with the
+     * wool on top, a column more with the wool beside it; the 2 x 2 is a short version of the wall board's recipe.
      */
     static List<Recipes.Def> recipes() {
         return List.of(
+                new Recipes.Def("leaderboard_wall_2x2", false, List.of("GS", "WW"), Map.of('G', "minecraft:gold_ingot",
+                        'S', "casinodeco:small_casino_sign", 'W', "minecraft:green_wool"), List.of(),
+                        "roulettecasino:" + CasinoItem.LEADERBOARD_WALL_2X2.id(), 1,
+                        List.of("casinodeco:small_casino_sign")),
+                taller(CasinoItem.LEADERBOARD_WALL, CasinoItem.LEADERBOARD_WALL_3X3),
+                wider(CasinoItem.LEADERBOARD_WALL_3X3, CasinoItem.LEADERBOARD_WALL_4X3),
+                taller(CasinoItem.LEADERBOARD_WALL_4X3, CasinoItem.LEADERBOARD_WALL_4X4),
+                wider(CasinoItem.LEADERBOARD_WALL_4X3, CasinoItem.LEADERBOARD_WALL_5X3),
+                wider(CasinoItem.LEADERBOARD_WALL_4X4, CasinoItem.LEADERBOARD_WALL_5X4),
+                wider(CasinoItem.LEADERBOARD_WALL_5X4, CasinoItem.LEADERBOARD_WALL_6X4),
                 new Recipes.Def("leaderboard_wall", false, List.of("GSG", "WWW"), Map.of('G', "minecraft:gold_ingot",
                         'S', "casinodeco:small_casino_sign", 'W', "minecraft:green_wool"), List.of(),
                         "roulettecasino:" + CasinoItem.LEADERBOARD_WALL.id(), 1,
@@ -136,6 +147,20 @@ public final class BoardService implements Listener {
                         "casinodeco:small_casino_sign", 'W', "minecraft:green_wool", 'B',
                         "casinodeco:black_marble_bar"), List.of(), "roulettecasino:" + CasinoItem.LEADERBOARD_COLUMN.id(),
                         1, List.of("casinodeco:small_casino_sign")));
+    }
+
+    private static Recipes.Def taller(CasinoItem from, CasinoItem to) {
+        return grown(List.of("WWW", "GBG"), from, to);
+    }
+
+    private static Recipes.Def wider(CasinoItem from, CasinoItem to) {
+        return grown(List.of("GW", "BW", "GW"), from, to);
+    }
+
+    private static Recipes.Def grown(List<String> pattern, CasinoItem from, CasinoItem to) {
+        String board = "roulettecasino:" + from.id();
+        return new Recipes.Def(to.id(), false, pattern, Map.of('G', "minecraft:gold_ingot", 'W', "minecraft:green_wool",
+                'B', board), List.of(), "roulettecasino:" + to.id(), 1, List.of(board));
     }
 
     // ---- computing ------------------------------------------------------------------------------------------------

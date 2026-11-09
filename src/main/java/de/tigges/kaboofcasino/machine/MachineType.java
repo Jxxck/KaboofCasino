@@ -52,6 +52,17 @@ public enum MachineType {
      */
     LEADERBOARD_WALL("leaderboard_wall", new int[][] {{-1, 0, 0}, {0, 0, 0}, {1, 0, 0}, {-1, 1, 0}, {0, 1, 0},
         {1, 1, 0}}, 0, false, false, true),
+    /*
+     * More wall boards (Jack 2026-11-09), hung like the 3 x 2: the cell in front of the clicked wall is the anchor, the
+     * bottom row's middle, of an even row the cell left of the middle.
+     */
+    LEADERBOARD_WALL_2X2("leaderboard_wall_2x2", wall(2, 2), 0, false, false, true),
+    LEADERBOARD_WALL_3X3("leaderboard_wall_3x3", wall(3, 3), 0, false, false, true),
+    LEADERBOARD_WALL_4X3("leaderboard_wall_4x3", wall(4, 3), 0, false, false, true),
+    LEADERBOARD_WALL_4X4("leaderboard_wall_4x4", wall(4, 4), 0, false, false, true),
+    LEADERBOARD_WALL_5X3("leaderboard_wall_5x3", wall(5, 3), 0, false, false, true),
+    LEADERBOARD_WALL_5X4("leaderboard_wall_5x4", wall(5, 4), 0, false, false, true),
+    LEADERBOARD_WALL_6X4("leaderboard_wall_6x4", wall(6, 4), 0, false, false, true),
     /**
      * The leaderboard column (step 10): 1x1x3 like the slot machine, a post with a sign board on the upper two cells;
      * the bottom cell needs support.
@@ -91,9 +102,28 @@ public enum MachineType {
         return this != CASHIER && this != CHIP_SHOP && !isBoard();
     }
 
-    /** The two leaderboard kinds (step 10). */
+    /** The leaderboard kinds (step 10). */
     public boolean isBoard() {
-        return this == LEADERBOARD_WALL || this == LEADERBOARD_COLUMN;
+        return id.startsWith("leaderboard_");
+    }
+
+    /** A wall board's width in blocks, 0 for the rest. */
+    public int wallColumns() {
+        return wall ? extent(0) : 0;
+    }
+
+    /** A wall board's height in blocks, 0 for the rest. */
+    public int wallRows() {
+        return wall ? extent(1) : 0;
+    }
+
+    /** {@code columns} x {@code rows} cells of a wall board, row by row from the bottom, anchor in the bottom row. */
+    private static int[][] wall(int columns, int rows) {
+        int[][] out = new int[columns * rows][];
+        for (int part = 0; part < out.length; part++) {
+            out[part] = new int[] {part % columns - (columns - 1) / 2, part / columns, 0};
+        }
+        return out;
     }
 
     /**

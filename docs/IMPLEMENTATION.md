@@ -1457,6 +1457,27 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
   the empty default does not remove them by itself.
 
+### Multiplayer blackjack (step 13, 0.14.0; PLAN-2 C5, not in MineVegas) and square signs
+
+- Alone at the table the mod's hand runs unchanged (`Hand`, `BlackjackRound`). With another usable player within 8 blocks
+  the first bet opens a window of `blackjack.countdown-seconds` (15; shortens to 2 s once nobody near is without a bet),
+  up to 5 players take the free spot nearest to them. Until it closes a bet is a PLAYING record paying the stake back,
+  as in the roulette. A menu may only open in a click, so the round menu opens at the bet and stays open.
+- `BlackjackTableRound` is `BlackjackRound` widened to seats (deal seat by seat, dealer last; seats in spot order; natural
+  and departed seats have no turn; the dealer plays once if some hand can still be beaten; each seat resolved against him).
+  No bias: a table with `bias != 0` only plays alone. Each seat's records hold what it gets if nobody draws another card
+  (`standResults` on a copy of the shoe), rewritten for everybody when somebody draws, so quit, death, stop or crash pay
+  that; the table confirms the real result per seat at the end. `TABLE_RECORD_ENDS_MILLIS` (5 min) outlasts five timeouts.
+  Bot: `testing/blackjack-mp-test.sh`.
+- Square signs `casinodeco:casino_sign_2x2` and `_4x4` (`DecoType.Place.SQUARE_SIGN`, the TV's wall cells; `CasinoSignPack`,
+  the 4 x 4 at half size and scale 2 with `Part.lift`); recipes four small signs = 2 x 2, four 2 x 2 = 4 x 4.
+
+- Leaderboard text (`BoardRig.LINE`) steps 10 font px per line like the client's `TextDisplayRenderer` (it was 9, so the
+  row block grew over the subtitle on wall and column). Wall boards also 2x2, 3x3, 4x3, 4x4, 5x3, 5x4, 6x4
+  (`LEADERBOARD_WALL_<W>X<H>`, Jack; `LeaderboardPack.WALL_SIZES`, `BoardRig.layouts`, header heights must match; even
+  widths have the anchor left of the middle; more than 3 blocks = half-size model at scale 2; recipes with
+  `leaderboard.craftable`: a smaller board, gold, green wool). Always 10 places: the rows use what the board offers.
+
 ### Multiplayer roulette (step 12, 0.13.0; PLAN-2 C5, not in MineVegas)
 
 - Whoever stands alone at the table spins at once, exactly as before (one DECIDED record per slot). With another usable

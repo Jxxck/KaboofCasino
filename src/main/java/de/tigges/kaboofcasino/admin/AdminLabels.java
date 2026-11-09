@@ -71,7 +71,8 @@ final class AdminLabels {
             case SLOT_MACHINE -> new double[] {0.5, 4.1, 0.5};
             case FORTUNE_WHEEL, PLINKO, DUCK_DERBY -> new double[] {0.5, 3.5, 0.5};
             case CASHIER -> new double[] {0.5, 2.6, 0.5};
-            case LEADERBOARD_WALL -> new double[] {0.5, 2.5, 0.5};
+            case LEADERBOARD_WALL, LEADERBOARD_WALL_2X2, LEADERBOARD_WALL_3X3, LEADERBOARD_WALL_4X3, LEADERBOARD_WALL_4X4, LEADERBOARD_WALL_5X3, LEADERBOARD_WALL_5X4, LEADERBOARD_WALL_6X4 ->
+                    new double[] {0.5, type.wallRows() + 0.5, 0.5};
             case LEADERBOARD_COLUMN -> new double[] {0.5, 3.5, 0.5};
             case CHIP_SHOP -> new double[] {0.5, 2.6, 0.5};
         };
@@ -85,6 +86,8 @@ final class AdminLabels {
         String german = switch (type) {
             case CASHIER -> "Kasse";
             case LEADERBOARD_WALL -> "Bestenliste (Wandtafel)";
+            case LEADERBOARD_WALL_2X2, LEADERBOARD_WALL_3X3, LEADERBOARD_WALL_4X3, LEADERBOARD_WALL_4X4, LEADERBOARD_WALL_5X3, LEADERBOARD_WALL_5X4, LEADERBOARD_WALL_6X4 ->
+                    "Bestenliste (Wandtafel " + type.wallColumns() + "×" + type.wallRows() + ")";
             case LEADERBOARD_COLUMN -> "Bestenliste (Säule)";
             case CHIP_SHOP -> "Chip-Shop";
             default -> AdminTexts.GERMAN.get("block.roulettecasino." + type.id());

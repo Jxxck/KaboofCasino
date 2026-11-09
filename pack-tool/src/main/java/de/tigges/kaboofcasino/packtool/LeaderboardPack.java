@@ -48,6 +48,8 @@ final class LeaderboardPack {
     static final String COLUMN_WORD = "TOP 10";
     static final double WALL_FELT = 2;
     static final double COLUMN_FELT = 10;
+    /** The biggest size whose model still fits the client's model space (-16..32) at full size. */
+    static final int FULL_SIZE_BLOCKS = 3;
 
     /** Frame: walnut rim, brass band; together the border around the felt. */
     static final double RIM = 0.5;
@@ -92,14 +94,15 @@ final class LeaderboardPack {
 
     /**
      * One board: path below {@code kaboofcasino:}, header word, outer rectangle (x0, y0) .. (x1, y1), the back z,
-     * the felt face z, and whether the back is a walnut panel in a brass frame (free standing) or lies on a wall.
+     * the felt face z, whether the back is a walnut panel in a brass frame (free standing) or lies on a wall, the LED
+     * pitch, the header's height, and whether the model is written at half size (the plugin shows it at scale 2).
      */
     record Board(String path, String word, double x0, double y0, double x1, double y1, double back, double felt,
-                 boolean backFrame) {
+                 boolean backFrame, double led, double header, boolean halved) {
 
         /** {x0, y0, x1, y1}: blank felt, free for the plugin's text displays. */
         double[] textArea() {
-            return new double[] {x0 + BORDER, y0 + BORDER, x1 - BORDER, y1 - HEADER};
+            return new double[] {x0 + BORDER, y0 + BORDER, x1 - BORDER, y1 - header};
         }
 
         /** The felt element: inside the border, from the bottom border to the top border (text area + header). */
@@ -113,19 +116,40 @@ final class LeaderboardPack {
 
         /** Left x of the LED word (centred) and top y of its 7 rows (centred in the header's felt). */
         double ledX(int columns) {
-            return (x0 + x1) / 2 - columns * LED / 2;
+            return grid((x0 + x1) / 2 - columns * led / 2);
         }
 
         double ledTop() {
-            double bottom = y1 - HEADER + DIVIDER;
+            double bottom = y1 - header + DIVIDER;
             double top = y1 - BORDER;
-            return (bottom + top) / 2 + 7 * LED / 2;
+            return grid((bottom + top) / 2 + 7 * led / 2);
+        }
+
+        /** How far the dark backing reaches beyond an LED: half a pitch, on the panel's texel grid. */
+        double backing() {
+            return grid(led / 2);
         }
     }
 
-    static final Board WALL_BOARD = new Board("leaderboard/wall", WALL_WORD, -16, 0, 32, 32, 0, WALL_FELT, false);
+    /** Down to the panel's texel grid. */
+    private static double grid(double v) {
+        return Math.floor(v * TEXELS + 1e-9) / TEXELS;
+    }
+
+    /** A wall board of {@code w} x {@code h} blocks around the model's centre, see {@code BoardRig.layouts}. */
+    private static Board sized(int w, int h, String word, double led, double header) {
+        return new Board("leaderboard/wall_" + w + "x" + h, word, 8 - 8 * w, 8 - 8 * h, 8 + 8 * w, 8 + 8 * h, 0,
+                WALL_FELT, false, led, header, Math.max(w, h) > FULL_SIZE_BLOCKS);
+    }
+
+    static final Board WALL_BOARD = new Board("leaderboard/wall", WALL_WORD, -16, 0, 32, 32, 0, WALL_FELT, false, LED,
+            HEADER, false);
     static final Board COLUMN = new Board("leaderboard/column_board", COLUMN_WORD, -4, -8, 20, 24, 6, COLUMN_FELT,
-            true);
+            true, LED, HEADER, false);
+    /** The other wall sizes: the LEDs grow with the board, the header with them (2 border, pitch gaps, divider). */
+    static final List<Board> WALL_SIZES = List.of(sized(2, 2, COLUMN_WORD, LED, HEADER),
+            sized(3, 3, WALL_WORD, LED, HEADER), sized(4, 3, WALL_WORD, 0.75, 9.25), sized(4, 4, WALL_WORD, 0.75, 9.25),
+            sized(5, 3, WALL_WORD, 1, 11.5), sized(5, 4, WALL_WORD, 1, 11.5), sized(6, 4, WALL_WORD, 1.25, 13.75));
 
     private static final Set<String> ALL = Set.of("north", "east", "south", "west", "up", "down");
     private static final Set<String> FRONT = Set.of("east", "south", "west", "up", "down");
@@ -222,7 +246,9 @@ final class LeaderboardPack {
                 "casinodeco:block/sign_red_led", "casinodeco:block/sign_warm_led")) {
             copier.texture(t);
         }
-        for (Board board : List.of(WALL_BOARD, COLUMN)) {
+        List<Board> boards = new ArrayList<>(List.of(WALL_BOARD, COLUMN));
+        boards.addAll(WALL_SIZES);
+        for (Board board : boards) {
             String texture = board.panelTexture();
             tree.put("assets/kaboofcasino/textures/" + texture.substring(texture.indexOf(':') + 1) + ".png",
                     Images.write(panel(board)));
@@ -235,6 +261,12 @@ final class LeaderboardPack {
                 Json.bytes(Json.itemDefinition(COLUMN_POST)));
         item(tree, "leaderboard_wall", WALL_ICON);
         item(tree, "leaderboard_column", COLUMN_ICON);
+        for (Board board : WALL_SIZES) {
+            String size = board.path().substring("leaderboard/wall_".length());
+            int x = size.indexOf('x');
+            item(tree, "leaderboard_wall_" + size, sizeIcon(Integer.parseInt(size.substring(0, x)),
+                    Integer.parseInt(size.substring(x + 1))));
+        }
     }
 
     /** {@code items/<name>.json}: the flat icon {@code item/<name>} in every display context. */
@@ -246,6 +278,70 @@ final class LeaderboardPack {
         tree.put("assets/kaboofcasino/models/item/" + name + ".json", Json.bytes(model));
         tree.put("assets/kaboofcasino/items/" + name + ".json",
                 Json.bytes(Json.itemDefinition("kaboofcasino:item/" + name)));
+    }
+
+    /** The icon of a wall board of {@code columns} x {@code rows}: the hand-drawn ones' look, in the board's shape. */
+    static String[] sizeIcon(int columns, int rows) {
+        int unit = 30 / Math.max(columns, rows);
+        int w = columns * unit;
+        int h = rows * unit;
+        int x0 = (32 - w) / 2;
+        int y0 = (32 - h) / 2;
+        char[][] map = new char[32][32];
+        for (char[] row : map) {
+            java.util.Arrays.fill(row, '.');
+        }
+        for (int y = y0; y < y0 + h; y++) {
+            for (int x = x0; x < x0 + w; x++) {
+                boolean left = x == x0;
+                boolean right = x == x0 + w - 1;
+                boolean top = y == y0;
+                boolean bottom = y == y0 + h - 1;
+                boolean bulb = (top || bottom) && (x - x0) % 5 == 2 || (left || right) && (y - y0) % 5 == 2;
+                map[y][x] = bulb ? 'o' : left || top ? 'h' : right || bottom ? 'd' : 'f';
+            }
+        }
+        // the LED header: dark backing with a dashed red word
+        int inside = x0 + 3;
+        int width = w - 6;
+        int headerRows = Math.max(4, h / 5);
+        for (int y = y0 + 1; y < y0 + 1 + headerRows; y++) {
+            for (int x = inside; x < inside + width; x++) {
+                map[y][x] = 'c';
+            }
+        }
+        for (int y = y0 + 2; y < y0 + headerRows; y++) {
+            for (int x = inside + 1; x < inside + width - 1; x++) {
+                map[y][x] = (x - inside) % 3 == 0 ? 'c' : 'r';
+            }
+        }
+        int divider = y0 + 1 + headerRows;
+        for (int x = x0 + 1; x < x0 + w - 1; x++) {
+            map[divider][x] = 'b';
+        }
+        // the list: a medal, a name, a value per line
+        char[][] medals = {{'g', 'G'}, {'l', 'L'}, {'z', 'Z'}};
+        int place = 0;
+        for (int y = divider + 2; y + 1 < y0 + h - 1; y += 3) {
+            char[] medal = place < medals.length ? medals[place] : new char[] {'s', 's'};
+            map[y][inside] = medal[0];
+            map[y][inside + 1] = medal[0];
+            map[y + 1][inside] = medal[0];
+            map[y + 1][inside + 1] = medal[1];
+            int end = inside + width;
+            for (int x = inside + 3; x < end - width / 3 - 1; x++) {
+                map[y + 1][x] = place == 0 ? 'w' : 's';
+            }
+            for (int x = end - width / 3; x < end; x++) {
+                map[y + 1][x] = place == 0 ? 'w' : 's';
+            }
+            place++;
+        }
+        String[] out = new String[32];
+        for (int y = 0; y < 32; y++) {
+            out[y] = new String(map[y]);
+        }
+        return out;
     }
 
     static BufferedImage icon(String[] map) {
@@ -321,16 +417,18 @@ final class LeaderboardPack {
         boolean[][] grid = leds(board.word());
         double x0 = board.ledX(grid[0].length);
         double top = board.ledTop();
+        double grown = board.backing();
         for (int r = 0; r < 7; r++) {
             for (int c = 0; c < grid[r].length; c++) {
                 if (!grid[r][c]) {
                     continue;
                 }
-                double lx = x0 + c * LED - LED / 2;
-                double ly = top - r * LED + LED / 2;
+                double lx = x0 + c * board.led() - grown;
+                double ly = top - r * board.led() + grown;
                 int tx = texel(lx - felt[0]);
                 int ty = texel(felt[3] - ly);
-                Images.fill(image, tx, ty, texel(2 * LED), texel(2 * LED), BACKING);
+                int size = texel(board.led() + 2 * grown);
+                Images.fill(image, tx, ty, size, size, BACKING);
             }
         }
         return image;
@@ -447,7 +545,7 @@ final class LeaderboardPack {
         if (b.backFrame()) {
             bands(el, b, b.back(), core0, BACK, false);
         }
-        double dividerY = b.y1() - HEADER;
+        double dividerY = b.y1() - b.header();
         JsonObject divider = box(felt[0], dividerY, b.felt(), felt[2], dividerY + DIVIDER, b.felt() + BRASS_RELIEF,
                 "#brass", Set.of("south", "up", "down"), true, 0);
         south(divider, new double[] {2, 0, 14, 16}, 90);
@@ -464,9 +562,10 @@ final class LeaderboardPack {
         for (int r = 0; r < 7; r++) {
             for (int c = 0; c < grid[r].length; c++) {
                 if (grid[r][c]) {
-                    double x = x0 + c * LED;
-                    double y = top - (r + 1) * LED;
-                    el.add(box(x, y, b.felt(), x + LED, y + LED, b.felt() + LED_RELIEF, "#led", FRONT, true, 15));
+                    double x = x0 + c * b.led();
+                    double y = top - (r + 1) * b.led();
+                    el.add(box(x, y, b.felt(), x + b.led(), y + b.led(), b.felt() + LED_RELIEF, "#led", FRONT, true,
+                            15));
                 }
             }
         }
@@ -479,7 +578,7 @@ final class LeaderboardPack {
         textures.addProperty("bulb", "casinodeco:block/sign_warm_led");
         JsonObject model = new JsonObject();
         model.add("textures", textures);
-        model.add("elements", el);
+        model.add("elements", b.halved() ? DecoDisplayPack.halved(el) : el);
         return model;
     }
 

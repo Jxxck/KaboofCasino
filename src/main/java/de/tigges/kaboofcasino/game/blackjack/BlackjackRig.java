@@ -68,8 +68,8 @@ public final class BlackjackRig {
     static final int LIGHT_EVERY = 40;
     /** {@code BlackjackCardMotion.SHUFFLE_CARDS}. */
     static final int DECK = 7;
-    /** Safety cap on card displays (a hand never comes near it). */
-    static final int MAX_CARDS = 32;
+    /** Safety cap on card displays (a full table of five never comes near it). */
+    static final int MAX_CARDS = 64;
 
     private final MachineRecord record;
     private final World world;
@@ -89,6 +89,7 @@ public final class BlackjackRig {
     private BlackjackPanel.Content content;
     private BlackjackPanel.Totals shownTotals;
     private BlackjackPanel.Content shownContent;
+    private Component tableText;
     private BlackjackTableState lastView = new BlackjackTableState();
     private long lastNow;
 
@@ -435,6 +436,21 @@ public final class BlackjackRig {
         this.content = content;
         if (spawned()) {
             updatePanel(lastView, lastNow);
+        }
+    }
+
+    /** The panel of a table with several players, already rendered ({@code null} hides it). */
+    public void tablePanel(Component text) {
+        if (text == null) {
+            if (tableText != null) {
+                panel.hide();
+                tableText = null;
+            }
+            return;
+        }
+        if (spawned() && (!text.equals(tableText) || panel.broken())) {
+            panel.show(world, at(PANEL_X, 0.0, PANEL_Z).add(0.0, PANEL_Y, 0.0), text);
+            tableText = text;
         }
     }
 

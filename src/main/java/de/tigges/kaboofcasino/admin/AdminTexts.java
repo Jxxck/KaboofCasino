@@ -144,6 +144,10 @@ public final class AdminTexts {
         if (type == MachineType.LEADERBOARD_WALL) {
             return Component.translatable("item.kaboofcasino.leaderboard_wall", "Bestenliste (Wandtafel)");
         }
+        if (type.onWall()) {
+            return Component.translatable("item.kaboofcasino." + type.id(),
+                    "Bestenliste (Wandtafel " + type.wallColumns() + "×" + type.wallRows() + ")");
+        }
         if (type == MachineType.CHIP_SHOP) {
             return Component.translatable("item.kaboofcasino.chip_shop", "Chip-Shop");
         }

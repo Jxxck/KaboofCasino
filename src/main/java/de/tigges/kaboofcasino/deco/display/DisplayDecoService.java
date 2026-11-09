@@ -762,6 +762,15 @@ public final class DisplayDecoService {
                 }
                 yield true;
             }
+            case SQUARE_SIGN -> {
+                int columns = r.type().signColumns();
+                for (int part = 0; part < columns * columns; part++) {
+                    if (!wallOrUnloaded(w, DecoGeometry.wallPart(a, r.facing(), columns, part), r.facing())) {
+                        yield false;
+                    }
+                }
+                yield true;
+            }
             case FREE -> true;
             case SPEAKER -> switch (r.face()) {
                 case DecoRecord.FACE_CEILING -> sturdy(w, a.offset(0, 1, 0), BlockFace.DOWN, false);

@@ -129,6 +129,12 @@ public final class DecoGeometry {
                     out.add(wallPart(anchor, facing, columns, part));
                 }
             }
+            case SQUARE_SIGN -> {
+                int columns = type.signColumns();
+                for (int part = 0; part < columns * columns; part++) {
+                    out.add(wallPart(anchor, facing, columns, part));
+                }
+            }
             case CHANDELIER -> {
                 out.add(anchor);
                 for (int part = 0; part < 9; part++) {
@@ -168,6 +174,13 @@ public final class DecoGeometry {
                 int[] c = ccw(r.facing());
                 for (int col = 0; col < 3; col++) {
                     out.add(box(signShape(r.facing(), 0.5, 31.5), c[0] * col, c[1] * col));
+                }
+            }
+            case CASINO_SIGN_2X2, CASINO_SIGN_4X4 -> {
+                int columns = r.type().signColumns();
+                int[] c = ccw(r.facing());
+                for (int col = 0; col < columns; col++) {
+                    out.add(box(signShape(r.facing(), 0.5, columns * 16.0 - 0.5), c[0] * col, c[1] * col));
                 }
             }
             case CHANDELIER_WALL_SCONCE -> out.add(box(turn(SCONCE, turns), 0, 0));

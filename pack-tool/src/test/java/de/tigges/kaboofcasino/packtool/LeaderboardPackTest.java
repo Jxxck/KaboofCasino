@@ -249,6 +249,30 @@ class LeaderboardPackTest {
     }
 
     @Test
+    void theOtherWallSizesFitTheModelSpaceAndTheirCells() {
+        assertEquals(7, LeaderboardPack.WALL_SIZES.size());
+        for (LeaderboardPack.Board b : LeaderboardPack.WALL_SIZES) {
+            double f = b.halved() ? 0.5 : 1;
+            inside(model("kaboofcasino:" + b.path()), 8 + (b.x0() - 8) * f, 8 + (b.y0() - 8) * f, 8 + (0 - 8) * f,
+                    8 + (b.x1() - 8) * f, 8 + (b.y1() - 8) * f, 8 + (3 - 8) * f);
+            boolean[][] grid = LeaderboardPack.leds(b.word());
+            double[] felt = b.feltRect();
+            double x = b.ledX(grid[0].length);
+            assertTrue(x >= felt[0] && x + grid[0].length * b.led() <= felt[2], b.path() + ": the word fits the felt");
+            assertTrue(b.ledTop() <= felt[3] && b.ledTop() - 7 * b.led() >= b.y1() - b.header() + LeaderboardPack.DIVIDER,
+                    b.path() + ": the word stays in the header");
+            String id = b.panelTexture();
+            BufferedImage panel = Images.read(tree.get("assets/kaboofcasino/textures/"
+                    + id.substring(id.indexOf(':') + 1) + ".png"));
+            assertEquals(0, panel.getWidth() % 16, b.path());
+            assertEquals(0, panel.getHeight() % 16, b.path());
+            String size = b.path().substring("leaderboard/wall_".length());
+            assertTrue(tree.has("assets/kaboofcasino/items/leaderboard_wall_" + size + ".json"), size);
+            assertTrue(tree.has("assets/kaboofcasino/items/" + b.path() + ".json"), size);
+        }
+    }
+
+    @Test
     void everyTextureResolves() {
         for (String id : List.of(LeaderboardPack.WALL, LeaderboardPack.COLUMN_POST, LeaderboardPack.COLUMN_BOARD)) {
             JsonObject model = model(id);

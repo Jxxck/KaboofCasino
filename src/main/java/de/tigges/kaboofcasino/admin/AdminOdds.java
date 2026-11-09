@@ -26,7 +26,14 @@ final class AdminOdds {
             case FORTUNE_WHEEL -> 43.75;
             case PLINKO -> 28.90625;
             case BLACKJACK_TABLE, POKER_TABLE -> 0.0;
-            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN, CHIP_SHOP ->
+            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_WALL_2X2,
+                    LEADERBOARD_WALL_3X3,
+                    LEADERBOARD_WALL_4X3,
+                    LEADERBOARD_WALL_4X4,
+                    LEADERBOARD_WALL_5X3,
+                    LEADERBOARD_WALL_5X4,
+                    LEADERBOARD_WALL_6X4,
+                    LEADERBOARD_COLUMN, CHIP_SHOP ->
                     throw new IllegalArgumentException(type + " is no game");
         };
     }
@@ -44,7 +51,14 @@ final class AdminOdds {
             case SLOT_MACHINE, PLINKO -> 0.9746094F;
             case FORTUNE_WHEEL -> 0.9765625;
             case BLACKJACK_TABLE, POKER_TABLE -> 0.0;
-            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN, CHIP_SHOP ->
+            case CASHIER, LEADERBOARD_WALL, LEADERBOARD_WALL_2X2,
+                    LEADERBOARD_WALL_3X3,
+                    LEADERBOARD_WALL_4X3,
+                    LEADERBOARD_WALL_4X4,
+                    LEADERBOARD_WALL_5X3,
+                    LEADERBOARD_WALL_5X4,
+                    LEADERBOARD_WALL_6X4,
+                    LEADERBOARD_COLUMN, CHIP_SHOP ->
                     throw new IllegalArgumentException(type + " is no game");
         };
     }
@@ -61,7 +75,14 @@ final class AdminOdds {
             case SLOT_MACHINE -> SlotGame.POOL.expected(chance);
             case FORTUNE_WHEEL -> WheelController.POOL.expected(chance);
             case PLINKO -> PlinkoController.POOL.expected(chance);
-            case BLACKJACK_TABLE, POKER_TABLE, CASHIER, LEADERBOARD_WALL, LEADERBOARD_COLUMN, CHIP_SHOP ->
+            case BLACKJACK_TABLE, POKER_TABLE, CASHIER, LEADERBOARD_WALL, LEADERBOARD_WALL_2X2,
+                    LEADERBOARD_WALL_3X3,
+                    LEADERBOARD_WALL_4X3,
+                    LEADERBOARD_WALL_4X4,
+                    LEADERBOARD_WALL_5X3,
+                    LEADERBOARD_WALL_5X4,
+                    LEADERBOARD_WALL_6X4,
+                    LEADERBOARD_COLUMN, CHIP_SHOP ->
                     throw new IllegalArgumentException("no win chance for "
                     + type);
         };
