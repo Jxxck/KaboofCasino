@@ -114,7 +114,16 @@ public enum DecoType {
             2.0, 7, Connect.NONE, "Extragroßer Casino-Fernseher"),
     // ---- dealer station (games.md 18): a lectern copy, the croupier's job site ------------------------------------
     DEALER_STATION("roulettecasino:dealer_station", Carrier.BARRIER, Place.FREE, Material.LECTERN, Material.LECTERN,
-            2.5, 0, Connect.NONE, "Croupier-Theke");
+            2.5, 0, Connect.NONE, "Croupier-Theke"),
+    // ---- stairs and slabs the mod does not have (Jack 2026-11-09; at the end: the order of the others stays) ----------
+    GILDED_DARK_OAK_STAIRS("casinodeco:gilded_dark_oak_paneling_stairs", Material.CRIMSON_STAIRS,
+            "gilded_dark_oak_paneling", "Treppe — Vergoldete Schwarzeichenvertäfelung"),
+    GILDED_DARK_OAK_SLAB("casinodeco:gilded_dark_oak_paneling_slab", Material.CRIMSON_SLAB,
+            "gilded_dark_oak_paneling", "Stufe — Vergoldete Schwarzeichenvertäfelung"),
+    CLASSIC_GILDED_DARK_OAK_STAIRS("casinodeco:classic_gilded_dark_oak_paneling_stairs", Material.WARPED_STAIRS,
+            "classic_gilded_dark_oak_paneling", "Treppe — Vergoldete Vertäfelung aus Schwarzeichenholzbrettern"),
+    CLASSIC_GILDED_DARK_OAK_SLAB("casinodeco:classic_gilded_dark_oak_paneling_slab", Material.WARPED_SLAB,
+            "classic_gilded_dark_oak_paneling", "Stufe — Vergoldete Vertäfelung aus Schwarzeichenholzbrettern");
 
     /** What stands in the world under the display. */
     public enum Carrier {
@@ -268,6 +277,11 @@ public enum DecoType {
     /** The vanilla carrier block of stairs/slabs (null for the other carriers). */
     public Material vanilla() {
         return vanilla;
+    }
+
+    /** Stairs and slabs the mod does not have: their files come from the pack tool, their recipes from here. */
+    public boolean own() {
+        return family != null && family.contains("gilded_dark_oak");
     }
 
     /** The texture family of stairs/slabs ({@code ivory_marble}); null for the rest. */

@@ -85,24 +85,19 @@ public final class ChipShopService {
     // ---- the recipe -------------------------------------------------------------------------------------------------
 
     /**
-     * The optional recipe: glass pane, small casino sign, glass pane over black marble bar, chip pile, black marble
-     * bar. {@code kaboofcasino:chip_shop} is the recipe book's (exact ingredients, unlocks with a chip pile);
-     * {@code chip_shop_any} is never discovered and matches by material, so an older stack of an ingredient (other
-     * components) still crafts and is consumed normally.
+     * The optional recipe ({@code kaboofcasino:chip_shop}): glass pane, small casino sign, glass pane over black
+     * marble bar, chip pile, black marble bar; unlocks with a chip pile.
      */
-    static List<Recipes.Def> recipes() {
-        List<String> pattern = List.of("GSG", "BCB");
-        Map<Character, String> key = Map.of('G', "minecraft:glass_pane", 'S', "casinodeco:small_casino_sign", 'B',
-                "casinodeco:black_marble_bar", 'C', "casinodeco:casino_chip_pile");
-        String result = "roulettecasino:" + CasinoItem.CHIP_SHOP.id();
-        return List.of(new Recipes.Def("chip_shop", false, pattern, key, List.of(), result, 1,
-                        List.of("casinodeco:casino_chip_pile"), true),
-                new Recipes.Def("chip_shop_any", false, pattern, key, List.of(), result, 1, List.of()));
+    static Recipes.Def recipe() {
+        return new Recipes.Def("chip_shop", false, List.of("GSG", "BCB"), Map.of('G', "minecraft:glass_pane",
+                'S', "casinodeco:small_casino_sign", 'B', "casinodeco:black_marble_bar", 'C',
+                "casinodeco:casino_chip_pile"), List.of(), "roulettecasino:" + CasinoItem.CHIP_SHOP.id(), 1,
+                List.of("casinodeco:casino_chip_pile"));
     }
 
     public void enable() {
         recipe = settings().craftable();
-        Recipes.own("chipshop", recipe ? recipes() : List.of());
+        Recipes.own("chipshop", recipe ? List.of(recipe()) : List.of());
     }
 
     public void reloaded() {
@@ -111,7 +106,7 @@ public final class ChipShopService {
             return;
         }
         recipe = craftable;
-        Recipes.own("chipshop", craftable ? recipes() : List.of());
+        Recipes.own("chipshop", craftable ? List.of(recipe()) : List.of());
         Recipes.register(ctx.messages().get());
         Log.get().info("KaboofCasino chip shop recipe {}", craftable ? "registered (chipshop.craftable: true)"
                 : "removed (chipshop.craftable: false)");

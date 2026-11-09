@@ -29,6 +29,7 @@ class ChipShopCatalogTest {
     static List<Recipes.Def> recipes() {
         List<Recipes.Def> all = new ArrayList<>(Recipes.parse(ChipShopCatalogTest.class.getClassLoader().getResourceAsStream("pack/recipes.json")));
         all.addAll(de.tigges.kaboofcasino.outfit.Outfits.recipes());
+        all.addAll(de.tigges.kaboofcasino.deco.display.DecoItems.ownRecipes());
         return all;
     }
 

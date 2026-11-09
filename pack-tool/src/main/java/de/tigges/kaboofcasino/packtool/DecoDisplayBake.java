@@ -60,6 +60,14 @@ final class DecoDisplayBake {
 
     static final String[] DIRECTIONS = {"down", "up", "north", "south", "west", "east"};
 
+    /**
+     * How far a cover's faces lie outside the vanilla carrier's (px: 0.008 blocks): enough for the client's depth test
+     * up to the display's view range (the smallest gap the 0.9.1 covers had, never seen flickering).
+     */
+    static final double COVER_OUT = 0.128;
+    /** The box under the faces (px), half way out: it only closes the hairline along the edges. */
+    static final double COVER_UNDER = COVER_OUT / 2;
+
     private DecoDisplayBake() {
     }
 
@@ -174,6 +182,67 @@ final class DecoDisplayBake {
             out.add(baked);
         }
         return out;
+    }
+
+    /**
+     * The cover of a carrier from its exact elements. Each face stays its exact size with its exact UVs, so the pixels
+     * lie on the same grid as a full block next to it, and only moves {@link #COVER_OUT} along its own normal (a flat
+     * element per face). Faces moved apart leave a hairline at each edge where the carrier would show, so the element
+     * itself stays underneath, grown by {@link #COVER_UNDER}: it is seen only in that hairline.
+     */
+    static JsonArray cover(JsonArray exact) {
+        JsonArray out = new JsonArray();
+        for (JsonElement e : exact) {
+            JsonObject el = e.getAsJsonObject();
+            double[] from = doubles(el.getAsJsonArray("from"));
+            double[] to = doubles(el.getAsJsonArray("to"));
+            JsonObject under = new JsonObject();
+            under.add("from", Json.array(from[0] - COVER_UNDER, from[1] - COVER_UNDER, from[2] - COVER_UNDER));
+            under.add("to", Json.array(to[0] + COVER_UNDER, to[1] + COVER_UNDER, to[2] + COVER_UNDER));
+            under.add("faces", el.getAsJsonObject("faces").deepCopy());
+            out.add(under);
+            for (Map.Entry<String, JsonElement> f : el.getAsJsonObject("faces").entrySet()) {
+                out.add(plane(from, to, f.getKey(), f.getValue().getAsJsonObject()));
+            }
+        }
+        return out;
+    }
+
+    private static JsonObject plane(double[] from, double[] to, String dir, JsonObject face) {
+        int axis = switch (dir) {
+            case "west", "east" -> 0;
+            case "down", "up" -> 1;
+            default -> 2;
+        };
+        boolean high = dir.equals("east") || dir.equals("up") || dir.equals("south");
+        double[] a = from.clone();
+        double[] b = to.clone();
+        a[axis] = high ? to[axis] + COVER_OUT : from[axis] - COVER_OUT;
+        b[axis] = a[axis];
+        JsonObject faces = new JsonObject();
+        faces.add(dir, face.deepCopy());
+        JsonObject p = new JsonObject();
+        p.add("from", Json.array(a));
+        p.add("to", Json.array(b));
+        p.add("faces", faces);
+        return p;
+    }
+
+    /** One exact full-width box from {@code y0} to {@code y1} (px) as a slab template: top, bottom, the rest side. */
+    static JsonArray slab(double y0, double y1) {
+        JsonObject faces = new JsonObject();
+        for (String dir : DIRECTIONS) {
+            JsonObject face = new JsonObject();
+            face.addProperty("texture", dir.equals("down") ? "#bottom" : dir.equals("up") ? "#top" : "#side");
+            faces.add(dir, face);
+        }
+        JsonObject el = new JsonObject();
+        el.add("from", Json.array(0, y0, 0));
+        el.add("to", Json.array(16, y1, 16));
+        el.add("faces", faces);
+        JsonArray list = new JsonArray();
+        list.add(el);
+        return bakeUvLocked(list, 0, 0);
     }
 
     static double[] doubles(JsonArray a) {

@@ -1395,10 +1395,7 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
 - **Machine** `CHIP_SHOP` (item `chip_shop` "Chip-Shop", `/casino give chip_shop`; recipe `kaboofcasino:chip_shop`
   with `chipshop.craftable` (default true since the fix round, Jack: "fit in ... Crafting"; `false` = `/casino give`
   only, like the cashier): glass pane, small casino sign, glass pane over black marble bar, chip pile, black marble
-  bar; unlocks with a chip pile. Since 0.11.1 two entries: the book's `chip_shop` with exact casino ingredients (by
-  material the book showed plain paper and its click filled the grid with any paper item, chips too, so nothing came
-  out) and the undiscovered `chip_shop_any` by material (older stacks still craft; a grid result needs SOME matching
-  recipe, or vanilla hands the ingredients back). The mod's recipes still match by material): the cashier's footprint and rules (2 wide x 1 deep x 2 tall, both bottom
+  bar; unlocks with a chip pile): the cashier's footprint and rules (2 wide x 1 deep x 2 tall, both bottom
   cells on support, chunk fit, clearance, logout spots, spawn protection, breaking, verify), no game, one player at a
   time, idle close after `gui.idle-close-seconds`. Look (`ChipShopRig`): the cashier's marble counter, the pack's
   glass display case `kaboofcasino:chipshop/display` on it and the CHIP-SHOP sign `kaboofcasino:chipshop/sign`.
@@ -1460,6 +1457,30 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
   the empty default does not remove them by itself.
 
+### The recipe book (0.12.1)
+
+Bukkit recipes and the native recipe book work on materials, and casino items share them (chips, machines and most deco
+are paper). By material the book showed plain paper for a casino ingredient and its click filled the grid with any
+paper item, usually chips: nothing came out. Vanilla recipes were hit too ("Buch" pulled three chips). `Recipes.register`
+now registers every recipe touching a shared material twice: the book's under its usual key with exact ingredients (the
+casino item's own stack, a plain stack for a vanilla ingredient of a shared material, a tag expanded to plain stacks) and
+an undiscovered twin `<id>_any` by material for older stacks and named vanilla items by hand. The twin is load-bearing:
+if `ItemVetoListener` sets a result while no recipe matches, vanilla hands the ingredients back (dupe). Vanilla shaped
+and shapeless recipes of a shared material get a hidden copy `kaboofcasino:plain/<path>`; `PlayerRecipeBookClickEvent`
+swaps a click on the original for it, so ghost recipe, "make all" and returning the grid stay vanilla's. The client's
+craftable highlight still counts item types (holding chips can show a paper recipe as craftable); the server never
+places a wrong item. Bot: `testing/recipebook-test.sh`.
+
+### Own stairs and slabs (0.12.1; Jack 2026-11-09, not in MineVegas)
+
+Stairs and slabs of the two gilded dark oak blocks (`gilded_dark_oak_paneling`, the plank variant
+`classic_gilded_dark_oak_paneling`): `casinodeco:<block>_stairs` and `_slab`, the last four `DecoType`s (appended, the
+order of the others stays), on nether wood carriers like the velvets (crimson, warped: wood sounds and tools, they do not
+burn). Pack: `DecoDisplayPack.ownStairsAndSlabs` (the mod has no files for them: placing items, 40 stair states by the
+turns of its velvet stairs, three slab types, end texture on top and bottom). Recipes `DecoItems.ownRecipes`, shaped and
+counted like the mod's marble ones (6 blocks to 4 stairs, 3 blocks to 6 slabs). The names have no language key, so every
+client shows the German fallback.
+
 ### Casino outfits (0.12.0; Jack 2026-11-09, not in MineVegas)
 
 - **Items** (`outfit/Outfits`): seven styles with four pieces each, ids `casinodeco:outfit_<style>_<hat|jacket|trousers|shoes>`.
@@ -1501,11 +1522,12 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   step and riser) did not move at all and lay exactly on the carrier's faces (the depth test picked either, at every
   distance), and the outer faces were only 0.001 out (flicker from about 30 blocks). Not entity churn: the cover
   displays kept their UUIDs for minutes with the verifier running every 100 ticks (bot test, before and after).
-- Fix (`DecoModels.coverPivot`, `DecoRig.pivot`): the cover is scaled 1.032 about a pivot that lies, per axis, a
-  quarter block inside the solid side of every middle-plane face of the carrier's shape (read from its collision
-  boxes as eighths; stairs and slabs always agree, a double slab keeps the centre). Every exposed face then lies
-  0.008..0.024 blocks outside the carrier's (`DecoTransformTest` checks all 40 stair states and the 3 slab types).
-  The cover's view range is 2.0 (128 blocks, Paper's display tracking range), so the vanilla carrier shows only where
+- Fix then: the cover was scaled 1.032 about a pivot inside the shape, so every face lay 0.008..0.024 blocks outside
+  the carrier's. **Since 0.12.1 the scale is gone** (Jack: stairs and slabs were visibly bigger than the full blocks and
+  their pixels did not line up): the pack bakes exact covers (`DecoDisplayBake.cover`, the 40 stair templates and the
+  3 slab types). Each face keeps its exact size and UVs and moves 0.008 blocks (1/8 px, the smallest gap 0.9.1 had) along
+  its normal as a flat element; the element itself stays underneath, grown 0.004 blocks, and only shows in the hairline
+  along the edges. The cover's view range is 2.0 (128 blocks, Paper's display tracking range), so the vanilla carrier shows only where
   the server sends no display at all. No vanilla block's look is changed.
 
 ## 11. Testing

@@ -45,6 +45,15 @@ public final class ItemVetoListener implements Listener {
         }
     }
 
+    /**
+     * A recipe-book click on a vanilla recipe of a shared material (paper: "Buch", "Karte"): the plain copy, or the
+     * book would fill the grid with chips.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onRecipeBook(com.destroystokyo.paper.event.player.PlayerRecipeBookClickEvent event) {
+        Recipes.plainCopy(event.getRecipe()).ifPresent(event::setRecipe);
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onCrafter(CrafterCraftEvent event) {
         if (event.getBlock().getState(false) instanceof Crafter crafter) {

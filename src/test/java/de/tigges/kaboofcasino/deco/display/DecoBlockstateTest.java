@@ -191,6 +191,9 @@ class DecoBlockstateTest {
     @Test
     void slabsAndStairs() {
         for (DecoType t : DecoType.values()) {
+            if (t.own()) {
+                continue; // no blockstate in the mod
+            }
             if (t.carrier() == DecoType.Carrier.SLAB) {
                 JsonObject variants = ModAssets.blockstate(t.id()).getAsJsonObject("variants");
                 for (String type : List.of("bottom", "top", "double")) {
@@ -274,11 +277,14 @@ class DecoBlockstateTest {
     @Test
     void everyTypeIsAModBlock() {
         for (DecoType t : DecoType.values()) {
+            if (t.own()) {
+                continue;
+            }
             assertTrue(ModAssets.blockstate(t.id()) != null, t.id());
             int colon = t.id().indexOf(':');
             assertTrue(ModAssets.all().containsKey("assets/" + t.id().substring(0, colon) + "/items/"
                     + t.id().substring(colon + 1) + ".json"), t.id());
         }
-        assertEquals(45, DecoType.values().length);
+        assertEquals(45 + 4, DecoType.values().length);
     }
 }

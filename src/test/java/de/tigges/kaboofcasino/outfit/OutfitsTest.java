@@ -36,7 +36,6 @@ class OutfitsTest {
         List<Recipes.Def> recipes = new ArrayList<>(Outfits.recipes());
         assertEquals(Outfits.ids().size(), recipes.size());
         for (Recipes.Def d : recipes) {
-            assertFalse(d.exact(), d.id());
             for (String ingredient : d.allIngredients()) {
                 assertFalse(Recipes.casinoId(ingredient), d.id() + ": " + ingredient);
             }

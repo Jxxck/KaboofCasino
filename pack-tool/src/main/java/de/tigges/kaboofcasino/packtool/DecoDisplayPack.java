@@ -50,6 +50,16 @@ final class DecoDisplayPack {
     /** The TVs' channels 0..8 ({@code screen}; 0 = off). */
     static final int TV_CHANNELS = 9;
 
+    /**
+     * Stairs and slabs the mod does not have (Jack 2026-11-09): family -> the side and the end texture of its block
+     * ({@link #ownStairsAndSlabs}).
+     */
+    static final Map<String, List<String>> OWN_FAMILIES = new java.util.TreeMap<>(Map.of(
+            "gilded_dark_oak_paneling", List.of("casinodeco:block/gilded_dark_oak_paneling",
+                    "casinodeco:block/dark_oak_cap"),
+            "classic_gilded_dark_oak_paneling", List.of("casinodeco:block/classic_gilded_dark_oak_paneling",
+                    "minecraft:block/dark_oak_planks")));
+
     /** Exact keys ("key="): the names of the placing items in all 12 languages. */
     static final List<String> LANG_PREFIXES = langKeys();
 
@@ -92,14 +102,30 @@ final class DecoDisplayPack {
         }
         models.add("casinodeco:block/chandelier_9");
         models.add("casinodeco:block/chandelier_10");
+        Map<String, String> slabs = slabModels(jar);
         for (String model : models) {
             copier.model(model);
             String name = model.substring(model.indexOf("block/") + "block/".length());
-            displayDefinition(tree, name, model);
+            if (slabs.containsKey(model)) {
+                ModelCopier.Id ref = ModelCopier.Id.parse(model);
+                JsonObject textures = Json.parse(jar.bytes("assets/" + ref.namespace() + "/models/" + ref.path()
+                        + ".json")).getAsJsonObject("textures").deepCopy();
+                if (textures.has("all")) {
+                    // a double slab's model is a cube_all: its one texture on all sides
+                    JsonElement all = textures.remove("all");
+                    textures.add("bottom", all);
+                    textures.add("top", all);
+                    textures.add("side", all);
+                }
+                slabCover(tree, name, slabs.get(model), textures);
+            } else {
+                displayDefinition(tree, name, model);
+            }
         }
         merged(jar, copier, tree, "casino_sign", "casinodeco:block/sign_", 6, 0);
         merged(jar, copier, tree, "chandelier_body", "casinodeco:block/chandelier_", 9, 1);
         stairs(jar, copier, tree);
+        ownStairsAndSlabs(jar, copier, tree);
         televisions(copier, tree);
     }
 
@@ -250,9 +276,48 @@ final class DecoDisplayPack {
         return Json.array(8 + (d[0] - 8) / 2, 8 + (d[1] - 8) / 2, 8 + (d[2] - 8) / 2);
     }
 
+    /** Every model of the slab blockstates and its type ({@code bottom}, {@code top}, {@code double}). */
+    static Map<String, String> slabModels(ModJar jar) {
+        Map<String, String> out = new java.util.TreeMap<>();
+        for (String id : DECO_IDS) {
+            if (id.endsWith("_slab")) {
+                JsonObject variants = Json.parse(jar.bytes("assets/casinodeco/blockstates/" + id + ".json"))
+                        .getAsJsonObject("variants");
+                for (Map.Entry<String, JsonElement> v : variants.entrySet()) {
+                    String type = v.getKey().substring("type=".length());
+                    java.util.Set<String> found = new TreeSet<>();
+                    collect(v.getValue(), found);
+                    found.forEach(m -> out.put(m, type));
+                }
+            }
+        }
+        return out;
+    }
+
+    /** A slab's display: the exact cover of its type ({@link DecoDisplayBake#cover}) with these textures. */
+    static void slabCover(PackTree tree, String name, String type, JsonObject slabTextures) {
+        String template = "assets/kaboofcasino/models/deco/slab/template/" + type + ".json";
+        if (!tree.has(template)) {
+            JsonObject t = new JsonObject();
+            t.add("elements", DecoDisplayBake.cover(switch (type) {
+                case "bottom" -> DecoDisplayBake.slab(0, 8);
+                case "top" -> DecoDisplayBake.slab(8, 16);
+                case "double" -> DecoDisplayBake.slab(0, 16);
+                default -> throw new IllegalStateException("slab type " + type);
+            }));
+            tree.put(template, Json.bytes(t));
+        }
+        JsonObject textures = slabTextures.deepCopy();
+        textures.add("particle", textures.get("side"));
+        JsonObject child = new JsonObject();
+        child.addProperty("parent", PREFIX + "slab/template/" + type);
+        child.add("textures", textures);
+        tree.put("assets/kaboofcasino/models/deco/slab/" + name + ".json", Json.bytes(child));
+        displayDefinition(tree, name, PREFIX + "slab/" + name);
+    }
+
     /** The baked stairs of every family (see the class comment). */
     static void stairs(ModJar jar, ModelCopier copier, PackTree tree) {
-        TreeSet<String> templates = new TreeSet<>();
         for (String id : DECO_IDS) {
             if (!id.endsWith("_stairs")) {
                 continue;
@@ -276,28 +341,79 @@ final class DecoDisplayPack {
                     ModelCopier.Id ref = ModelCopier.Id.parse(modelId);
                     JsonObject model = Json.parse(jar.bytes("assets/" + ref.namespace() + "/models/" + ref.path()
                             + ".json"));
-                    String parent = model.get("parent").getAsString();
-                    String template = "template/" + parent.substring(parent.indexOf("block/") + 6) + "_x" + x + "_y"
-                            + y;
-                    if (templates.add(template)) {
-                        JsonObject t = new JsonObject();
-                        t.add("elements", DecoDisplayBake.bakeUvLocked(DecoDisplayBake.template(parent), x, y));
-                        tree.put("assets/kaboofcasino/models/deco/stairs/" + template + ".json", Json.bytes(t));
-                    }
                     JsonObject textures = model.getAsJsonObject("textures").deepCopy();
                     for (Map.Entry<String, JsonElement> tex : textures.entrySet()) {
                         copier.texture(tex.getValue().getAsString());
                     }
-                    textures.add("particle", textures.get("side"));
-                    JsonObject child = new JsonObject();
-                    child.addProperty("parent", PREFIX + "stairs/" + template);
-                    child.add("textures", textures);
-                    String name = "stairs/" + family + "_" + key + "_" + i;
-                    tree.put("assets/kaboofcasino/models/deco/" + name + ".json", Json.bytes(child));
-                    displayDefinition(tree, name, PREFIX + name);
+                    stairDisplay(tree, "stairs/" + family + "_" + key + "_" + i, model.get("parent").getAsString(), x,
+                            y, textures);
                 }
             }
         }
+    }
+
+    /** One stair state's display: the turned exact cover (shared by every family) with these textures. */
+    static void stairDisplay(PackTree tree, String name, String parent, int x, int y, JsonObject stairTextures) {
+        String template = "template/" + parent.substring(parent.indexOf("block/") + 6) + "_x" + x + "_y" + y;
+        String path = "assets/kaboofcasino/models/deco/stairs/" + template + ".json";
+        if (!tree.has(path)) {
+            JsonObject t = new JsonObject();
+            t.add("elements", DecoDisplayBake.cover(DecoDisplayBake.bakeUvLocked(DecoDisplayBake.template(parent), x,
+                    y)));
+            tree.put(path, Json.bytes(t));
+        }
+        JsonObject textures = stairTextures.deepCopy();
+        textures.add("particle", textures.get("side"));
+        JsonObject child = new JsonObject();
+        child.addProperty("parent", PREFIX + "stairs/" + template);
+        child.add("textures", textures);
+        tree.put("assets/kaboofcasino/models/deco/" + name + ".json", Json.bytes(child));
+        displayDefinition(tree, name, PREFIX + name);
+    }
+
+    /**
+     * The stairs and slabs of {@link #OWN_FAMILIES}, which the mod has no files for: the placing items (3D like the
+     * mod's), every stair state by the turns of the mod's velvet stairs, and the three slab types; top and bottom show
+     * the block's end texture, the sides its side texture.
+     */
+    static void ownStairsAndSlabs(ModJar jar, ModelCopier copier, PackTree tree) {
+        JsonObject turns = Json.parse(jar.bytes("assets/casinodeco/blockstates/ruby_velvet_stairs.json"))
+                .getAsJsonObject("variants");
+        for (Map.Entry<String, List<String>> family : OWN_FAMILIES.entrySet()) {
+            String name = family.getKey();
+            family.getValue().forEach(copier::texture);
+            JsonObject textures = new JsonObject();
+            textures.addProperty("bottom", family.getValue().get(1));
+            textures.addProperty("top", family.getValue().get(1));
+            textures.addProperty("side", family.getValue().get(0));
+            placingItem(tree, name + "_stairs", "minecraft:block/stairs", textures);
+            placingItem(tree, name + "_slab", "minecraft:block/slab", textures);
+            for (Map.Entry<String, JsonElement> v : turns.entrySet()) {
+                JsonObject entry = v.getValue().isJsonArray() ? v.getValue().getAsJsonArray().get(0).getAsJsonObject()
+                        : v.getValue().getAsJsonObject();
+                ModelCopier.Id ref = ModelCopier.Id.parse(entry.get("model").getAsString());
+                String parent = Json.parse(jar.bytes("assets/" + ref.namespace() + "/models/" + ref.path() + ".json"))
+                        .get("parent").getAsString();
+                stairDisplay(tree, "stairs/" + name + "_" + stateKey(v.getKey()) + "_0", parent,
+                        entry.has("x") ? entry.get("x").getAsInt() : 0, entry.has("y") ? entry.get("y").getAsInt() : 0,
+                        textures);
+            }
+            slabCover(tree, name + "_slab", "bottom", textures);
+            slabCover(tree, name + "_slab_top", "top", textures);
+            slabCover(tree, name, "double", textures);
+        }
+    }
+
+    /** {@code casinodeco:<id>}: item definition, item model and the block model it shows. */
+    private static void placingItem(PackTree tree, String id, String parent, JsonObject textures) {
+        JsonObject block = new JsonObject();
+        block.addProperty("parent", parent);
+        block.add("textures", textures.deepCopy());
+        tree.put("assets/casinodeco/models/block/" + id + ".json", Json.bytes(block));
+        JsonObject item = new JsonObject();
+        item.addProperty("parent", "casinodeco:block/" + id);
+        tree.put("assets/casinodeco/models/item/" + id + ".json", Json.bytes(item));
+        tree.put("assets/casinodeco/items/" + id + ".json", Json.bytes(Json.itemDefinition("casinodeco:item/" + id)));
     }
 
     /** {@code facing=east,half=bottom,shape=inner_left} -> {@code east_bottom_inner_left}. */

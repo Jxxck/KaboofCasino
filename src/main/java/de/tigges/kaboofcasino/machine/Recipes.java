@@ -13,10 +13,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -36,6 +38,14 @@ import org.bukkit.inventory.ShapelessRecipe;
  * casino ingredients by their item id, vanilla ingredients never with a casino item; stale item components therefore
  * never break crafting. Recipes unlock in the recipe book on first possession of the advancement's ingredient
  * ({@link #unlockedBy}).
+ *
+ * <p>The recipe book works on materials too, and casino items share them (chips and machines are paper): it showed
+ * paper for a casino ingredient and its click took any paper item, chips first. So every recipe touching a shared
+ * material is registered twice: the book's, with exact ingredients (the casino item's own stack, a plain stack for a
+ * vanilla ingredient of a shared material), and a twin {@code <id>_any} by material, never discovered, for older stacks
+ * and named vanilla items by hand. The twin is required: a grid result without any matching recipe would hand the
+ * ingredients back. Vanilla recipes of a shared material get a hidden plain copy that a recipe-book click uses instead
+ * ({@link #plainCopy}), so the book's "Buch" takes paper and no chips.
  */
 public final class Recipes {
 
@@ -45,18 +55,12 @@ public final class Recipes {
      * ({@code roulettecasino:x}, {@code casinodeco:x}, {@code casinosound:x}); shapeless recipes have no pattern.
      */
     public record Def(String id, boolean shapeless, List<String> pattern, Map<Character, String> key,
-                      List<String> ingredients, String result, int count, List<String> unlocks, boolean exact) {
+                      List<String> ingredients, String result, int count, List<String> unlocks) {
         public Def {
             pattern = List.copyOf(pattern);
             key = Map.copyOf(key);
             ingredients = List.copyOf(ingredients);
             unlocks = List.copyOf(unlocks);
-        }
-
-        /** A recipe whose casino ingredients match by material ({@code exact} false, the mod's recipes). */
-        public Def(String id, boolean shapeless, List<String> pattern, Map<Character, String> key,
-                   List<String> ingredients, String result, int count, List<String> unlocks) {
-            this(id, shapeless, pattern, key, ingredients, result, count, unlocks, false);
         }
 
         public NamespacedKey namespaced() {
@@ -79,6 +83,8 @@ public final class Recipes {
     private static volatile Map<NamespacedKey, Def> registered = Map.of();
     /** The result stack of every registered recipe. */
     private static volatile Map<NamespacedKey, ItemStack> results = Map.of();
+    /** A vanilla recipe touching a shared material and its hidden plain copy. */
+    private static volatile Map<NamespacedKey, NamespacedKey> plainCopies = Map.of();
     /** Tag ingredients resolved at registration. */
     private static final Map<String, Tag<Material>> TAGS = new HashMap<>();
 
@@ -173,54 +179,149 @@ public final class Recipes {
     /** Registers (or re-registers after /reload) every recipe whose items exist; the rest is logged and skipped. */
     public static void register(Messages messages) {
         unregister();
+        Set<Material> shared = sharedMaterials(messages);
         Map<NamespacedKey, Def> done = new LinkedHashMap<>();
         Map<NamespacedKey, ItemStack> made = new LinkedHashMap<>();
         for (Def d : all()) {
-            try {
-                ItemStack result = casinoId(d.result()) ? casinoStack(d.result(), messages, d.count())
-                        .orElseThrow(() -> new IllegalStateException("unknown casino item " + d.result()))
-                        : ItemStack.of(material(d.result()), d.count());
-                Recipe recipe;
-                if (d.shapeless()) {
-                    ShapelessRecipe r = new ShapelessRecipe(d.namespaced(), result);
-                    for (String ingredient : d.ingredients()) {
-                        r.addIngredient(choice(ingredient, messages, d.exact()));
-                    }
-                    recipe = r;
-                } else {
-                    ShapedRecipe r = new ShapedRecipe(d.namespaced(), result);
-                    r.shape(d.pattern().toArray(String[]::new));
-                    for (Map.Entry<Character, String> k : d.key().entrySet()) {
-                        r.setIngredient(k.getKey(), choice(k.getValue(), messages, d.exact()));
-                    }
-                    recipe = r;
-                }
-                Bukkit.addRecipe(recipe);
-                done.put(d.namespaced(), d);
-                made.put(d.namespaced(), result.clone());
-            } catch (RuntimeException e) {
-                Log.get().warn("recipe {} not registered: {}", d.id(), e.getMessage());
+            boolean exact = touches(d, shared);
+            add(d, exact ? shared : null, messages, done, made);
+            if (exact) {
+                add(new Def(d.id() + "_any", d.shapeless(), d.pattern(), d.key(), d.ingredients(), d.result(),
+                        d.count(), List.of()), null, messages, done, made);
             }
         }
         registered = Map.copyOf(done);
         results = Map.copyOf(made);
+        plainCopies = copyVanilla(shared);
     }
 
-    /**
-     * {@code exact}: a casino ingredient as its exact stack, so the recipe book shows the real item and its click takes
-     * the right one (by material the book shows plain paper and fills in any paper item, chips too). An exact recipe
-     * needs a twin by material: without any matching recipe the crafting grid would not consume its ingredients.
-     */
-    private static RecipeChoice choice(String ingredient, Messages messages, boolean exact) {
+    /** Registers one recipe; {@code shared} null = by material, else exact ingredients where a material is shared. */
+    private static void add(Def d, Set<Material> shared, Messages messages, Map<NamespacedKey, Def> done,
+                            Map<NamespacedKey, ItemStack> made) {
+        try {
+            ItemStack result = casinoId(d.result()) ? casinoStack(d.result(), messages, d.count())
+                    .orElseThrow(() -> new IllegalStateException("unknown casino item " + d.result()))
+                    : ItemStack.of(material(d.result()), d.count());
+            Recipe recipe;
+            if (d.shapeless()) {
+                ShapelessRecipe r = new ShapelessRecipe(d.namespaced(), result);
+                for (String ingredient : d.ingredients()) {
+                    r.addIngredient(choice(ingredient, messages, shared));
+                }
+                recipe = r;
+            } else {
+                ShapedRecipe r = new ShapedRecipe(d.namespaced(), result);
+                r.shape(d.pattern().toArray(String[]::new));
+                for (Map.Entry<Character, String> k : d.key().entrySet()) {
+                    r.setIngredient(k.getKey(), choice(k.getValue(), messages, shared));
+                }
+                recipe = r;
+            }
+            Bukkit.addRecipe(recipe);
+            done.put(d.namespaced(), d);
+            made.put(d.namespaced(), result.clone());
+        } catch (RuntimeException e) {
+            Log.get().warn("recipe {} not registered: {}", d.id(), e.getMessage());
+        }
+    }
+
+    /** The materials of all casino items (paper, the deco carriers, leather armor). */
+    private static Set<Material> sharedMaterials(Messages messages) {
+        Set<Material> out = new HashSet<>();
+        for (String id : ItemCatalog.ids()) {
+            casinoStack(id, messages, 1).map(ItemStack::getType).ifPresent(out::add);
+        }
+        return out;
+    }
+
+    /** True if the recipe has a casino ingredient or a vanilla one that a casino item could be mistaken for. */
+    private static boolean touches(Def d, Set<Material> shared) {
+        for (String ingredient : d.allIngredients()) {
+            if (casinoId(ingredient) || (ingredient.startsWith("#")
+                    ? !java.util.Collections.disjoint(tag(ingredient).getValues(), shared)
+                    : shared.contains(material(ingredient)))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Plain stacks (no components) of the materials: an exact ingredient that no casino item fits. */
+    private static RecipeChoice plain(java.util.Collection<Material> materials) {
+        return new RecipeChoice.ExactChoice(materials.stream().sorted().map(ItemStack::of).toList());
+    }
+
+    /** Hidden copies of the vanilla recipes touching a shared material, with plain ingredients there. */
+    private static Map<NamespacedKey, NamespacedKey> copyVanilla(Set<Material> shared) {
+        List<Recipe> vanilla = new ArrayList<>();
+        Bukkit.recipeIterator().forEachRemaining(vanilla::add);
+        Map<NamespacedKey, NamespacedKey> out = new HashMap<>();
+        for (Recipe r : vanilla) {
+            if (r instanceof org.bukkit.Keyed keyed && keyed.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+                try {
+                    NamespacedKey key = Keys.key("plain/" + keyed.getKey().getKey());
+                    Recipe copy = plainCopy(r, key, shared);
+                    if (copy != null) {
+                        Bukkit.addRecipe(copy);
+                        out.put(keyed.getKey(), key);
+                    }
+                } catch (RuntimeException e) {
+                    Log.get().warn("plain copy of {} not registered: {}", keyed.getKey(), e.getMessage());
+                }
+            }
+        }
+        return Map.copyOf(out);
+    }
+
+    private static Recipe plainCopy(Recipe recipe, NamespacedKey key, Set<Material> shared) {
+        if (recipe instanceof ShapedRecipe s && s.getChoiceMap().values().stream().anyMatch(c -> takes(c, shared))) {
+            ShapedRecipe copy = new ShapedRecipe(key, s.getResult());
+            copy.shape(s.getShape());
+            s.getChoiceMap().forEach((k, c) -> {
+                if (c != null) {
+                    copy.setIngredient(k, takes(c, shared) ? plain(((RecipeChoice.MaterialChoice) c).getChoices()) : c);
+                }
+            });
+            copy.setGroup(s.getGroup());
+            copy.setCategory(s.getCategory());
+            return copy;
+        }
+        if (recipe instanceof ShapelessRecipe s && s.getChoiceList().stream().anyMatch(c -> takes(c, shared))) {
+            ShapelessRecipe copy = new ShapelessRecipe(key, s.getResult());
+            for (RecipeChoice c : s.getChoiceList()) {
+                copy.addIngredient(takes(c, shared) ? plain(((RecipeChoice.MaterialChoice) c).getChoices()) : c);
+            }
+            copy.setGroup(s.getGroup());
+            copy.setCategory(s.getCategory());
+            return copy;
+        }
+        return null;
+    }
+
+    private static boolean takes(RecipeChoice choice, Set<Material> shared) {
+        return choice instanceof RecipeChoice.MaterialChoice m && !java.util.Collections.disjoint(m.getChoices(), shared);
+    }
+
+    /** The plain copy a recipe-book click on the vanilla recipe {@code vanilla} should use, if it has one. */
+    public static Optional<NamespacedKey> plainCopy(NamespacedKey vanilla) {
+        return Optional.ofNullable(plainCopies.get(vanilla));
+    }
+
+    /** One ingredient; {@code shared} non-null: exact where a casino item could be mistaken for it (see the class). */
+    private static RecipeChoice choice(String ingredient, Messages messages, Set<Material> shared) {
+        boolean exact = shared != null;
         if (ingredient.startsWith("#")) {
-            return new RecipeChoice.MaterialChoice(tag(ingredient));
+            Tag<Material> t = tag(ingredient);
+            return exact && !java.util.Collections.disjoint(t.getValues(), shared) ? plain(t.getValues())
+                    : new RecipeChoice.MaterialChoice(t);
         }
         if (casinoId(ingredient)) {
             ItemStack one = casinoStack(ingredient, messages, 1)
                     .orElseThrow(() -> new IllegalStateException("unknown casino ingredient " + ingredient));
             return exact ? new RecipeChoice.ExactChoice(one) : new RecipeChoice.MaterialChoice(one.getType());
         }
-        return new RecipeChoice.MaterialChoice(material(ingredient));
+        Material m = material(ingredient);
+        return exact && shared.contains(m) ? plain(List.of(m)) : new RecipeChoice.MaterialChoice(m);
     }
 
     private static Tag<Material> tag(String ingredient) {
@@ -252,6 +353,10 @@ public final class Recipes {
         for (NamespacedKey key : registered.keySet()) {
             Bukkit.removeRecipe(key); // the plugin's own ones too (dropped from own since)
         }
+        for (NamespacedKey key : plainCopies.values()) {
+            Bukkit.removeRecipe(key);
+        }
+        plainCopies = Map.of();
         registered = Map.of();
         results = Map.of();
     }

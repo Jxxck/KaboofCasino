@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -47,6 +48,90 @@ class DecoDisplayPackTest {
                 }
             }
         }
+    }
+
+    /** A cover's faces keep their exact size and UVs and lie exactly {@code COVER_OUT} outside the carrier's. */
+    @Test
+    void coverFacesAreExactAndJustOutside() {
+        JsonArray exact = DecoDisplayBake.bakeUvLocked(DecoDisplayBake.template("minecraft:block/stairs"), 0, 90);
+        JsonArray cover = DecoDisplayBake.cover(exact);
+        int index = 0;
+        for (JsonElement e : exact) {
+            JsonObject el = e.getAsJsonObject();
+            double[] from = DecoDisplayBake.doubles(el.getAsJsonArray("from"));
+            double[] to = DecoDisplayBake.doubles(el.getAsJsonArray("to"));
+            index++; // the box underneath
+            for (Map.Entry<String, JsonElement> f : el.getAsJsonObject("faces").entrySet()) {
+                JsonObject plane = cover.get(index++).getAsJsonObject();
+                double[] a = DecoDisplayBake.doubles(plane.getAsJsonArray("from"));
+                double[] b = DecoDisplayBake.doubles(plane.getAsJsonArray("to"));
+                int moved = 0;
+                for (int axis = 0; axis < 3; axis++) {
+                    if (a[axis] == b[axis]) {
+                        moved++;
+                        double out = f.getKey().equals("east") || f.getKey().equals("up") || f.getKey().equals("south")
+                                ? b[axis] - to[axis] : from[axis] - a[axis];
+                        assertEquals(DecoDisplayBake.COVER_OUT, out, 1e-9, f.getKey());
+                    } else {
+                        assertEquals(from[axis], a[axis], 1e-9, f.getKey());
+                        assertEquals(to[axis], b[axis], 1e-9, f.getKey());
+                    }
+                }
+                assertEquals(1, moved, f.getKey());
+                assertEquals(f.getValue(), plane.getAsJsonObject("faces").get(f.getKey()), f.getKey());
+            }
+        }
+        assertEquals(cover.size(), index);
+    }
+
+    /** The stairs and slabs the mod does not have: items, all 40 stair states, the three slab types. */
+    @Test
+    void ownStairsAndSlabsAreComplete() {
+        for (String family : DecoDisplayPack.OWN_FAMILIES.keySet()) {
+            assertTrue(tree.has("assets/casinodeco/items/" + family + "_stairs.json"), family);
+            assertTrue(tree.has("assets/casinodeco/models/item/" + family + "_slab.json"), family);
+            int states = 0;
+            for (String facing : List.of("north", "east", "south", "west")) {
+                for (String half : List.of("bottom", "top")) {
+                    for (String shape : List.of("straight", "inner_left", "inner_right", "outer_left", "outer_right")) {
+                        assertTrue(PackTreeHas.item(tree, "kaboofcasino:deco/stairs/" + family + "_" + facing + "_"
+                                + half + "_" + shape + "_0"), shape);
+                        states++;
+                    }
+                }
+            }
+            assertEquals(40, states);
+            for (String slab : List.of(family + "_slab", family + "_slab_top", family)) {
+                assertTrue(PackTreeHas.item(tree, "kaboofcasino:deco/" + slab), slab);
+            }
+        }
+        JsonObject side = Json.parse(tree.get("assets/kaboofcasino/models/deco/slab/classic_gilded_dark_oak_paneling_slab.json"))
+                .getAsJsonObject("textures");
+        assertEquals("minecraft:block/dark_oak_planks", side.get("top").getAsString());
+        assertEquals("casinodeco:block/classic_gilded_dark_oak_paneling", side.get("side").getAsString());
+    }
+
+    /** The three slab types show the exact covers, with the mod's textures; a double slab its one texture. */
+    @Test
+    void slabsAreExactCovers() {
+        JsonObject def = Json.parse(tree.get("assets/kaboofcasino/items/deco/ivory_marble_slab_v1.json"));
+        assertEquals("kaboofcasino:deco/slab/ivory_marble_slab_v1", def.getAsJsonObject("model").get("model").getAsString());
+        JsonObject child = Json.parse(tree.get("assets/kaboofcasino/models/deco/slab/ivory_marble_slab_v1.json"));
+        assertEquals("kaboofcasino:deco/slab/template/bottom", child.get("parent").getAsString());
+        assertEquals("casinodeco:block/ivory_marble_v1", child.getAsJsonObject("textures").get("top").getAsString());
+        JsonArray bottom = Json.parse(tree.get("assets/kaboofcasino/models/deco/slab/template/bottom.json"))
+                .getAsJsonArray("elements");
+        assertEquals(7, bottom.size());
+        JsonObject up = bottom.get(2).getAsJsonObject();
+        assertArrayEquals(new double[] {0, 8 + DecoDisplayBake.COVER_OUT, 0},
+                DecoDisplayBake.doubles(up.getAsJsonArray("from")), 1e-9);
+        assertArrayEquals(new double[] {16, 8 + DecoDisplayBake.COVER_OUT, 16},
+                DecoDisplayBake.doubles(up.getAsJsonArray("to")), 1e-9);
+        assertArrayEquals(new double[] {0, 0, 16, 16}, DecoDisplayBake.doubles(up.getAsJsonObject("faces")
+                .getAsJsonObject("up").getAsJsonArray("uv")), 1e-9);
+        JsonObject full = Json.parse(tree.get("assets/kaboofcasino/models/deco/slab/ivory_marble.json"));
+        assertEquals("kaboofcasino:deco/slab/template/double", full.get("parent").getAsString());
+        assertEquals("casinodeco:block/ivory_marble", full.getAsJsonObject("textures").get("side").getAsString());
     }
 
     @Test

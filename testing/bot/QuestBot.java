@@ -48,6 +48,7 @@ import java.util.concurrent.*;
  * every container click type (number keys, F, Q, Ctrl+Q, double click, middle click, drag, outside clicks).
  */
 public class QuestBot {
+  static final java.util.Map<Integer, String> RECIPE_BOOK = new java.util.concurrent.ConcurrentHashMap<>();
   static final String HELP = String.join("\n",
       "cmd <command>                 run a command (without /)",
       "tab <text>                    tab completion, '~' = trailing space",
@@ -471,6 +472,7 @@ public class QuestBot {
         } else if (p instanceof org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundRecipeBookAddPacket rb) {
           for (var e : rb.getEntries()) { // the recipe book: only the ids of the casino's shop counter are of interest
             String d = e.contents().toString();
+            RECIPE_BOOK.put(e.contents().id(), d.replace("\n", " "));
             if (d.contains("chip_shop") || d.contains("outfit_")) { var tag = java.util.regex.Pattern.compile("outfit_[a-z]+_[a-z]+").matcher(d); log("RECIPE id=" + e.contents().id() + " " + (tag.find() ? tag.group() + " " : "") + d.substring(0, Math.min(900, d.length()))); }
           }
         } else if (p instanceof ClientboundSetActionBarTextPacket c) { log("ACTIONBAR " + plain(c.getText()));
@@ -560,6 +562,7 @@ public class QuestBot {
           case "say" -> s.send(new org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket(line.substring(4), System.currentTimeMillis(), 0L, null, 0, new java.util.BitSet(), 0)); // unsigned chat line (offline mode)
           case "tab" -> s.send(new ServerboundCommandSuggestionPacket(seq++, "/" + line.substring(4).replaceFirst("^/", "").replace("~", " ")));
           case "click" -> click(s, Integer.parseInt(w[1]), w.length > 2 ? w[2] : "left");
+          case "recipes" -> { String f = w[1]; RECIPE_BOOK.forEach((id, d) -> { if (d.contains(f)) log("RECIPE id=" + id + " match=" + f + " " + d.substring(0, Math.min(40000, d.length()))); }); } // recipes <text>: recipe-book entries containing a text
           case "placerecipe" -> s.send(new org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundPlaceRecipePacket(containerId, Integer.parseInt(w[1]), w.length > 2)); // a click on a recipe-book entry
           case "clickid" -> { // clickid <container id> <slot> [mode]: click in an explicit container (0 = own inventory screen)
             int saved = containerId, savedState = stateId;

@@ -1,8 +1,12 @@
 package de.tigges.kaboofcasino.deco.display;
 
 import de.tigges.kaboofcasino.machine.ItemCatalog;
+import de.tigges.kaboofcasino.machine.Recipes;
 import de.tigges.kaboofcasino.util.Keys;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
@@ -21,6 +25,21 @@ import org.bukkit.persistence.PersistentDataType;
 public final class DecoItems {
 
     private DecoItems() {
+    }
+
+    /** The stairs and slabs the mod does not have, from their block, shaped and counted like its marble ones. */
+    public static List<Recipes.Def> ownRecipes() {
+        List<Recipes.Def> out = new ArrayList<>();
+        for (DecoType t : DecoType.values()) {
+            if (t.own()) {
+                String block = "casinodeco:" + t.family();
+                boolean stairs = t.carrier() == DecoType.Carrier.STAIRS;
+                out.add(new Recipes.Def("casinodeco/" + t.path(), false,
+                        stairs ? List.of("B  ", "BB ", "BBB") : List.of("BBB"), Map.of('B', block), List.of(), t.id(),
+                        stairs ? 4 : 6, List.of(block)));
+            }
+        }
+        return List.copyOf(out);
     }
 
     /** The item of {@code type}, {@code amount} of it. */
@@ -43,5 +62,6 @@ public final class DecoItems {
         for (DecoType t : DecoType.values()) {
             ItemCatalog.register(t.id(), amount -> create(t, amount));
         }
+        Recipes.own("deco", ownRecipes());
     }
 }

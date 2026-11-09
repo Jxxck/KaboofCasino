@@ -29,12 +29,12 @@ class DecoRulesTest {
             assertTrue(ids.add(t.id()), t.id());
             assertEquals(t, DecoType.byId(t.id()).orElseThrow());
         }
-        // 38 non-full-cube casinodeco blocks + chair, stool, 3 TVs, dealer station + speaker
-        assertEquals(38, ids.stream().filter(i -> i.startsWith("casinodeco:")).count());
+        // 38 non-full-cube casinodeco blocks + 4 own stairs and slabs + chair, stool, 3 TVs, dealer station + speaker
+        assertEquals(38 + 4, ids.stream().filter(i -> i.startsWith("casinodeco:")).count());
         assertEquals(Set.of("roulettecasino:casino_chair", "roulettecasino:casino_stool", "roulettecasino:casino_tv",
                 "roulettecasino:casino_tv_large", "roulettecasino:casino_tv_3x3", "roulettecasino:dealer_station"),
                 ids.stream().filter(i -> i.startsWith("roulettecasino:")).collect(java.util.stream.Collectors.toSet()));
-        assertEquals(14, ids.stream().filter(i -> i.endsWith("_stairs") || i.endsWith("_slab")).count());
+        assertEquals(14 + 4, ids.stream().filter(i -> i.endsWith("_stairs") || i.endsWith("_slab")).count());
     }
 
     @Test

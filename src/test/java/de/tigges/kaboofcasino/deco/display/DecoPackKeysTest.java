@@ -36,6 +36,9 @@ class DecoPackKeysTest {
     void everyItemModelAndNameExists() {
         for (DecoType t : DecoType.values()) {
             assertTrue(PackFiles.hasItemModel(t.id()), t.id());
+            if (t.own()) {
+                continue; // no language key: the German fallback of the item name
+            }
             String ns = t.id().substring(0, t.id().indexOf(':'));
             JsonObject de = JsonParser.parseString(new String(PackFiles.all().get("assets/" + ns
                     + "/lang/de_de.json"), StandardCharsets.UTF_8)).getAsJsonObject();
