@@ -51,15 +51,11 @@ final class DecoDisplayPack {
     /** The TVs' channels 0..8 ({@code screen}; 0 = off). */
     static final int TV_CHANNELS = 9;
 
-    /**
-     * Stairs and slabs the mod does not have (Jack 2026-11-09): family -> the side and the end texture of its block
-     * ({@link #ownStairsAndSlabs}).
-     */
-    static final Map<String, List<String>> OWN_FAMILIES = new java.util.TreeMap<>(Map.of(
-            "gilded_dark_oak_paneling", List.of("casinodeco:block/gilded_dark_oak_paneling",
-                    "casinodeco:block/dark_oak_cap"),
-            "classic_gilded_dark_oak_paneling", List.of("casinodeco:block/classic_gilded_dark_oak_paneling",
-                    "minecraft:block/dark_oak_planks")));
+    /** The wall blocks that get stairs and slabs the mod does not have (Jack 2026-11-09, {@link #ownStairsAndSlabs}). */
+    static final List<String> OWN_FAMILIES = List.of("classic_dark_oak_baseboard", "classic_dark_oak_cornice",
+            "classic_dark_oak_dado_rail", "classic_dark_oak_diamond_panel", "classic_dark_oak_pilaster",
+            "classic_gilded_dark_oak_paneling", "dark_oak_baseboard", "dark_oak_cornice", "dark_oak_dado_rail",
+            "dark_oak_diamond_panel", "dark_oak_paneling", "dark_oak_pilaster", "gilded_dark_oak_paneling");
 
     /** Exact keys ("key="): the names of the placing items in all 12 languages. */
     static final List<String> LANG_PREFIXES = langKeys();
@@ -390,18 +386,22 @@ final class DecoDisplayPack {
     static void ownStairsAndSlabs(ModJar jar, ModelCopier copier, PackTree tree) {
         JsonObject turns = Json.parse(jar.bytes("assets/casinodeco/blockstates/ruby_velvet_stairs.json"))
                 .getAsJsonObject("variants");
-        for (Map.Entry<String, List<String>> family : OWN_FAMILIES.entrySet()) {
-            String name = family.getKey();
-            family.getValue().forEach(copier::texture);
+        for (String name : OWN_FAMILIES) {
+            JsonObject block = Json.parse(jar.bytes("assets/casinodeco/models/block/" + name + ".json"))
+                    .getAsJsonObject("textures");
+            String end = block.get("end").getAsString();
+            copier.texture(block.get("side").getAsString());
+            copier.texture(end);
             JsonObject textures = new JsonObject();
-            textures.addProperty("bottom", family.getValue().get(1));
-            textures.addProperty("top", family.getValue().get(1));
-            textures.addProperty("side", family.getValue().get(0));
+            textures.addProperty("bottom", end);
+            textures.addProperty("top", end);
+            textures.add("side", block.get("side"));
             BufferedImage side = Images.read(jar.bytes("assets/casinodeco/textures/block/" + name + ".png"));
+            DecoTrim.Pattern pattern = DecoTrim.Pattern.of(name);
             tree.put("assets/kaboofcasino/textures/block/trim/" + name + "_half.png",
-                    Images.write(DecoTrim.half(side)));
+                    Images.write(DecoTrim.half(side, pattern)));
             tree.put("assets/kaboofcasino/textures/block/trim/" + name + "_quarter.png",
-                    Images.write(DecoTrim.quarter(side)));
+                    Images.write(DecoTrim.quarter(side, pattern)));
             textures.addProperty("half", "kaboofcasino:block/trim/" + name + "_half");
             textures.addProperty("quarter", "kaboofcasino:block/trim/" + name + "_quarter");
             stairsItem(tree, name + "_stairs", textures);

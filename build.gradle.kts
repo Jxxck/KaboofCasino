@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.tigges"
-version = "0.12.2"
+version = "0.12.3"
 
 repositories {
     mavenCentral()

@@ -123,7 +123,51 @@ public enum DecoType {
     CLASSIC_GILDED_DARK_OAK_STAIRS("casinodeco:classic_gilded_dark_oak_paneling_stairs", Material.WARPED_STAIRS,
             "classic_gilded_dark_oak_paneling", "Treppe — Vergoldete Vertäfelung aus Schwarzeichenholzbrettern"),
     CLASSIC_GILDED_DARK_OAK_SLAB("casinodeco:classic_gilded_dark_oak_paneling_slab", Material.WARPED_SLAB,
-            "classic_gilded_dark_oak_paneling", "Stufe — Vergoldete Vertäfelung aus Schwarzeichenholzbrettern");
+            "classic_gilded_dark_oak_paneling", "Stufe — Vergoldete Vertäfelung aus Schwarzeichenholzbrettern"),
+    DARK_OAK_PANELING_STAIRS("casinodeco:dark_oak_paneling_stairs", Material.CRIMSON_STAIRS, "dark_oak_paneling",
+            "Treppe — Schwarzeichenvertäfelung"),
+    DARK_OAK_PANELING_SLAB("casinodeco:dark_oak_paneling_slab", Material.CRIMSON_SLAB, "dark_oak_paneling",
+            "Stufe — Schwarzeichenvertäfelung"),
+    DARK_OAK_BASEBOARD_STAIRS("casinodeco:dark_oak_baseboard_stairs", Material.CRIMSON_STAIRS, "dark_oak_baseboard",
+            "Treppe — Sockelleiste aus Schwarzeiche und Gold"),
+    DARK_OAK_BASEBOARD_SLAB("casinodeco:dark_oak_baseboard_slab", Material.CRIMSON_SLAB, "dark_oak_baseboard",
+            "Stufe — Sockelleiste aus Schwarzeiche und Gold"),
+    DARK_OAK_DADO_RAIL_STAIRS("casinodeco:dark_oak_dado_rail_stairs", Material.CRIMSON_STAIRS, "dark_oak_dado_rail",
+            "Treppe — Zierleiste aus Schwarzeiche und Gold"),
+    DARK_OAK_DADO_RAIL_SLAB("casinodeco:dark_oak_dado_rail_slab", Material.CRIMSON_SLAB, "dark_oak_dado_rail",
+            "Stufe — Zierleiste aus Schwarzeiche und Gold"),
+    DARK_OAK_CORNICE_STAIRS("casinodeco:dark_oak_cornice_stairs", Material.CRIMSON_STAIRS, "dark_oak_cornice",
+            "Treppe — Gesims aus Schwarzeiche und Gold"),
+    DARK_OAK_CORNICE_SLAB("casinodeco:dark_oak_cornice_slab", Material.CRIMSON_SLAB, "dark_oak_cornice",
+            "Stufe — Gesims aus Schwarzeiche und Gold"),
+    DARK_OAK_PILASTER_STAIRS("casinodeco:dark_oak_pilaster_stairs", Material.CRIMSON_STAIRS, "dark_oak_pilaster",
+            "Treppe — Pilaster aus Schwarzeiche und Gold"),
+    DARK_OAK_PILASTER_SLAB("casinodeco:dark_oak_pilaster_slab", Material.CRIMSON_SLAB, "dark_oak_pilaster",
+            "Stufe — Pilaster aus Schwarzeiche und Gold"),
+    DARK_OAK_DIAMOND_PANEL_STAIRS("casinodeco:dark_oak_diamond_panel_stairs", Material.CRIMSON_STAIRS, "dark_oak_diamond_panel",
+            "Treppe — Schwarzeichenpaneel mit Goldmedaillon"),
+    DARK_OAK_DIAMOND_PANEL_SLAB("casinodeco:dark_oak_diamond_panel_slab", Material.CRIMSON_SLAB, "dark_oak_diamond_panel",
+            "Stufe — Schwarzeichenpaneel mit Goldmedaillon"),
+    CLASSIC_DARK_OAK_BASEBOARD_STAIRS("casinodeco:classic_dark_oak_baseboard_stairs", Material.WARPED_STAIRS, "classic_dark_oak_baseboard",
+            "Treppe — Sockelleiste aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_BASEBOARD_SLAB("casinodeco:classic_dark_oak_baseboard_slab", Material.WARPED_SLAB, "classic_dark_oak_baseboard",
+            "Stufe — Sockelleiste aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_DADO_RAIL_STAIRS("casinodeco:classic_dark_oak_dado_rail_stairs", Material.WARPED_STAIRS, "classic_dark_oak_dado_rail",
+            "Treppe — Zierleiste aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_DADO_RAIL_SLAB("casinodeco:classic_dark_oak_dado_rail_slab", Material.WARPED_SLAB, "classic_dark_oak_dado_rail",
+            "Stufe — Zierleiste aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_CORNICE_STAIRS("casinodeco:classic_dark_oak_cornice_stairs", Material.WARPED_STAIRS, "classic_dark_oak_cornice",
+            "Treppe — Gesims aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_CORNICE_SLAB("casinodeco:classic_dark_oak_cornice_slab", Material.WARPED_SLAB, "classic_dark_oak_cornice",
+            "Stufe — Gesims aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_PILASTER_STAIRS("casinodeco:classic_dark_oak_pilaster_stairs", Material.WARPED_STAIRS, "classic_dark_oak_pilaster",
+            "Treppe — Pilaster aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_PILASTER_SLAB("casinodeco:classic_dark_oak_pilaster_slab", Material.WARPED_SLAB, "classic_dark_oak_pilaster",
+            "Stufe — Pilaster aus Schwarzeichenholzbrettern und Gold"),
+    CLASSIC_DARK_OAK_DIAMOND_PANEL_STAIRS("casinodeco:classic_dark_oak_diamond_panel_stairs", Material.WARPED_STAIRS, "classic_dark_oak_diamond_panel",
+            "Treppe — Paneel aus Schwarzeichenholzbrettern mit Goldmedaillon"),
+    CLASSIC_DARK_OAK_DIAMOND_PANEL_SLAB("casinodeco:classic_dark_oak_diamond_panel_slab", Material.WARPED_SLAB, "classic_dark_oak_diamond_panel",
+            "Stufe — Paneel aus Schwarzeichenholzbrettern mit Goldmedaillon");
 
     /** What stands in the world under the display. */
     public enum Carrier {
@@ -281,7 +325,7 @@ public enum DecoType {
 
     /** Stairs and slabs the mod does not have: their files come from the pack tool, their recipes from here. */
     public boolean own() {
-        return family != null && family.contains("gilded_dark_oak");
+        return family != null && family.contains("dark_oak");
     }
 
     /** The texture family of stairs/slabs ({@code ivory_marble}); null for the rest. */

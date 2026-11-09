@@ -285,6 +285,6 @@ class DecoBlockstateTest {
             assertTrue(ModAssets.all().containsKey("assets/" + t.id().substring(0, colon) + "/items/"
                     + t.id().substring(colon + 1) + ".json"), t.id());
         }
-        assertEquals(45 + 4, DecoType.values().length);
+        assertEquals(45 + 26, DecoType.values().length);
     }
 }

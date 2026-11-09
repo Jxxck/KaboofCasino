@@ -88,7 +88,7 @@ class DecoDisplayPackTest {
     /** The stairs and slabs the mod does not have: items, all 40 stair states, the three slab types. */
     @Test
     void ownStairsAndSlabsAreComplete() {
-        for (String family : DecoDisplayPack.OWN_FAMILIES.keySet()) {
+        for (String family : DecoDisplayPack.OWN_FAMILIES) {
             assertTrue(tree.has("assets/casinodeco/items/" + family + "_stairs.json"), family);
             assertTrue(tree.has("assets/casinodeco/models/item/" + family + "_slab.json"), family);
             int states = 0;
@@ -147,8 +147,8 @@ class DecoDisplayPackTest {
     @Test
     void trimCellsAreClosedFrames() {
         BufferedImage side = Images.read(jar.bytes("assets/casinodeco/textures/block/gilded_dark_oak_paneling.png"));
-        BufferedImage half = DecoTrim.half(side);
-        BufferedImage quarter = DecoTrim.quarter(side);
+        BufferedImage half = DecoTrim.half(side, DecoTrim.Pattern.FRAME);
+        BufferedImage quarter = DecoTrim.quarter(side, DecoTrim.Pattern.FRAME);
         for (int cell : new int[] {0, 8}) {
             assertEquals(side.getRGB(8, 2), half.getRGB(8, cell + 1), "top bar");
             assertEquals(side.getRGB(8, 13), half.getRGB(8, cell + 6), "bottom bar");
@@ -156,6 +156,37 @@ class DecoDisplayPackTest {
             assertEquals(side.getRGB(12, 13), quarter.getRGB(cell + 6, 6), "corner");
         }
         assertTrue(tree.has("assets/kaboofcasino/textures/block/trim/classic_gilded_dark_oak_paneling_quarter.png"));
+    }
+
+    /** Every wall pattern keeps its gold on the small faces, and the patterns are told apart by the block's name. */
+    @Test
+    void everyWallPatternSurvivesOnSmallFaces() {
+        assertEquals(DecoTrim.Pattern.BASEBOARD, DecoTrim.Pattern.of("classic_dark_oak_baseboard"));
+        assertEquals(DecoTrim.Pattern.DADO, DecoTrim.Pattern.of("dark_oak_dado_rail"));
+        assertEquals(DecoTrim.Pattern.CORNICE, DecoTrim.Pattern.of("dark_oak_cornice"));
+        assertEquals(DecoTrim.Pattern.PILASTER, DecoTrim.Pattern.of("classic_dark_oak_pilaster"));
+        assertEquals(DecoTrim.Pattern.DIAMOND, DecoTrim.Pattern.of("dark_oak_diamond_panel"));
+        assertEquals(DecoTrim.Pattern.PLAIN, DecoTrim.Pattern.of("dark_oak_paneling"));
+        assertEquals(DecoTrim.Pattern.FRAME, DecoTrim.Pattern.of("classic_gilded_dark_oak_paneling"));
+        for (String family : DecoDisplayPack.OWN_FAMILIES) {
+            if (family.equals("dark_oak_paneling")) {
+                continue; // the one pattern without gold
+            }
+            BufferedImage side = Images.read(jar.bytes("assets/casinodeco/textures/block/" + family + ".png"));
+            assertTrue(gold(DecoTrim.half(side, DecoTrim.Pattern.of(family))) > 8, family + " half");
+            assertTrue(gold(DecoTrim.quarter(side, DecoTrim.Pattern.of(family))) > 8, family + " quarter");
+        }
+    }
+
+    private static int gold(BufferedImage image) {
+        int n = 0;
+        for (int y = 0; y < 16; y++) {
+            for (int x = 0; x < 16; x++) {
+                int p = image.getRGB(x, y);
+                n += ((p >> 16) & 255) > 150 && ((p >> 8) & 255) > 110 && (p & 255) < 110 ? 1 : 0;
+            }
+        }
+        return n;
     }
 
     /** The three slab types show the exact covers, with the mod's textures; a double slab its one texture. */
