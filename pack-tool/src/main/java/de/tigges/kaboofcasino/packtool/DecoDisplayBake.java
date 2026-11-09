@@ -228,6 +228,81 @@ final class DecoDisplayBake {
         return p;
     }
 
+    /**
+     * Gives every vertical face the texture variable of its shape, for blocks with a pattern made for a whole face
+     * ({@link DecoTrim}): {@code #side} if its plane is covered completely (the back of a stair, a double slab), else
+     * {@code #half} for a free 16 wide face and {@code #quarter} for an 8 wide one or one half hidden by a neighbour
+     * box (an inner stair's riser). The texture at the default UVs then is a whole frame on each of them.
+     */
+    static JsonArray faceRoles(JsonArray baked) {
+        Map<String, Double> covered = new java.util.HashMap<>();
+        for (JsonElement e : baked) {
+            JsonObject el = e.getAsJsonObject();
+            double[] from = doubles(el.getAsJsonArray("from"));
+            double[] to = doubles(el.getAsJsonArray("to"));
+            for (String dir : el.getAsJsonObject("faces").keySet()) {
+                if (vertical(dir)) {
+                    covered.merge(dir + "@" + plane(from, to, dir), width(from, to, dir) * (to[1] - from[1]),
+                            Double::sum);
+                }
+            }
+        }
+        JsonArray out = new JsonArray();
+        for (JsonElement e : baked) {
+            JsonObject el = e.getAsJsonObject().deepCopy();
+            double[] from = doubles(el.getAsJsonArray("from"));
+            double[] to = doubles(el.getAsJsonArray("to"));
+            for (Map.Entry<String, JsonElement> f : el.getAsJsonObject("faces").entrySet()) {
+                String dir = f.getKey();
+                if (vertical(dir) && covered.get(dir + "@" + plane(from, to, dir)) < 256 - 1e-6) {
+                    boolean free = width(from, to, dir) > 16 - 1e-6 && !partlyHidden(baked, from, to, dir);
+                    f.getValue().getAsJsonObject().addProperty("texture", free ? "#half" : "#quarter");
+                }
+            }
+            out.add(el);
+        }
+        return out;
+    }
+
+    private static boolean vertical(String dir) {
+        return !dir.equals("up") && !dir.equals("down");
+    }
+
+    private static double plane(double[] from, double[] to, String dir) {
+        return switch (dir) {
+            case "north" -> from[2];
+            case "south" -> to[2];
+            case "west" -> from[0];
+            default -> to[0];
+        };
+    }
+
+    private static double width(double[] from, double[] to, String dir) {
+        return dir.equals("north") || dir.equals("south") ? to[0] - from[0] : to[2] - from[2];
+    }
+
+    /** True if another box stands directly in front of this face over a part of it. */
+    private static boolean partlyHidden(JsonArray baked, double[] from, double[] to, String dir) {
+        int axis = dir.equals("north") || dir.equals("south") ? 2 : 0;
+        boolean high = dir.equals("south") || dir.equals("east");
+        double at = plane(from, to, dir);
+        for (JsonElement e : baked) {
+            double[] f = doubles(e.getAsJsonObject().getAsJsonArray("from"));
+            double[] t = doubles(e.getAsJsonObject().getAsJsonArray("to"));
+            boolean touches = high ? f[axis] == at : t[axis] == at;
+            boolean overlaps = true;
+            for (int a = 0; a < 3; a++) {
+                if (a != axis) {
+                    overlaps &= Math.min(t[a], to[a]) - Math.max(f[a], from[a]) > 1e-6;
+                }
+            }
+            if (touches && overlaps) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** One exact full-width box from {@code y0} to {@code y1} (px) as a slab template: top, bottom, the rest side. */
     static JsonArray slab(double y0, double y1) {
         JsonObject faces = new JsonObject();
@@ -242,7 +317,7 @@ final class DecoDisplayBake {
         el.add("faces", faces);
         JsonArray list = new JsonArray();
         list.add(el);
-        return bakeUvLocked(list, 0, 0);
+        return faceRoles(bakeUvLocked(list, 0, 0));
     }
 
     static double[] doubles(JsonArray a) {

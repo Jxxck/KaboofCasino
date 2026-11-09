@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.nio.file.Path;
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -109,6 +110,52 @@ class DecoDisplayPackTest {
                 .getAsJsonObject("textures");
         assertEquals("minecraft:block/dark_oak_planks", side.get("top").getAsString());
         assertEquals("casinodeco:block/classic_gilded_dark_oak_paneling", side.get("side").getAsString());
+    }
+
+    private static String faceTexture(JsonArray elements, double[] from, String dir) {
+        for (JsonElement e : elements) {
+            JsonObject el = e.getAsJsonObject();
+            if (java.util.Arrays.equals(from, DecoDisplayBake.doubles(el.getAsJsonArray("from")))) {
+                return el.getAsJsonObject("faces").getAsJsonObject(dir).get("texture").getAsString();
+            }
+        }
+        throw new IllegalStateException("no element at " + java.util.Arrays.toString(from));
+    }
+
+    /** Whole faces keep the side texture, half-height ones a 16 x 8 frame, small and half hidden ones an 8 x 8 frame. */
+    @Test
+    void facesPickTheFrameOfTheirShape() {
+        JsonArray straight = DecoDisplayBake.faceRoles(DecoDisplayBake.bakeUvLocked(
+                DecoDisplayBake.template("minecraft:block/stairs"), 0, 0));
+        double[] low = {0, 0, 0};
+        double[] step = {8, 8, 0};
+        assertEquals("#side", faceTexture(straight, low, "east"), "the back");
+        assertEquals("#side", faceTexture(straight, step, "east"), "the back");
+        assertEquals("#half", faceTexture(straight, low, "west"), "lower riser");
+        assertEquals("#half", faceTexture(straight, step, "west"), "upper riser");
+        assertEquals("#half", faceTexture(straight, low, "north"), "side below");
+        assertEquals("#quarter", faceTexture(straight, step, "north"), "side above");
+        JsonArray inner = DecoDisplayBake.faceRoles(DecoDisplayBake.bakeUvLocked(
+                DecoDisplayBake.template("minecraft:block/inner_stairs"), 0, 0));
+        assertEquals("#quarter", faceTexture(inner, step, "west"), "riser half behind the other arm");
+        assertEquals("#side", faceTexture(inner, step, "south"), "whole back in two parts");
+        assertEquals("#half", faceTexture(DecoDisplayBake.slab(0, 8), low, "north"));
+        assertEquals("#side", faceTexture(DecoDisplayBake.slab(0, 16), low, "north"));
+    }
+
+    /** Every cell of the trim textures holds a closed gold frame. */
+    @Test
+    void trimCellsAreClosedFrames() {
+        BufferedImage side = Images.read(jar.bytes("assets/casinodeco/textures/block/gilded_dark_oak_paneling.png"));
+        BufferedImage half = DecoTrim.half(side);
+        BufferedImage quarter = DecoTrim.quarter(side);
+        for (int cell : new int[] {0, 8}) {
+            assertEquals(side.getRGB(8, 2), half.getRGB(8, cell + 1), "top bar");
+            assertEquals(side.getRGB(8, 13), half.getRGB(8, cell + 6), "bottom bar");
+            assertEquals(side.getRGB(3, 2), quarter.getRGB(cell + 1, 1), "corner");
+            assertEquals(side.getRGB(12, 13), quarter.getRGB(cell + 6, 6), "corner");
+        }
+        assertTrue(tree.has("assets/kaboofcasino/textures/block/trim/classic_gilded_dark_oak_paneling_quarter.png"));
     }
 
     /** The three slab types show the exact covers, with the mod's textures; a double slab its one texture. */

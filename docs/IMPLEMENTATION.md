@@ -1477,7 +1477,9 @@ Stairs and slabs of the two gilded dark oak blocks (`gilded_dark_oak_paneling`, 
 `classic_gilded_dark_oak_paneling`): `casinodeco:<block>_stairs` and `_slab`, the last four `DecoType`s (appended, the
 order of the others stays), on nether wood carriers like the velvets (crimson, warped: wood sounds and tools, they do not
 burn). Pack: `DecoDisplayPack.ownStairsAndSlabs` (the mod has no files for them: placing items, 40 stair states by the
-turns of its velvet stairs, three slab types, end texture on top and bottom). Recipes `DecoItems.ownRecipes`, shaped and
+turns of its velvet stairs, three slab types, end texture on top and bottom). The blocks' side is one gold frame on a
+whole face, so half-height faces got their own frames in 0.12.2 (`DecoTrim`, stitched from the original's rows and columns;
+`DecoDisplayBake.faceRoles` picks `#side`, `#half` or `#quarter` per face). Recipes `DecoItems.ownRecipes`, shaped and
 counted like the mod's marble ones (6 blocks to 4 stairs, 3 blocks to 6 slabs). The names have no language key, so every
 client shows the German fallback.
 
