@@ -45,12 +45,18 @@ public final class Recipes {
      * ({@code roulettecasino:x}, {@code casinodeco:x}, {@code casinosound:x}); shapeless recipes have no pattern.
      */
     public record Def(String id, boolean shapeless, List<String> pattern, Map<Character, String> key,
-                      List<String> ingredients, String result, int count, List<String> unlocks) {
+                      List<String> ingredients, String result, int count, List<String> unlocks, boolean exact) {
         public Def {
             pattern = List.copyOf(pattern);
             key = Map.copyOf(key);
             ingredients = List.copyOf(ingredients);
             unlocks = List.copyOf(unlocks);
+        }
+
+        /** A recipe whose casino ingredients match by material ({@code exact} false, the mod's recipes). */
+        public Def(String id, boolean shapeless, List<String> pattern, Map<Character, String> key,
+                   List<String> ingredients, String result, int count, List<String> unlocks) {
+            this(id, shapeless, pattern, key, ingredients, result, count, unlocks, false);
         }
 
         public NamespacedKey namespaced() {
@@ -177,14 +183,14 @@ public final class Recipes {
                 if (d.shapeless()) {
                     ShapelessRecipe r = new ShapelessRecipe(d.namespaced(), result);
                     for (String ingredient : d.ingredients()) {
-                        r.addIngredient(choice(ingredient, messages));
+                        r.addIngredient(choice(ingredient, messages, d.exact()));
                     }
                     recipe = r;
                 } else {
                     ShapedRecipe r = new ShapedRecipe(d.namespaced(), result);
                     r.shape(d.pattern().toArray(String[]::new));
                     for (Map.Entry<Character, String> k : d.key().entrySet()) {
-                        r.setIngredient(k.getKey(), choice(k.getValue(), messages));
+                        r.setIngredient(k.getKey(), choice(k.getValue(), messages, d.exact()));
                     }
                     recipe = r;
                 }
@@ -199,14 +205,19 @@ public final class Recipes {
         results = Map.copyOf(made);
     }
 
-    private static RecipeChoice choice(String ingredient, Messages messages) {
+    /**
+     * {@code exact}: a casino ingredient as its exact stack, so the recipe book shows the real item and its click takes
+     * the right one (by material the book shows plain paper and fills in any paper item, chips too). An exact recipe
+     * needs a twin by material: without any matching recipe the crafting grid would not consume its ingredients.
+     */
+    private static RecipeChoice choice(String ingredient, Messages messages, boolean exact) {
         if (ingredient.startsWith("#")) {
             return new RecipeChoice.MaterialChoice(tag(ingredient));
         }
         if (casinoId(ingredient)) {
-            Material m = casinoStack(ingredient, messages, 1).map(ItemStack::getType)
+            ItemStack one = casinoStack(ingredient, messages, 1)
                     .orElseThrow(() -> new IllegalStateException("unknown casino ingredient " + ingredient));
-            return new RecipeChoice.MaterialChoice(m);
+            return exact ? new RecipeChoice.ExactChoice(one) : new RecipeChoice.MaterialChoice(one.getType());
         }
         return new RecipeChoice.MaterialChoice(material(ingredient));
     }

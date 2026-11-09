@@ -1395,7 +1395,10 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
 - **Machine** `CHIP_SHOP` (item `chip_shop` "Chip-Shop", `/casino give chip_shop`; recipe `kaboofcasino:chip_shop`
   with `chipshop.craftable` (default true since the fix round, Jack: "fit in ... Crafting"; `false` = `/casino give`
   only, like the cashier): glass pane, small casino sign, glass pane over black marble bar, chip pile, black marble
-  bar; unlocks with a chip pile): the cashier's footprint and rules (2 wide x 1 deep x 2 tall, both bottom
+  bar; unlocks with a chip pile. Since 0.11.1 two entries: the book's `chip_shop` with exact casino ingredients (by
+  material the book showed plain paper and its click filled the grid with any paper item, chips too, so nothing came
+  out) and the undiscovered `chip_shop_any` by material (older stacks still craft; a grid result needs SOME matching
+  recipe, or vanilla hands the ingredients back). The mod's recipes still match by material): the cashier's footprint and rules (2 wide x 1 deep x 2 tall, both bottom
   cells on support, chunk fit, clearance, logout spots, spawn protection, breaking, verify), no game, one player at a
   time, idle close after `gui.idle-close-seconds`. Look (`ChipShopRig`): the cashier's marble counter, the pack's
   glass display case `kaboofcasino:chipshop/display` on it and the CHIP-SHOP sign `kaboofcasino:chipshop/sign`.

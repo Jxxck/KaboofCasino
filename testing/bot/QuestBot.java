@@ -468,6 +468,11 @@ public class QuestBot {
           ss.send(new ServerboundAcceptTeleportationPacket(pp.getId(), px, py, pz, pp.getYRot(), pp.getXRot()));
           moveEcho.set(new float[] {pp.getYRot(), pp.getXRot()});
         } else if (p instanceof ClientboundSystemChatPacket c) { log((c.isOverlay() ? "ACTIONBAR " : "CHAT ") + plain(c.getContent()));
+        } else if (p instanceof org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundRecipeBookAddPacket rb) {
+          for (var e : rb.getEntries()) { // the recipe book: only the ids of the casino's shop counter are of interest
+            String d = e.contents().toString();
+            if (d.contains("chip_shop")) log("RECIPE id=" + e.contents().id() + " " + d.substring(0, Math.min(900, d.length())));
+          }
         } else if (p instanceof ClientboundSetActionBarTextPacket c) { log("ACTIONBAR " + plain(c.getText()));
         } else if (p instanceof ClientboundSetTitleTextPacket c) { log("TITLE " + plain(c.getText()));
         } else if (p instanceof ClientboundTabListPacket t) { if (tabLogged++ < 1) log("TAB\n" + plain(t.getHeader()) + "\n----\n" + plain(t.getFooter()));
@@ -555,6 +560,7 @@ public class QuestBot {
           case "say" -> s.send(new org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket(line.substring(4), System.currentTimeMillis(), 0L, null, 0, new java.util.BitSet(), 0)); // unsigned chat line (offline mode)
           case "tab" -> s.send(new ServerboundCommandSuggestionPacket(seq++, "/" + line.substring(4).replaceFirst("^/", "").replace("~", " ")));
           case "click" -> click(s, Integer.parseInt(w[1]), w.length > 2 ? w[2] : "left");
+          case "placerecipe" -> s.send(new org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundPlaceRecipePacket(containerId, Integer.parseInt(w[1]), w.length > 2)); // a click on a recipe-book entry
           case "clickid" -> { // clickid <container id> <slot> [mode]: click in an explicit container (0 = own inventory screen)
             int saved = containerId, savedState = stateId;
             int cid = Integer.parseInt(w[1]);

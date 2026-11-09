@@ -79,5 +79,21 @@ craft) # the shop counter's recipe in a crafting table (chipshop.craftable: true
   m=$(wc -l < "$A"); b place 48 -57 9 west; sleep 0.5; b click 37; b click 1 right; b click 3; b click 38; b click 2; b click 39; b click 4 right; b click 6; b click 40; b click 5; sleep 0.4
   echo "result: $(tail -n +"$m" "$A" | grep -E 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-120)"
   b click 0; b click 44; sleep 0.3; b close; sleep 0.3; echo "chip_shop in the inventory: $(has chip_shop)" ;;
-*) echo "usage: chipshop-test.sh place|buy|stack|machines|poor|full|double|confirm|overcap|craft"; exit 2 ;;
+book) # a click on the recipe-book entry with chips in the inventory: the right items land in the grid, the shop comes out
+  id=$(grep -a 'RECIPE id=' "$A" | tail -1 | sed -E 's/.*RECIPE id=([0-9]+).*/\1/')
+  q "clear Alice" "gamemode survival Alice" "setblock 48 -57 9 crafting_table" "tp Alice 47.5 -57 9.5 -90 0" "casino give chip_25 Alice 10" "give Alice glass_pane 2" \
+    "casino give casinodeco:small_casino_sign Alice 1" "casino give casinodeco:black_marble_bar Alice 2" "casino give casinodeco:casino_chip_pile Alice 1"; sleep 0.8
+  m=$(wc -l < "$A"); b place 48 -57 9 west; sleep 0.5; b placerecipe "$id"; sleep 0.8
+  echo "result: $(tail -n +"$m" "$A" | grep -aE 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-120)"
+  b click 0; b click 44; sleep 0.3; b close; sleep 0.3
+  echo "chip_shop: $(has chip_shop) | sign: $(has casinodeco:small_casino_sign) | bars: $(has casinodeco:black_marble_bar) | pile: $(has casinodeco:casino_chip_pile) | chips: $(has kaboofcasino:chip_25)" ;;
+stale) # by hand with an older stack of the chip pile (other item name, same id): crafts and is consumed
+  q "clear Alice" "gamemode survival Alice" "setblock 48 -57 9 crafting_table" "tp Alice 47.5 -57 9.5 -90 0" "give Alice glass_pane 2" \
+    "casino give casinodeco:small_casino_sign Alice 1" "casino give casinodeco:black_marble_bar Alice 2" \
+    "give Alice paper[item_name='alt',item_model='casinodeco:casino_chip_pile',custom_data={PublicBukkitValues:{\"kaboofcasino:item\":\"casinodeco:casino_chip_pile\"}}] 1"; sleep 0.6
+  m=$(wc -l < "$A"); b place 48 -57 9 west; sleep 0.5; b click 37; b click 1 right; b click 3; b click 38; b click 2; b click 39; b click 4 right; b click 6; b click 40; b click 5; sleep 0.4
+  echo "result: $(tail -n +"$m" "$A" | grep -E 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-120)"
+  b click 0; b click 44; sleep 0.3; b close; sleep 0.3
+  echo "chip_shop: $(has chip_shop) | sign: $(has casinodeco:small_casino_sign) | bars: $(has casinodeco:black_marble_bar) | pile: $(has casinodeco:casino_chip_pile)" ;;
+*) echo "usage: chipshop-test.sh place|buy|stack|machines|poor|full|double|confirm|overcap|craft|book|stale"; exit 2 ;;
 esac
