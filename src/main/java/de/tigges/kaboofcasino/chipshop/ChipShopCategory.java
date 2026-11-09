@@ -13,7 +13,8 @@ public enum ChipShopCategory {
     BAR("bar", "casinodeco:black_marble_bar"),
     LIGHTS("licht", "casinodeco:casino_chandelier"),
     TECH("technik", "roulettecasino:casino_tv"),
-    MACHINES("maschinen", "roulettecasino:slot_machine");
+    MACHINES("maschinen", "roulettecasino:slot_machine"),
+    OUTFITS("outfits", "casinodeco:outfit_smoking_jacket");
 
     private static final Set<String> FURNITURE_IDS = Set.of("casinodeco:casino_sofa", "roulettecasino:casino_chair",
             "roulettecasino:casino_stool", "casinodeco:velvet_rope_post");
@@ -55,6 +56,9 @@ public enum ChipShopCategory {
      * (the full blocks, stairs and slabs) under floors and walls.
      */
     public static ChipShopCategory of(String id) {
+        if (id.startsWith("casinodeco:outfit_")) {
+            return OUTFITS;
+        }
         if (MACHINE_IDS.contains(id)) {
             return MACHINES;
         }

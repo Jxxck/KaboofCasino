@@ -30,7 +30,7 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * One tab of the Chip-Shop (9x6 chest, the cashier's layout; the title is the art): the six category tabs in slots 0-5,
+ * One tab of the Chip-Shop (9x6 chest, the cashier's layout; the title is the art): the seven category tabs in slots 0-6,
  * the tab's articles in 9-44 (36 a page), pages 45/46, the amount toggle 47 (one piece or a stack), KAUFEN 48-51, the
  * price of the choice (52) and the player's chips (53) in the side panel. A click on an article chooses it; KAUFEN
  * buys the chosen amount, Umschalt-click on KAUFEN always a stack; one purchase per 10 ticks (double clicks). Thread:
@@ -98,6 +98,7 @@ final class ChipShopMenu extends GameMenu {
             case LIGHTS -> Msg.CHIPSHOP_CAT_LICHT;
             case TECH -> Msg.CHIPSHOP_CAT_TECHNIK;
             case MACHINES -> Msg.CHIPSHOP_CAT_MASCHINEN;
+            case OUTFITS -> Msg.CHIPSHOP_CAT_OUTFITS;
         };
     }
 
@@ -184,9 +185,11 @@ final class ChipShopMenu extends GameMenu {
             set(CashierView.NEXT, Button.of(DisplayCopies.model("kaboofcasino:gui/cashier/next", name, lore),
                     (p, click) -> turn(p, 1, pages)));
         }
-        set(QTY, Button.of(DisplayCopies.model(stack ? "kaboofcasino:gui/chipshop/qty_stack"
-                : "kaboofcasino:gui/chipshop/qty_one", m.render(stack ? Msg.CHIPSHOP_QTY_STACK : Msg.CHIPSHOP_QTY_ONE),
-                m.lines(Msg.CHIPSHOP_QTY_LORE)), (p, click) -> {
+        int stackAmount = chosen == null ? 0 : amount(chosen, true);
+        boolean showStack = stack && stackAmount != 1; // a piece of clothing has no stack: the toggle says 1
+        set(QTY, Button.of(DisplayCopies.model(showStack ? "kaboofcasino:gui/chipshop/qty_stack"
+                : "kaboofcasino:gui/chipshop/qty_one", m.render(showStack ? Msg.CHIPSHOP_QTY_STACK
+                : Msg.CHIPSHOP_QTY_ONE), m.lines(Msg.CHIPSHOP_QTY_LORE)), (p, click) -> {
                     touch();
                     stack = !stack;
                     pending = null;
@@ -194,7 +197,6 @@ final class ChipShopMenu extends GameMenu {
                     render();
                 }));
         int amount = chosen == null ? 0 : amount(chosen, stack);
-        int stackAmount = chosen == null ? 0 : amount(chosen, true);
         Component name = chosen == null ? Component.empty() : ChipShopService.name(controller.service()
                 .one(chosen.id()), chosen.id());
         List<Component> buyLore = new ArrayList<>();
@@ -203,8 +205,10 @@ final class ChipShopMenu extends GameMenu {
         } else {
             buyLore.addAll(m.lines(Msg.CHIPSHOP_BUY_LORE, Messages.text("count", ChipText.number(amount)),
                     Messages.component("item", name), Messages.text("price", ChipText.chips(chosen.total(amount)))));
-            buyLore.addAll(m.lines(Msg.CHIPSHOP_BUY_SHIFT_LORE, Messages.text("count", ChipText.number(stackAmount)),
-                    Messages.text("price", ChipText.chips(chosen.total(stackAmount)))));
+            if (stackAmount > 1) {
+                buyLore.addAll(m.lines(Msg.CHIPSHOP_BUY_SHIFT_LORE, Messages.text("count",
+                        ChipText.number(stackAmount)), Messages.text("price", ChipText.chips(chosen.total(stackAmount)))));
+            }
         }
         Component buyName = pending != null && confirmable(Bukkit.getCurrentTick())
                 ? m.render(Msg.CHIPSHOP_CONFIRM, Messages.text("price", ChipText.chips(pending.total())))

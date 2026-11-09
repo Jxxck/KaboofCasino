@@ -132,6 +132,8 @@ public final class PackTool {
         // step 11: the chip shop (sign and display case models, item, menu art)
         ChipShopPack.add(jar, tree, packSrc);
         ChipShopGui.add(jar, tree, font, text);
+        // the casino outfits (equipment assets, icons, worn hats)
+        OutfitPack.add(tree);
         stakeMarker(tree);
         List<String> events = new java.util.ArrayList<>(SlotMachinePack.SOUND_EVENTS);
         events.addAll(WheelPack.SOUND_EVENTS);

@@ -1460,6 +1460,24 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
   the empty default does not remove them by itself.
 
+### Casino outfits (0.12.0; Jack 2026-11-09, not in MineVegas)
+
+- **Items** (`outfit/Outfits`): seven styles with four pieces each, ids `casinodeco:outfit_<style>_<hat|jacket|trousers|shoes>`.
+  Every piece is the leather armor item (stats and durability of leather) with `item_model` `kaboofcasino:outfit/...`,
+  `equippable` with the asset `kaboofcasino:outfit_<style>`, and the PDC id, so the crafting veto keeps them out of dye
+  and repair recipes. Hats have `equippable` without an asset: the client then draws the item model on the head
+  (checked in the 26.3 client: `HumanoidArmorLayer.shouldRender` needs an asset, otherwise `ItemDisplayContext.HEAD`).
+- **Pack** (`packtool/OutfitArt`, `OutfitPack`): painted from scratch in the mod's colours. Equipment asset plus 64x32
+  `humanoid` (jacket, shoes) and `humanoid_leggings` textures, 32x32 icons, hats select on `display_context`: flat icon
+  everywhere, 3D model on the head. Hat coordinates follow `CustomHeadLayer.translateToHead` (see `OutfitPack`).
+- **Shop**: seventh tab Outfits (`ChipShopCategory.OUTFITS`, slot 6, the old "Kategorie" plate is gone). Prices come from
+  the recipes like everything else, `chipshop.categories.outfits` (markup 15, min 50). Clothing does not stack: the
+  amount toggle shows 1 and the Umschalt lore is hidden for it.
+- **Recipes**: one shaped recipe per piece from wool and an accent, vanilla ingredients only (so the recipe book works);
+  unlocked by holding any chip. `Recipes.all()` now includes the plugin's own recipes (needed for the prices).
+- **Deploy**: three new settings merge in, no live edit needed; new pack; no schema change. Rollback to 0.11.1: the
+  outfit items stay ordinary leather armor with a tag, but lose their shop tab and recipes.
+
 #### Step 10 ships as 0.10.0 (deploy and rollback)
 
 - **Schema 4** (`V4__leaderboard.sql`: columns `play` and `refund` on `rounds`, index `rounds_board`, tables

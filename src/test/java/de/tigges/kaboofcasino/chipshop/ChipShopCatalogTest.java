@@ -27,12 +27,15 @@ import org.junit.jupiter.api.Test;
 class ChipShopCatalogTest {
 
     static List<Recipes.Def> recipes() {
-        return Recipes.parse(ChipShopCatalogTest.class.getClassLoader().getResourceAsStream("pack/recipes.json"));
+        List<Recipes.Def> all = new ArrayList<>(Recipes.parse(ChipShopCatalogTest.class.getClassLoader().getResourceAsStream("pack/recipes.json")));
+        all.addAll(de.tigges.kaboofcasino.outfit.Outfits.recipes());
+        return all;
     }
 
     /** The ids the item catalog holds at runtime (machines first, then the registered deco and chips). */
     static List<String> ids() {
         List<String> out = new ArrayList<>();
+        out.addAll(de.tigges.kaboofcasino.outfit.Outfits.ids());
         for (CasinoItem i : CasinoItem.values()) {
             out.add("roulettecasino:" + i.id());
         }

@@ -118,6 +118,7 @@ final class ChipShopEditor implements Listener {
             case LIGHTS -> Msg.CHIPSHOP_CAT_LICHT;
             case TECH -> Msg.CHIPSHOP_CAT_TECHNIK;
             case MACHINES -> Msg.CHIPSHOP_CAT_MASCHINEN;
+            case OUTFITS -> Msg.CHIPSHOP_CAT_OUTFITS;
         });
     }
 

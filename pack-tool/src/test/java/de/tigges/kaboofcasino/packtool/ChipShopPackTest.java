@@ -350,14 +350,6 @@ class ChipShopPackTest {
             assertEquals(0xFF000000 | -11970227, at(art, DerbyGuiArt.slotX(s) + 8, DerbyGuiArt.slotY(s) + 8), "slot "
                     + s);
         }
-        // the plate's word over slots 6-8: cream pixels there, inside the three slots
-        int cream = 0;
-        for (int y = ChipShopGui.TAB_Y; y < ChipShopGui.TAB_Y + 18; y++) {
-            for (int x = ChipShopGui.PLATE_X; x < ChipShopGui.PLATE_X + ChipShopGui.PLATE_W; x++) {
-                cream += at(art, x, y) == (0xFF000000 | DerbyGuiArt.CREAM) ? 1 : 0;
-            }
-        }
-        assertTrue(cream > 30, "plate text pixels: " + cream);
         // row 5 stays felt where the buttons and the numbers are items: no frame at 45-53
         assertNotEquals(0xFF000000 | -15391202, at(art, DerbyGuiArt.slotX(47) + 8, DerbyGuiArt.slotY(47) - 1));
     }

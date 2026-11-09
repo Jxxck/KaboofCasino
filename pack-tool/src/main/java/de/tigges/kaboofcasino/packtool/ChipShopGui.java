@@ -10,7 +10,7 @@ import java.util.List;
  * chest, the right panel as a receipt) with a row of category tabs. The title is the art and the receipt's texts at
  * the cashier's anchors; everything that changes is an item:
  * <pre>
- *  row 0     0-5 six one-slot category tabs (the plugin's icon item in each), 6-8 the "Kategorie" plate
+ *  row 0     0-6 seven one-slot category tabs (the plugin's icon item in each), 7-8 felt
  *  rows 1-4  9-44 the items of a page (slot frames in the background)
  *  row 5     45/46 pages ({@code gui/cashier/prev}, {@code next}), 47 the quantity toggle
  *            ({@code gui/chipshop/qty_one}, {@code qty_stack}), 48-51 KAUFEN ({@code gui/cashier/buy_on} /
@@ -18,15 +18,15 @@ import java.util.List;
  *            ({@code gui/cashier/num_b}, row B)
  * </pre>
  * The background ({@code chipshop_bg_0}, {@code _1}) holds everything that never changes: the cashier's background
- * (felt, inventory frames, the {@link InventoryLabelPlate}, the receipt's divider), the six tabs unselected, the plate
- * and the grid's frames. An overlay per tab ({@code chipshop_overlay_0..5}) draws that tab selected over it: lit fill,
+ * (felt, inventory frames, the {@link InventoryLabelPlate}, the receipt's divider), the seven tabs unselected and the
+ * grid's frames. An overlay per tab ({@code chipshop_overlay_0..6}) draws that tab selected over it: lit fill,
  * a gold ring, all inside row 0. The texts sit where the cashier's do, so the cashier's number displays (drawn from
  * slots 52 and 53 into the receipt) line up unchanged.
  */
 final class ChipShopGui {
 
     static final String PREFIX = "chipshop";
-    static final int TABS = 6;
+    static final int TABS = 7;
     static final String TEXTURE_DIR = "assets/kaboofcasino/textures/item/gui/chipshop/";
     static final String TEXTURE_ID = "kaboofcasino:item/gui/chipshop/";
     static final String MODEL_DIR = "assets/kaboofcasino/models/gui/chipshop/";
@@ -50,10 +50,6 @@ final class ChipShopGui {
     static final int TAB_W = 18;
     /** The selected tab's overlay: the tab and a gold ring one pixel around it (still inside row 0's 18 rows + 1). */
     static final int OVERLAY_PAD = 1;
-    /** The plate over slots 6-8. */
-    static final String PLATE = "Kategorie";
-    static final int PLATE_X = TAB_X + TABS * TAB_W;
-    static final int PLATE_W = 3 * TAB_W;
     /** The quantity toggle's labels. */
     static final String QTY_ONE = "1×";
     static final String QTY_STACK = "64";
@@ -106,7 +102,7 @@ final class ChipShopGui {
 
     /**
      * The cashier's background (both felt panels, the inventory frames, the plate under "Inventar", the divider) with
-     * row 0's six tabs unselected, the "Kategorie" plate over slots 6-8 and the frames of the item grid (9-44).
+     * row 0's seven tabs unselected and the frames of the item grid (9-44).
      */
     static BufferedImage background(BufferedImage feltSource, TextGlyphs text) {
         BufferedImage out = CashierGui.background(feltSource);
@@ -114,21 +110,10 @@ final class ChipShopGui {
         for (int t = 0; t < TABS; t++) {
             DerbyGuiArt.button(g, tabX(t), TAB_Y, TAB_W, TAB_W, true, false);
         }
-        plate(g, text);
         for (int s = FIRST_ITEM; s <= LAST_ITEM; s++) {
             DerbyGuiArt.slot(g, DerbyGuiArt.slotX(s), DerbyGuiArt.slotY(s));
         }
         return out;
-    }
-
-    /** Slots 6-8: the word "Kategorie" in the mod's cream with shadow on the felt, centred, an arrow to the tabs. */
-    static void plate(DerbyGuiArt.Canvas g, TextGlyphs text) {
-        int w = text.width(PLATE);
-        if (w > PLATE_W - 4) {
-            throw new IllegalStateException("'" + PLATE + "' does not fit over slots 6-8");
-        }
-        DerbyGuiArt.text(g, text, PLATE, PLATE_X + PLATE_W / 2 - w / 2 + 1, TAB_Y + 5, DerbyGuiArt.CREAM, false,
-                true);
     }
 
     /** The selected tab: the mod's button lit (its hover fill) inside a gold ring one pixel wider all round. */

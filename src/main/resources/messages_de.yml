@@ -124,6 +124,7 @@ chipshop:
     licht: "Licht & Schilder"
     technik: "Technik"
     maschinen: "Maschinen"
+    outfits: "Outfits"
   tab-lore: "<gray>Klicke hier, um die Kategorie zu zeigen."
   help: "Wähle einen\nArtikel, dann\nKAUFEN.\nUmschalt-Klick:\nein Stapel."
   label-balance: "Deine Chips:"

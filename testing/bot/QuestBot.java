@@ -471,7 +471,7 @@ public class QuestBot {
         } else if (p instanceof org.geysermc.mcprotocollib.protocol.packet.ingame.clientbound.ClientboundRecipeBookAddPacket rb) {
           for (var e : rb.getEntries()) { // the recipe book: only the ids of the casino's shop counter are of interest
             String d = e.contents().toString();
-            if (d.contains("chip_shop")) log("RECIPE id=" + e.contents().id() + " " + d.substring(0, Math.min(900, d.length())));
+            if (d.contains("chip_shop") || d.contains("outfit_")) { var tag = java.util.regex.Pattern.compile("outfit_[a-z]+_[a-z]+").matcher(d); log("RECIPE id=" + e.contents().id() + " " + (tag.find() ? tag.group() + " " : "") + d.substring(0, Math.min(900, d.length()))); }
           }
         } else if (p instanceof ClientboundSetActionBarTextPacket c) { log("ACTIONBAR " + plain(c.getText()));
         } else if (p instanceof ClientboundSetTitleTextPacket c) { log("TITLE " + plain(c.getText()));

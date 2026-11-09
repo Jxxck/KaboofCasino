@@ -54,6 +54,7 @@ public record ChipShopSettings(boolean craftable, Map<ChipShopCategory, Pricing>
             m.put(c, new Pricing(3.75, 5, 0, 0));
         }
         m.put(ChipShopCategory.MACHINES, new Pricing(1.25, 0, 0, 0));
+        m.put(ChipShopCategory.OUTFITS, new Pricing(15, 50, 0, 0));
         return java.util.Collections.unmodifiableMap(m);
     }
 

@@ -91,7 +91,7 @@ class ChipShopArtPreviewTest {
     static final TextColor CREAM = TextColor.color(0xF3E7BF);
     static final TextColor MUTED = TextColor.color(0xB5C5A6);
     static final String[] CATEGORIES = {"Böden und Wände", "Möbel", "Bar & Tische", "Licht & Schilder",
-        "Technik", "Maschinen"};
+        "Technik", "Maschinen", "Outfits"};
     /** The shipped {@code chipshop.help} (each line at most 88 px like the cashier's: the receipt's text room is 90 px). */
     static final String HELP = "Wähle einen\nArtikel, dann\nKAUFEN.\nUmschalt-Klick:\nein Stapel.";
 
@@ -117,10 +117,10 @@ class ChipShopArtPreviewTest {
 
     static Map<Integer, Item> shop(int filled, boolean stack, boolean affordable) {
         Map<Integer, Item> items = new HashMap<>();
-        for (int slot = 0; slot < 6; slot++) {
+        for (int slot = 0; slot < 7; slot++) {
             items.put(slot, Item.stack("tab", 1));
         }
-        for (int slot = 6; slot < 9; slot++) {
+        for (int slot = 7; slot < 9; slot++) {
             items.put(slot, Item.model("kaboofcasino:gui/blank"));
         }
         for (int k = 0; k < filled; k++) {
@@ -143,7 +143,7 @@ class ChipShopArtPreviewTest {
     @Test
     void everyTabFitsTheCommonScreens() throws IOException {
         for (int[] size : SIZES) {
-            for (int tab = 0; tab < 6; tab++) {
+            for (int tab = 0; tab < 7; tab++) {
                 List<Drawn> drawn = render("chipshop-tab" + tab, title(tab), size[0], size[1], IMPORTANT,
                         shop(tab == 5 ? 7 : 36, tab % 2 == 1, tab != 4));
                 assertTrue(drawn.stream().anyMatch(d -> d.slot() == QTY), "the quantity toggle is drawn");
@@ -170,11 +170,11 @@ class ChipShopArtPreviewTest {
         int left = (480 - 176) / 2;
         int top = (270 - 222) / 2;
         int gold = 0xFF000000 | -1654161; // the mod's gold line (DerbyUiArt), drawn white-tinted as it is
-        for (int tab = 0; tab < 6; tab++) {
+        for (int tab = 0; tab < 7; tab++) {
             render("chipshop-ring", title(tab), 480, 270, IMPORTANT, Map.of());
             BufferedImage screen = ImageIO.read(Path.of("build/reports/gui/chipshop-ring-preview-480x270.png")
                     .toFile());
-            for (int t = 0; t < 6; t++) {
+            for (int t = 0; t < 7; t++) {
                 // the pixel row above the tab's middle: the selected tab's ring, felt over the others
                 int p = screen.getRGB((left + 7 + 18 * t + 9) * S, (top + 17 - 1) * S);
                 assertEquals(t == tab, p == gold, "tab " + t + " with tab " + tab + " selected: "

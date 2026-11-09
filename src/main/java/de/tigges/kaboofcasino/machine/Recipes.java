@@ -132,8 +132,11 @@ public final class Recipes {
         }
     }
 
+    /** Every recipe: the mod's and the plugin's own ones (the Chip-Shop prices the outfits from theirs). */
     public static List<Def> all() {
-        return defs;
+        List<Def> every = new ArrayList<>(defs);
+        OWN.values().forEach(every::addAll);
+        return every;
     }
 
     /**
@@ -172,9 +175,7 @@ public final class Recipes {
         unregister();
         Map<NamespacedKey, Def> done = new LinkedHashMap<>();
         Map<NamespacedKey, ItemStack> made = new LinkedHashMap<>();
-        List<Def> every = new ArrayList<>(defs);
-        OWN.values().forEach(every::addAll);
-        for (Def d : every) {
+        for (Def d : all()) {
             try {
                 ItemStack result = casinoId(d.result()) ? casinoStack(d.result(), messages, d.count())
                         .orElseThrow(() -> new IllegalStateException("unknown casino item " + d.result()))

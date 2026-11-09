@@ -72,6 +72,7 @@ public enum Msg {
     CHIPSHOP_CAT_LICHT("chipshop.category.licht"),
     CHIPSHOP_CAT_TECHNIK("chipshop.category.technik"),
     CHIPSHOP_CAT_MASCHINEN("chipshop.category.maschinen"),
+    CHIPSHOP_CAT_OUTFITS("chipshop.category.outfits"),
     CHIPSHOP_TAB_LORE("chipshop.tab-lore"),
     CHIPSHOP_HELP("chipshop.help"),
     CHIPSHOP_LABEL_BALANCE("chipshop.label-balance"),

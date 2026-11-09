@@ -165,7 +165,7 @@ chipshop:
   craftable: true
   # Preis = Wert der Rezept-Zutaten in Chips x Aufschlag der Kategorie, aufgerundet (unter 25 auf 1, unter 250 auf 5,
   # sonst auf 25 Chips), mindestens min-price pro Stück. Ein Stapel wird als Ganzes gerechnet. Erze zählen zum Kurs der
-  # Kasse (cashier.rates). Kategorien: boeden, moebel, bar, licht, technik, maschinen.
+  # Kasse (cashier.rates). Kategorien: boeden, moebel, bar, licht, technik, maschinen, outfits.
   categories:
     boeden:
       markup: 1.25
@@ -188,6 +188,10 @@ chipshop:
     maschinen:
       markup: 1.25
       min-price: 0
+    # Anzüge, Croupier-Outfit, Abendkleid (Lederwerte, Aussehen aus dem Ressourcenpaket)
+    outfits:
+      markup: 15
+      min-price: 50
   # true: auch Blackjack- und Pokertisch (sonst nur über das Croupier-Abzeichen).
   tables: false
   # Werte der übrigen Zutaten (Chips pro Stück; #name = ein Item-Tag). Eine Liste: gelöschte Einträge fehlen dann.

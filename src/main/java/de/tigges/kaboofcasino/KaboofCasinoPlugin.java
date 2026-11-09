@@ -197,6 +197,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         cashier.enable();
         boards.enable();
         chipShop.enable();
+        de.tigges.kaboofcasino.outfit.Outfits.enable();
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload, () -> fullDeco.status());
         command.boards(boards);

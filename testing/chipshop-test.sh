@@ -95,5 +95,30 @@ stale) # by hand with an older stack of the chip pile (other item name, same id)
   echo "result: $(tail -n +"$m" "$A" | grep -E 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-120)"
   b click 0; b click 44; sleep 0.3; b close; sleep 0.3
   echo "chip_shop: $(has chip_shop) | sign: $(has casinodeco:small_casino_sign) | bars: $(has casinodeco:black_marble_bar) | pile: $(has casinodeco:casino_chip_pile)" ;;
-*) echo "usage: chipshop-test.sh place|buy|stack|machines|poor|full|double|confirm|overcap|craft|book|stale"; exit 2 ;;
+outfit) # the Outfits tab: one of each piece of the smoking, put on with a right click
+  chips 10; v0=$(value); open_shop; $P bx Alice 5 'OPEN id' click 6 | grep -o "OPEN id=[0-9]*"; sleep 0.5
+  for k in 9 10 11 12; do b click $k; b click 49; sleep 0.7; echo "  $(last | sed -E 's/.*: 1x/1x/; s/, paid.*//')"; done
+  v1=$(value); echo "  chips $v0 -> $v1"; b close; sleep 0.3
+  for s in 2 3 4 5; do b hotbar $s; b use; sleep 0.3; done; sleep 0.3
+  $P rcon "data get entity Alice equipment" | grep -oE '(head|chest|legs|feet): \{[^}]*(equippable|item_model)[^}]*' | cut -c1-150
+  $P rcon "data get entity Alice equipment.chest.components" | grep -oE 'minecraft:equippable[^}]*\}' | cut -c1-160 ;;
+outfitstack) # the toggle on a stack with a piece of clothing chosen: buys one
+  chips 10; open_shop; $P bx Alice 5 'OPEN id' click 6 >/dev/null; sleep 0.5; b click 10; b click 47; n0=$(n "chipshop BUY"); b click 49; sleep 0.7
+  echo "BUY rows: $(( $(n 'chipshop BUY') - n0 )) | $(last | sed -E 's/.*: ([0-9]+x)/\1/; s/, paid.*//')"; b close ;;
+outfitcraft) # by hand from wool, then the same with a recipe-book click
+  id=$(grep -a 'RECIPE id=' "$A" | grep -a 'outfit_smoking_jacket' | tail -1 | sed -E 's/.*RECIPE id=([0-9]+).*/\1/')
+  q "clear Alice" "gamemode survival Alice" "setblock 48 -57 9 crafting_table" "tp Alice 47.5 -57 9.5 -90 0" "give Alice black_wool 7" "give Alice white_wool 1"; sleep 0.6
+  m=$(wc -l < "$A"); b place 48 -57 9 west; sleep 0.5; b click 37; for g in 1 3 4 6 7 8 9; do b click $g right; done; b click 38; b click 5; sleep 0.4
+  echo "by hand: $(tail -n +"$m" "$A" | grep -aE 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-60)"; b click 0; b click 44; sleep 0.3; b close; sleep 0.3
+  jack() { $P rcon "clear Alice leather_chestplate[custom_data~{PublicBukkitValues:{\"kaboofcasino:item\":\"casinodeco:outfit_smoking_jacket\"}}] 0" | grep -oE 'Found [0-9]+|No items' | head -1; }
+  echo "jacket: $(jack) | wool left: $($P rcon 'clear Alice black_wool 0' | grep -oE 'Found [0-9]+|No items' | head -1)"
+  q "give Alice black_wool 7" "give Alice white_wool 1"; sleep 0.5; m=$(wc -l < "$A"); b place 48 -57 9 west; sleep 0.5; b placerecipe "$id"; sleep 0.8
+  echo "recipe book (id $id): $(tail -n +"$m" "$A" | grep -aE 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-60)"; b close ;;
+outfitveto) # a jacket with red dye and two jackets together: no result in the crafting grid
+  q "clear Alice" "gamemode survival Alice" "setblock 48 -57 9 crafting_table" "tp Alice 47.5 -57 9.5 -90 0" "casino give casinodeco:outfit_smoking_jacket Alice 1" "casino give casinodeco:outfit_rubin_jacket Alice 1" "give Alice red_dye 1"; sleep 0.6
+  m=$(wc -l < "$A"); b place 48 -57 9 west; sleep 0.5; b click 37; b click 1; b click 39; b click 2; sleep 0.5
+  echo "jacket + dye: $(tail -n +"$m" "$A" | grep -aE 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-60)"
+  b click 2; b click 39; m=$(wc -l < "$A"); b click 38; b click 2; sleep 0.5
+  echo "two jackets:  $(tail -n +"$m" "$A" | grep -aE 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-60)"; b close ;;
+*) echo "usage: chipshop-test.sh place|buy|stack|machines|poor|full|double|confirm|overcap|craft|book|stale|outfit|outfitstack|outfitcraft|outfitveto"; exit 2 ;;
 esac
