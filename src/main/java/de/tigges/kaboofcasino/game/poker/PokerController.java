@@ -288,13 +288,15 @@ public final class PokerController extends MachineController {
             }
             return;
         }
-        if (hand == null && holdemWanted(player)) {
+        // sneaking at a table nobody sits at: the solo game against the croupier even with others near
+        if (hand == null && (holdem.active() || !player.isSneaking()) && holdemWanted(player)) {
             if (holdem.full()) {
                 m.actionBar(player, Msg.POKER_FULL);
                 return;
             }
-            if (mayOpen(player)) {
-                ctx.menus().open(player, new HoldemBuyInMenu(id, this, ctx, holdem.seatsTaken()));
+            if (mayOpen(player) && ctx.menus().open(player, new HoldemBuyInMenu(id, this, ctx, holdem.seatsTaken()))
+                    && !holdem.active()) {
+                m.actionBar(player, Msg.POKER_HOLDEM_SOLO_HINT);
             }
             return;
         }

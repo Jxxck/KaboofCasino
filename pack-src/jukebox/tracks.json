@@ -1,0 +1,940 @@
+{
+ "_comment": "Jukebox catalog (KaboofCasino): genres in tab order, tracks in list order. Vanilla tracks play the client's own files through kaboofcasino:jukebox.<id> sound events (pack tool); lounge tracks are the music pack's casinosound events. seconds: exact length of the file (Ogg granule / rate).",
+ "genres": [
+  {
+   "id": "lounge",
+   "name": "Casino Lounge",
+   "icon": "casinosound:casino_speaker"
+  },
+  {
+   "id": "discs",
+   "name": "Schallplatten",
+   "icon": "minecraft:music_disc_cat"
+  },
+  {
+   "id": "classic",
+   "name": "Minecraft Klassik",
+   "icon": "minecraft:grass_block"
+  },
+  {
+   "id": "creative",
+   "name": "Kreativ",
+   "icon": "minecraft:painting"
+  },
+  {
+   "id": "calm",
+   "name": "Entspannt",
+   "icon": "minecraft:cherry_leaves"
+  },
+  {
+   "id": "adventure",
+   "name": "Abenteuer",
+   "icon": "minecraft:compass"
+  },
+  {
+   "id": "nether",
+   "name": "Nether",
+   "icon": "minecraft:crimson_nylium"
+  },
+  {
+   "id": "water",
+   "name": "Unterwasser",
+   "icon": "minecraft:heart_of_the_sea"
+  },
+  {
+   "id": "end",
+   "name": "Das Ende",
+   "icon": "minecraft:dragon_head"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "airport_lounge",
+   "genre": "lounge",
+   "title": "Airport Lounge",
+   "artist": "Kevin MacLeod",
+   "sound": "casinosound:airport_lounge",
+   "seconds": 307.7,
+   "icon": "minecraft:music_disc_strad",
+   "pack": "music"
+  },
+  {
+   "id": "backbay_lounge",
+   "genre": "lounge",
+   "title": "Backbay Lounge",
+   "artist": "Kevin MacLeod",
+   "sound": "casinosound:backbay_lounge",
+   "seconds": 266.6,
+   "icon": "minecraft:music_disc_strad",
+   "pack": "music"
+  },
+  {
+   "id": "jazz_brunch",
+   "genre": "lounge",
+   "title": "Jazz Brunch",
+   "artist": "Kevin MacLeod",
+   "sound": "casinosound:jazz_brunch",
+   "seconds": 323.2,
+   "icon": "minecraft:music_disc_strad",
+   "pack": "music"
+  },
+  {
+   "id": "george_street_shuffle",
+   "genre": "lounge",
+   "title": "George Street Shuffle",
+   "artist": "Kevin MacLeod",
+   "sound": "casinosound:george_street_shuffle",
+   "seconds": 268.4,
+   "icon": "minecraft:music_disc_strad",
+   "pack": "music"
+  },
+  {
+   "id": "cool_vibes",
+   "genre": "lounge",
+   "title": "Cool Vibes",
+   "artist": "Kevin MacLeod",
+   "sound": "casinosound:cool_vibes",
+   "seconds": 218.4,
+   "icon": "minecraft:music_disc_strad",
+   "pack": "music"
+  },
+  {
+   "id": "bossa_antigua",
+   "genre": "lounge",
+   "title": "Bossa Antigua",
+   "artist": "Kevin MacLeod",
+   "sound": "casinosound:bossa_antigua",
+   "seconds": 283.4,
+   "icon": "minecraft:music_disc_strad",
+   "pack": "music"
+  },
+  {
+   "id": "disc_13",
+   "genre": "discs",
+   "title": "13",
+   "file": "minecraft:records/13",
+   "volume": 1.0,
+   "seconds": 178.09,
+   "icon": "minecraft:music_disc_13"
+  },
+  {
+   "id": "disc_cat",
+   "genre": "discs",
+   "title": "Cat",
+   "file": "minecraft:records/cat",
+   "volume": 1.0,
+   "seconds": 185.34,
+   "icon": "minecraft:music_disc_cat"
+  },
+  {
+   "id": "disc_blocks",
+   "genre": "discs",
+   "title": "Blocks",
+   "file": "minecraft:records/blocks",
+   "volume": 1.0,
+   "seconds": 345.91,
+   "icon": "minecraft:music_disc_blocks"
+  },
+  {
+   "id": "disc_chirp",
+   "genre": "discs",
+   "title": "Chirp",
+   "file": "minecraft:records/chirp",
+   "volume": 1.0,
+   "seconds": 185.58,
+   "icon": "minecraft:music_disc_chirp"
+  },
+  {
+   "id": "disc_far",
+   "genre": "discs",
+   "title": "Far",
+   "file": "minecraft:records/far",
+   "volume": 1.0,
+   "seconds": 174.46,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "disc_mall",
+   "genre": "discs",
+   "title": "Mall",
+   "file": "minecraft:records/mall",
+   "volume": 1.0,
+   "seconds": 197.22,
+   "icon": "minecraft:music_disc_mall"
+  },
+  {
+   "id": "disc_mellohi",
+   "genre": "discs",
+   "title": "Mellohi",
+   "file": "minecraft:records/mellohi",
+   "volume": 1.0,
+   "seconds": 96.2,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "disc_stal",
+   "genre": "discs",
+   "title": "Stal",
+   "file": "minecraft:records/stal",
+   "volume": 1.0,
+   "seconds": 150.86,
+   "icon": "minecraft:music_disc_stal"
+  },
+  {
+   "id": "disc_strad",
+   "genre": "discs",
+   "title": "Strad",
+   "file": "minecraft:records/strad",
+   "volume": 1.0,
+   "seconds": 188.17,
+   "icon": "minecraft:music_disc_strad"
+  },
+  {
+   "id": "disc_ward",
+   "genre": "discs",
+   "title": "Ward",
+   "file": "minecraft:records/ward",
+   "volume": 1.0,
+   "seconds": 251.39,
+   "icon": "minecraft:music_disc_ward"
+  },
+  {
+   "id": "disc_11",
+   "genre": "discs",
+   "title": "11",
+   "file": "minecraft:records/11",
+   "volume": 1.0,
+   "seconds": 71.11,
+   "icon": "minecraft:music_disc_11"
+  },
+  {
+   "id": "disc_wait",
+   "genre": "discs",
+   "title": "Wait",
+   "file": "minecraft:records/wait",
+   "volume": 1.0,
+   "seconds": 237.89,
+   "icon": "minecraft:music_disc_wait"
+  },
+  {
+   "id": "disc_pigstep",
+   "genre": "discs",
+   "title": "Pigstep",
+   "file": "minecraft:records/pigstep",
+   "volume": 1.0,
+   "seconds": 148.24,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "disc_otherside",
+   "genre": "discs",
+   "title": "Otherside",
+   "file": "minecraft:records/otherside",
+   "volume": 1.0,
+   "seconds": 195.65,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "disc_5",
+   "genre": "discs",
+   "title": "5",
+   "file": "minecraft:records/5",
+   "volume": 1.0,
+   "seconds": 178.24,
+   "icon": "minecraft:music_disc_5"
+  },
+  {
+   "id": "disc_relic",
+   "genre": "discs",
+   "title": "Relic",
+   "file": "minecraft:records/relic",
+   "volume": 1.0,
+   "seconds": 218.97,
+   "icon": "minecraft:music_disc_relic"
+  },
+  {
+   "id": "disc_creator",
+   "genre": "discs",
+   "title": "Creator",
+   "file": "minecraft:records/creator",
+   "volume": 1.0,
+   "seconds": 176.39,
+   "icon": "minecraft:music_disc_creator"
+  },
+  {
+   "id": "disc_creator_music_box",
+   "genre": "discs",
+   "title": "Creator (Music Box)",
+   "file": "minecraft:records/creator_music_box",
+   "volume": 1.0,
+   "seconds": 73.07,
+   "icon": "minecraft:music_disc_creator_music_box"
+  },
+  {
+   "id": "disc_precipice",
+   "genre": "discs",
+   "title": "Precipice",
+   "file": "minecraft:records/precipice",
+   "volume": 1.0,
+   "seconds": 299.31,
+   "icon": "minecraft:music_disc_precipice"
+  },
+  {
+   "id": "disc_tears",
+   "genre": "discs",
+   "title": "Tears",
+   "file": "minecraft:records/tears",
+   "volume": 1.0,
+   "seconds": 175.12,
+   "icon": "minecraft:music_disc_tears"
+  },
+  {
+   "id": "disc_lava_chicken",
+   "genre": "discs",
+   "title": "Lava Chicken",
+   "file": "minecraft:records/lava_chicken",
+   "volume": 1.0,
+   "seconds": 134.52,
+   "icon": "minecraft:music_disc_lava_chicken"
+  },
+  {
+   "id": "disc_bounce",
+   "genre": "discs",
+   "title": "Bounce",
+   "file": "minecraft:records/bounce",
+   "volume": 1.0,
+   "seconds": 234.63,
+   "icon": "minecraft:music_disc_bounce"
+  },
+  {
+   "id": "minecraft",
+   "genre": "classic",
+   "title": "Minecraft",
+   "file": "minecraft:music/game/minecraft",
+   "volume": 1.0,
+   "seconds": 260.54,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "clark",
+   "genre": "classic",
+   "title": "Clark",
+   "file": "minecraft:music/game/clark",
+   "volume": 1.0,
+   "seconds": 201.59,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "sweden",
+   "genre": "classic",
+   "title": "Sweden",
+   "file": "minecraft:music/game/sweden",
+   "volume": 1.0,
+   "seconds": 229.77,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "subwoofer_lullaby",
+   "genre": "classic",
+   "title": "Subwoofer Lullaby",
+   "file": "minecraft:music/game/subwoofer_lullaby",
+   "volume": 1.0,
+   "seconds": 209.19,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "living_mice",
+   "genre": "classic",
+   "title": "Living Mice",
+   "file": "minecraft:music/game/living_mice",
+   "volume": 1.0,
+   "seconds": 188.0,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "haggstrom",
+   "genre": "classic",
+   "title": "Haggstrom",
+   "file": "minecraft:music/game/haggstrom",
+   "volume": 1.0,
+   "seconds": 191.05,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "danny",
+   "genre": "classic",
+   "title": "Danny",
+   "file": "minecraft:music/game/danny",
+   "volume": 1.0,
+   "seconds": 255.26,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "key",
+   "genre": "classic",
+   "title": "Key",
+   "file": "minecraft:music/game/key",
+   "volume": 1.0,
+   "seconds": 61.09,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "oxygene",
+   "genre": "classic",
+   "title": "Oxygene",
+   "file": "minecraft:music/game/oxygene",
+   "volume": 1.0,
+   "seconds": 69.82,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "dry_hands",
+   "genre": "classic",
+   "title": "Dry Hands",
+   "file": "minecraft:music/game/dry_hands",
+   "volume": 1.0,
+   "seconds": 68.12,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "wet_hands",
+   "genre": "classic",
+   "title": "Wet Hands",
+   "file": "minecraft:music/game/wet_hands",
+   "volume": 1.0,
+   "seconds": 89.71,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "mice_on_venus",
+   "genre": "classic",
+   "title": "Mice on Venus",
+   "file": "minecraft:music/game/mice_on_venus",
+   "volume": 1.0,
+   "seconds": 280.89,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "beginning_2",
+   "genre": "classic",
+   "title": "Beginning 2",
+   "file": "minecraft:music/menu/beginning_2",
+   "volume": 1.0,
+   "seconds": 182.6,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "floating_trees",
+   "genre": "classic",
+   "title": "Floating Trees",
+   "file": "minecraft:music/menu/floating_trees",
+   "volume": 1.0,
+   "seconds": 244.75,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "moog_city_2",
+   "genre": "classic",
+   "title": "Moog City 2",
+   "file": "minecraft:music/menu/moog_city_2",
+   "volume": 1.0,
+   "seconds": 183.65,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "mutation",
+   "genre": "classic",
+   "title": "Mutation",
+   "file": "minecraft:music/menu/mutation",
+   "volume": 1.0,
+   "seconds": 194.59,
+   "icon": "minecraft:music_disc_far"
+  },
+  {
+   "id": "biome_fest",
+   "genre": "creative",
+   "title": "Biome Fest",
+   "file": "minecraft:music/game/creative/biome_fest",
+   "volume": 1.0,
+   "seconds": 382.94,
+   "icon": "minecraft:music_disc_chirp"
+  },
+  {
+   "id": "blind_spots",
+   "genre": "creative",
+   "title": "Blind Spots",
+   "file": "minecraft:music/game/creative/blind_spots",
+   "volume": 1.0,
+   "seconds": 332.05,
+   "icon": "minecraft:music_disc_chirp"
+  },
+  {
+   "id": "haunt_muskie",
+   "genre": "creative",
+   "title": "Haunt Muskie",
+   "file": "minecraft:music/game/creative/haunt_muskie",
+   "volume": 1.0,
+   "seconds": 361.68,
+   "icon": "minecraft:music_disc_chirp"
+  },
+  {
+   "id": "aria_math",
+   "genre": "creative",
+   "title": "Aria Math",
+   "file": "minecraft:music/game/creative/aria_math",
+   "volume": 1.0,
+   "seconds": 309.5,
+   "icon": "minecraft:music_disc_chirp"
+  },
+  {
+   "id": "dreiton",
+   "genre": "creative",
+   "title": "Dreiton",
+   "file": "minecraft:music/game/creative/dreiton",
+   "volume": 1.0,
+   "seconds": 497.0,
+   "icon": "minecraft:music_disc_chirp"
+  },
+  {
+   "id": "taswell",
+   "genre": "creative",
+   "title": "Taswell",
+   "file": "minecraft:music/game/creative/taswell",
+   "volume": 1.0,
+   "seconds": 515.0,
+   "icon": "minecraft:music_disc_chirp"
+  },
+  {
+   "id": "a_familiar_room",
+   "genre": "calm",
+   "title": "A Familiar Room",
+   "file": "minecraft:music/game/a_familiar_room",
+   "volume": 0.4,
+   "seconds": 241.2,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "below_and_above",
+   "genre": "calm",
+   "title": "Below and Above",
+   "file": "minecraft:music/game/below_and_above",
+   "volume": 0.4,
+   "seconds": 212.38,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "broken_clocks",
+   "genre": "calm",
+   "title": "Broken Clocks",
+   "file": "minecraft:music/game/broken_clocks",
+   "volume": 0.4,
+   "seconds": 213.75,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "comforting_memories",
+   "genre": "calm",
+   "title": "Comforting Memories",
+   "file": "minecraft:music/game/comforting_memories",
+   "volume": 0.4,
+   "seconds": 275.2,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "floating_dream",
+   "genre": "calm",
+   "title": "Floating Dream",
+   "file": "minecraft:music/game/floating_dream",
+   "volume": 0.4,
+   "seconds": 205.2,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "fireflies",
+   "genre": "calm",
+   "title": "Fireflies",
+   "file": "minecraft:music/game/fireflies",
+   "volume": 0.4,
+   "seconds": 155.54,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "lilypad",
+   "genre": "calm",
+   "title": "Lilypad",
+   "file": "minecraft:music/game/lilypad",
+   "volume": 0.4,
+   "seconds": 235.88,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "os_piano",
+   "genre": "calm",
+   "title": "O's Piano",
+   "file": "minecraft:music/game/os_piano",
+   "volume": 0.4,
+   "seconds": 275.12,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "puzzlebox",
+   "genre": "calm",
+   "title": "Puzzlebox",
+   "file": "minecraft:music/game/puzzlebox",
+   "volume": 0.4,
+   "seconds": 299.63,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "watcher",
+   "genre": "calm",
+   "title": "Watcher",
+   "file": "minecraft:music/game/watcher",
+   "volume": 0.4,
+   "seconds": 332.15,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "yakusoku",
+   "genre": "calm",
+   "title": "Yakusoku",
+   "file": "minecraft:music/game/yakusoku",
+   "volume": 0.8,
+   "seconds": 271.01,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "komorebi",
+   "genre": "calm",
+   "title": "Komorebi",
+   "file": "minecraft:music/game/komorebi",
+   "volume": 0.8,
+   "seconds": 287.65,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "pokopoko",
+   "genre": "calm",
+   "title": "Pokopoko",
+   "file": "minecraft:music/game/pokopoko",
+   "volume": 0.8,
+   "seconds": 304.55,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "memories",
+   "genre": "calm",
+   "title": "Memories",
+   "file": "minecraft:music/game/memories",
+   "volume": 0.4,
+   "seconds": 245.29,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "home",
+   "genre": "calm",
+   "title": "Home",
+   "file": "minecraft:music/game/home",
+   "volume": 0.4,
+   "seconds": 380.21,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "nightly",
+   "genre": "calm",
+   "title": "Nightly",
+   "file": "minecraft:music/game/nightly",
+   "volume": 0.4,
+   "seconds": 302.14,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "shores",
+   "genre": "calm",
+   "title": "Shores",
+   "file": "minecraft:music/game/shores",
+   "volume": 0.4,
+   "seconds": 320.0,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "ebb",
+   "genre": "calm",
+   "title": "Ebb",
+   "file": "minecraft:music/game/ebb",
+   "volume": 0.4,
+   "seconds": 306.49,
+   "icon": "minecraft:music_disc_mellohi"
+  },
+  {
+   "id": "left_to_bloom",
+   "genre": "adventure",
+   "title": "Left to Bloom",
+   "file": "minecraft:music/game/left_to_bloom",
+   "volume": 0.4,
+   "seconds": 342.96,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "one_more_day",
+   "genre": "adventure",
+   "title": "One More Day",
+   "file": "minecraft:music/game/one_more_day",
+   "volume": 0.4,
+   "seconds": 278.55,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "stand_tall",
+   "genre": "adventure",
+   "title": "Stand Tall",
+   "file": "minecraft:music/game/stand_tall",
+   "volume": 0.4,
+   "seconds": 308.4,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "wending",
+   "genre": "adventure",
+   "title": "Wending",
+   "file": "minecraft:music/game/wending",
+   "volume": 0.4,
+   "seconds": 314.74,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "infinite_amethyst",
+   "genre": "adventure",
+   "title": "Infinite Amethyst",
+   "file": "minecraft:music/game/infinite_amethyst",
+   "volume": 0.4,
+   "seconds": 271.79,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "ancestry",
+   "genre": "adventure",
+   "title": "Ancestry",
+   "file": "minecraft:music/game/ancestry",
+   "volume": 1.0,
+   "seconds": 343.51,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "an_ordinary_day",
+   "genre": "adventure",
+   "title": "An Ordinary Day",
+   "file": "minecraft:music/game/an_ordinary_day",
+   "volume": 1.0,
+   "seconds": 331.36,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "bromeliad",
+   "genre": "adventure",
+   "title": "Bromeliad",
+   "file": "minecraft:music/game/bromeliad",
+   "volume": 0.4,
+   "seconds": 312.28,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "crescent_dunes",
+   "genre": "adventure",
+   "title": "Crescent Dunes",
+   "file": "minecraft:music/game/crescent_dunes",
+   "volume": 0.4,
+   "seconds": 248.35,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "echo_in_the_wind",
+   "genre": "adventure",
+   "title": "Echo in the Wind",
+   "file": "minecraft:music/game/echo_in_the_wind",
+   "volume": 0.4,
+   "seconds": 296.18,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "featherfall",
+   "genre": "adventure",
+   "title": "Featherfall",
+   "file": "minecraft:music/game/featherfall",
+   "volume": 0.4,
+   "seconds": 344.08,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "aerie",
+   "genre": "adventure",
+   "title": "Aerie",
+   "file": "minecraft:music/game/swamp/aerie",
+   "volume": 0.4,
+   "seconds": 296.79,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "firebugs",
+   "genre": "adventure",
+   "title": "Firebugs",
+   "file": "minecraft:music/game/swamp/firebugs",
+   "volume": 0.4,
+   "seconds": 312.72,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "labyrinthine",
+   "genre": "adventure",
+   "title": "Labyrinthine",
+   "file": "minecraft:music/game/swamp/labyrinthine",
+   "volume": 0.4,
+   "seconds": 324.6,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "eld_unknown",
+   "genre": "adventure",
+   "title": "Eld Unknown",
+   "file": "minecraft:music/game/eld_unknown",
+   "volume": 0.4,
+   "seconds": 296.55,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "endless",
+   "genre": "adventure",
+   "title": "Endless",
+   "file": "minecraft:music/game/endless",
+   "volume": 0.4,
+   "seconds": 402.15,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "deeper",
+   "genre": "adventure",
+   "title": "Deeper",
+   "file": "minecraft:music/game/deeper",
+   "volume": 0.4,
+   "seconds": 303.44,
+   "icon": "minecraft:music_disc_otherside"
+  },
+  {
+   "id": "ballad_of_the_cats",
+   "genre": "nether",
+   "title": "Ballad of the Cats",
+   "file": "minecraft:music/game/nether/ballad_of_the_cats",
+   "volume": 1.0,
+   "seconds": 280.0,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "concrete_halls",
+   "genre": "nether",
+   "title": "Concrete Halls",
+   "file": "minecraft:music/game/nether/concrete_halls",
+   "volume": 1.0,
+   "seconds": 259.46,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "dead_voxel",
+   "genre": "nether",
+   "title": "Dead Voxel",
+   "file": "minecraft:music/game/nether/dead_voxel",
+   "volume": 1.0,
+   "seconds": 303.8,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "warmth",
+   "genre": "nether",
+   "title": "Warmth",
+   "file": "minecraft:music/game/nether/warmth",
+   "volume": 1.0,
+   "seconds": 239.47,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "chrysopoeia",
+   "genre": "nether",
+   "title": "Chrysopoeia",
+   "file": "minecraft:music/game/nether/crimson_forest/chrysopoeia",
+   "volume": 0.5,
+   "seconds": 303.42,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "rubedo",
+   "genre": "nether",
+   "title": "Rubedo",
+   "file": "minecraft:music/game/nether/nether_wastes/rubedo",
+   "volume": 0.5,
+   "seconds": 312.02,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "so_below",
+   "genre": "nether",
+   "title": "So Below",
+   "file": "minecraft:music/game/nether/soulsand_valley/so_below",
+   "volume": 0.5,
+   "seconds": 318.83,
+   "icon": "minecraft:music_disc_pigstep"
+  },
+  {
+   "id": "axolotl",
+   "genre": "water",
+   "title": "Axolotl",
+   "file": "minecraft:music/game/water/axolotl",
+   "volume": 0.4,
+   "seconds": 303.14,
+   "icon": "minecraft:music_disc_wait"
+  },
+  {
+   "id": "dragon_fish",
+   "genre": "water",
+   "title": "Dragon Fish",
+   "file": "minecraft:music/game/water/dragon_fish",
+   "volume": 0.4,
+   "seconds": 372.25,
+   "icon": "minecraft:music_disc_wait"
+  },
+  {
+   "id": "shuniji",
+   "genre": "water",
+   "title": "Shuniji",
+   "file": "minecraft:music/game/water/shuniji",
+   "volume": 0.4,
+   "seconds": 244.2,
+   "icon": "minecraft:music_disc_wait"
+  },
+  {
+   "id": "the_end",
+   "genre": "end",
+   "title": "The End",
+   "file": "minecraft:music/game/end/the_end",
+   "volume": 1.0,
+   "seconds": 904.53,
+   "icon": "minecraft:music_disc_11"
+  },
+  {
+   "id": "boss",
+   "genre": "end",
+   "title": "Boss",
+   "file": "minecraft:music/game/end/boss",
+   "volume": 1.0,
+   "seconds": 344.15,
+   "icon": "minecraft:music_disc_11"
+  },
+  {
+   "id": "alpha",
+   "genre": "end",
+   "title": "Alpha",
+   "file": "minecraft:music/game/end/alpha",
+   "volume": 1.0,
+   "seconds": 603.0,
+   "icon": "minecraft:music_disc_11"
+  }
+ ]
+}

@@ -24,7 +24,25 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
                            Slot derby,
                            Lights lights, Music music,
                            de.tigges.kaboofcasino.cashier.CashierSettings cashier, Leaderboard leaderboard,
-                           de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop) {
+                           de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop, Jukebox jukebox) {
+
+    /** The config without a {@code jukebox:} section (tests built before the jukebox). */
+    public CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
+                        Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker, Slot derby,
+                        Lights lights, Music music, de.tigges.kaboofcasino.cashier.CashierSettings cashier,
+                        Leaderboard leaderboard, de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop) {
+        this(pack, bets, rounds, owed, machines, safety, gui, slot, wheel, plinko, roulette, blackjack, poker, derby,
+                lights, music, cashier, leaderboard, chipshop, Jukebox.DEFAULTS);
+    }
+
+    /**
+     * {@code jukebox:} the casino jukeboxes (Jack 2026-11-10).
+     *
+     * @param enabled false: every jukebox is silent (they can still be placed and set)
+     */
+    public record Jukebox(boolean enabled) {
+        public static final Jukebox DEFAULTS = new Jukebox(true);
+    }
 
     /**
      * The leaderboard (step 10, PLAN-2 C4).
@@ -223,5 +241,5 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Music(true),
             de.tigges.kaboofcasino.cashier.CashierSettings.DEFAULTS,
             new Leaderboard(false, 30, 15, 25, true),
-            de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULTS);
+            de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULTS, Jukebox.DEFAULTS);
 }

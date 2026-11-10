@@ -103,7 +103,8 @@ public final class RoundLog implements RoundSink {
      * poker hand whose table was removed ("refund (table removed)"). The boards leave such rows out.
      */
     public static boolean refund(String detail) {
-        return detail != null && detail.contains("refund");
+        // a Texas Hold'em seat (stake = the buy-in) is a game between players, not a win against the casino
+        return detail != null && (detail.contains("refund") || detail.startsWith("holdem seat="));
     }
 
     /** Startup sweep: OPEN rows older than an hour belong to rounds a crash rolled back (server.md 1.3). */

@@ -84,10 +84,10 @@ public final class HoldemMenu extends GameMenu {
         BET("bet", Msg.GUI_HOLDEM_BET, Msg.GUI_HOLDEM_KEY_3),
         RAISE("raise", Msg.GUI_HOLDEM_RAISE, Msg.GUI_HOLDEM_KEY_3),
         ALLIN("allin", Msg.GUI_HOLDEM_ALLIN, Msg.GUI_HOLDEM_KEY_3),
-        MIN("min", Msg.GUI_HOLDEM_MIN, Msg.GUI_HOLDEM_SIZE_LORE),
+        MIN("min", Msg.GUI_HOLDEM_MIN, Msg.GUI_HOLDEM_MIN_LORE),
         MINUS("minus", Msg.GUI_HOLDEM_MINUS, Msg.GUI_HOLDEM_SIZE_LORE),
         PLUS("plus", Msg.GUI_HOLDEM_PLUS, Msg.GUI_HOLDEM_SIZE_LORE),
-        MAX("max", Msg.GUI_HOLDEM_MAX, Msg.GUI_HOLDEM_SIZE_LORE);
+        MAX("max", Msg.GUI_HOLDEM_MAX, Msg.GUI_HOLDEM_MAX_LORE);
 
         final String model;
         final Msg name;
@@ -427,8 +427,8 @@ public final class HoldemMenu extends GameMenu {
         }
         ItemStack stack;
         if (c.action() != null) {
-            Component name = m.render(c.action().name, Messages.text("chips", ChipText.chips(c.chips())));
-            stack = DisplayCopies.model(c.model(), name, m.lines(c.action().lore));
+            var chips = Messages.text("chips", ChipText.chips(c.chips()));
+            stack = DisplayCopies.model(c.model(), m.render(c.action().name, chips), m.lines(c.action().lore, chips));
         } else {
             stack = DisplayCopies.model(c.model(), null, List.of());
         }

@@ -132,6 +132,9 @@ public final class PackTool {
         // step 11: the chip shop (sign and display case models, item, menu art)
         ChipShopPack.add(jar, tree, packSrc);
         ChipShopGui.add(jar, tree, font, text);
+        // the jukebox (cabinet model, item, sound events over the client's own music, menu art)
+        JukeboxPack.add(jar, tree, packSrc);
+        JukeboxGui.add(jar, tree, font, text);
         // the casino outfits (equipment assets, icons, worn hats)
         OutfitPack.add(tree);
         stakeMarker(tree);

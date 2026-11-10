@@ -1460,6 +1460,41 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
   the empty default does not remove them by itself.
 
+### The casino jukebox (0.17.0; Jack 2026-11-10, not in MineVegas)
+
+- Jack: "eine Art Jukebox, wo man die Musik einstellen kann, mit ganz vielen Musiktypen, in passender GUI und
+  Block-Design". Machine `JUKEBOX` (1x1x2, item `jukebox`, recipe `kaboofcasino:jukebox` GSG/PDP/PPP with gold, a
+  casino speaker, dark oak planks and a diamond, Chip-Shop tab Technik). Look: `JukeboxPack` (walnut cabinet, velvet
+  grille behind brass bars, amber tubes, selector strip, a glass window in a brass frame, a stepped arch outlined in
+  light with a red note) and the rig's record behind the glass (`JukeboxRig`, the track's disc, turning while it plays).
+- Music: `pack-src/jukebox/tracks.json` (shipped in the jar, the pack tool reads the same file): 98 tracks in 9 genres
+  (Casino Lounge, Schallplatten, Minecraft Klassik, Kreativ, Entspannt, Abenteuer, Nether, Unterwasser, Das Ende).
+  Every vanilla track is a `kaboofcasino:jukebox.<id>` sound event in the casino pack pointing at the client's own file
+  (`minecraft:records/...`, `minecraft:music/...`) at the vanilla volume, streamed: no music files in the pack (+25 KB).
+  Exact lengths from the 26.3 asset index (Ogg granule / rate). The lounge genre plays the music pack's events.
+- Playback (`JukeboxService`, `JukeboxListening`): the jukebox is the clock; a listener hears the nearest playing
+  jukebox whose range (16/32/48) covers him, RECORDS, non-positional, volume by distance fixed at the start (waits
+  while he walks in), joins the current track only while it is fresh or has 20 s left, switches at once when the track
+  changes; vanilla background music stops, the casino speakers stay silent inside the range
+  (`MusicService.silencedBy`). `/casino musik aus`, no casino pack (or no music pack for the lounge) = silence.
+  `jukebox.enabled`. State in the machine record's data (`JukeboxState`: on, track, mode order/shuffle/repeat, range).
+- Menu (`JukeboxMenu`, art `JukeboxGui`: the chip shop's look with nine tabs): genres, tracks (click = play), mode,
+  ABSPIELEN/STOPPEN, next, range; the receipt shows the genre and what plays, so the menus of everybody who has it open
+  are reopened on a change. Previews: `ChipShopArtPreviewTest` (`build/reports/gui/jukebox-*.png`). Tests: `JukeboxTest`.
+
+### Texas Hold'em fixes (0.17.0, from the review of 0.16.0)
+
+- A leaving player (quit, death) with nothing left to decide at the table (all-in run-out) stays in the hand: his
+  result is fixed by the shoe and booked at once (`HoldemHand.projected`), every seat's record gets the projected end.
+  Otherwise he folds, but first gets back the part of his bet nobody matched (never his blind); the others then face
+  the highest live bet. A big blind all-in for less makes the bet the higher blind. A player in danger gets 20 s more
+  once per turn instead of the danger lock on calls (a punch could force a fold). A fresh deck from a fresh seed every
+  hand. Two timeouts in a row stand a player up after the hand. After every hand (and when someone leaves) the seated
+  players' files are saved one per tick (Paper saves each player on his own schedule). A record settled elsewhere
+  closes the seat (and voids the running hand). Hold'em seats no longer count on the leaderboards
+  (`RoundLog.refund`: `holdem seat=`). Sneaking players get the solo game at a table nobody sits at. The `<chips>`
+  placeholder in the bet-size tooltips is filled in.
+
 ### Texas Hold'em (0.16.0; Jack 2026-11-10, not in MineVegas; replaces the shared hand of 0.15.0)
 
 - Jack: "Poker so bauen, dass man es im Multiplayer gegeneinander spielen kann (Texas Hold'em)". Alone at a poker
@@ -1720,6 +1755,9 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
+- 0.17.0 (jukebox, Hold'em fixes): remove `KaboofCasino-0.16.0.jar`; `jukebox.enabled` and the `jukebox.*`,
+  `poker.holdem-idle`, `-danger-time`, `-solo-hint`, `gui.holdem.min-lore`, `max-lore` keys merge in; nothing to delete. The casino pack's download cap is 450 s (the
+  pack is ~6.95 MB). No migration.
 - 0.16.0 (Texas Hold'em): remove `KaboofCasino-0.15.0.jar`; delete the obsolete `poker.countdown-seconds` line from the
   live `config.yml` (the `poker.holdem` block merges in) and the seven 0.15.0 keys `poker.joined`, `already`, `decide`,
   `called-wait`, `countdown`, `decide-countdown` from the live `messages_de.yml` (`poker.full` stays); the `poker.holdem-*`

@@ -24,7 +24,7 @@ public enum ChipShopCategory {
             "casinodeco:casino_chandelier", "casinodeco:chandelier_wall_sconce", "casinodeco:reception_plaque",
             "casinodeco:vip_only_plaque");
     private static final Set<String> TECH_IDS = Set.of("casinosound:casino_speaker", "roulettecasino:casino_tv",
-            "roulettecasino:casino_tv_large", "roulettecasino:casino_tv_3x3");
+            "roulettecasino:casino_tv_large", "roulettecasino:casino_tv_3x3", "roulettecasino:" + CasinoItem.JUKEBOX.id());
     /** The guide is listed first in its tab (review: it explains the machines). */
     public static final String GUIDE = "roulettecasino:casino_guide";
     private static final Set<String> MACHINE_IDS = Set.of(GUIDE, "roulettecasino:dealer_station",

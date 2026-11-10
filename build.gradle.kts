@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.tigges"
-version = "0.16.0"
+version = "0.17.0"
 
 repositories {
     mavenCentral()
@@ -116,6 +116,8 @@ val buildPack = tasks.register<JavaExec>("buildPack") {
 
 tasks.processResources {
     from(layout.projectDirectory.file("LICENSE-MineVegas.txt"))
+    // the jukebox catalog: the pack tool builds the sound events from the same file
+    from(layout.projectDirectory.file("pack-src/jukebox/tracks.json")) { into("jukebox") }
     val props = mapOf("version" to project.version.toString())
     inputs.properties(props)
     filteringCharset = "UTF-8"

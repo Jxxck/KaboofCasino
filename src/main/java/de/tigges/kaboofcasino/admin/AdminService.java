@@ -233,6 +233,14 @@ public final class AdminService {
             pins.open(player, machine);
             return;
         }
+        if (machine.type() == MachineType.JUKEBOX) {
+            sessions.forget(player.getUniqueId()); // the jukebox has no settings: its own menu
+            shop.forget(player);
+            pins.forget(player);
+            chipShop.forget(player);
+            machine.game().interact(player);
+            return;
+        }
         if (machine.type() == MachineType.CHIP_SHOP) {
             sessions.forget(player.getUniqueId()); // the Chip-Shop has no settings: its prices instead
             shop.forget(player);

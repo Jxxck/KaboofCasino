@@ -51,7 +51,7 @@ record DownloadPolicy(Limits casino, Limits music, long graceNanos, long minByte
     }
 
     static final DownloadPolicy DEFAULT = new DownloadPolicy(
-            new Limits("casino", 16, TimeUnit.SECONDS.toNanos(300)),
+            new Limits("casino", 16, TimeUnit.SECONDS.toNanos(450)),
             new Limits("music", 4, TimeUnit.SECONDS.toNanos(180)),
             TimeUnit.SECONDS.toNanos(20), 16L * 1024, TimeUnit.SECONDS.toNanos(15), 1000L);
 

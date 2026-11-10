@@ -151,6 +151,50 @@ class ChipShopArtPreviewTest {
         }
     }
 
+    // ---- the jukebox (the same art with nine tabs) --------------------------------------------------------------------
+
+    @Test
+    void theJukeboxMenuFitsTheCommonScreens(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws IOException {
+        java.nio.file.Path file = dir.resolve("messages_de.yml");
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("messages_de.yml")) {
+            java.nio.file.Files.write(file, in.readAllBytes());
+        }
+        de.tigges.kaboofcasino.config.Messages m = de.tigges.kaboofcasino.config.Messages.load(file,
+                () -> getClass().getClassLoader().getResourceAsStream("messages_de.yml")).messages();
+        var catalog = de.tigges.kaboofcasino.jukebox.JukeboxCatalog.load(getClass().getClassLoader());
+        for (String line : m.raw(de.tigges.kaboofcasino.config.Msg.JUKEBOX_HELP).split("\n")) {
+            assertTrue(layout.width(line) <= 88, "help line too wide: " + line);
+        }
+        var track = catalog.track("creator_music_box").orElse(catalog.track("disc_creator_music_box").orElseThrow());
+        var state = new de.tigges.kaboofcasino.jukebox.JukeboxState(true, track.id(),
+                de.tigges.kaboofcasino.jukebox.JukeboxState.Mode.SHUFFLE, 48);
+        Map<Integer, Item> items = new HashMap<>();
+        for (int slot = 0; slot < 9; slot++) {
+            items.put(slot, Item.stack("tab", 1));
+        }
+        for (int k = 0; k < 22; k++) {
+            items.put(9 + k, Item.stack("minecraft:music_disc_cat", 1));
+        }
+        items.put(47, Item.model("kaboofcasino:gui/jukebox/mode_shuffle"));
+        for (int slot = 48; slot <= 51; slot++) {
+            items.put(slot, Item.model(slot == 49 ? "kaboofcasino:gui/jukebox/stop" : "kaboofcasino:gui/blank"));
+        }
+        items.put(52, Item.model("kaboofcasino:gui/jukebox/skip_on"));
+        items.put(53, Item.model("kaboofcasino:gui/jukebox/range_48"));
+        for (int[] size : SIZES) {
+            for (int genre : new int[] {0, 1, 8}) {
+                render("jukebox-genre" + genre, de.tigges.kaboofcasino.jukebox.JukeboxMenu.title(layout, m::raw,
+                        catalog, genre, state, track), size[0], size[1], IMPORTANT, items);
+            }
+        }
+        render("jukebox-mode-order", de.tigges.kaboofcasino.jukebox.JukeboxMenu.title(layout, m::raw, catalog, 4,
+                state.withPlaying(false).withNextMode(), track), 480, 270, IMPORTANT,
+                Map.of(47, Item.model("kaboofcasino:gui/jukebox/mode_order"), 49,
+                        Item.model("kaboofcasino:gui/jukebox/play"), 52, Item.model("kaboofcasino:gui/jukebox/skip_off"),
+                        53, Item.model("kaboofcasino:gui/jukebox/range_16"), 46,
+                        Item.model("kaboofcasino:gui/jukebox/mode_repeat")));
+    }
+
     @Test
     void theNumbersLandRightAlignedInTheReceipt() throws IOException {
         List<Drawn> drawn = render("chipshop-numbers", title(0), 480, 270, IMPORTANT, shop(36, true, true));

@@ -27,8 +27,8 @@ public final class CasinoItems {
         stack.setData(DataComponentTypes.ITEM_NAME, messages.render(item.nameMsg()));
         if (item.machine().isPresent()) {
             Msg lore = item == CasinoItem.CASHIER ? Msg.CASHIER_ITEM_LORE : item == CasinoItem.CHIP_SHOP
-                    ? Msg.CHIPSHOP_ITEM_LORE : item.machine().get().isBoard() ? Msg.BOARD_ITEM_LORE
-                    : Msg.ITEM_SLOT_MACHINE_LORE;
+                    ? Msg.CHIPSHOP_ITEM_LORE : item == CasinoItem.JUKEBOX ? Msg.JUKEBOX_ITEM_LORE
+                    : item.machine().get().isBoard() ? Msg.BOARD_ITEM_LORE : Msg.ITEM_SLOT_MACHINE_LORE;
             stack.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(messages.render(lore))));
         }
         if (hand) {

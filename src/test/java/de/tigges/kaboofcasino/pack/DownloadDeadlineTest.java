@@ -41,7 +41,7 @@ class DownloadDeadlineTest {
     @Test
     void defaultLimits() {
         DownloadPolicy p = DownloadPolicy.DEFAULT;
-        assertEquals(new DownloadPolicy.Limits("casino", 16, 300 * S), p.limits(pack));
+        assertEquals(new DownloadPolicy.Limits("casino", 16, 450 * S), p.limits(pack));
         assertEquals(new DownloadPolicy.Limits("music", 4, 180 * S), p.limits(music));
         assertEquals(20 * S, p.graceNanos());
         assertEquals(16 * 1024, p.minBytesPerSecond());
@@ -59,8 +59,8 @@ class DownloadDeadlineTest {
         assertEquals(DownloadPolicy.Verdict.OK, p.verdict(casino, 19 * S, 1 * S, 1000), "grace: no rate yet");
         assertEquals(DownloadPolicy.Verdict.TOO_SLOW, p.verdict(casino, 20 * S, 1 * S, 20 * 16 * 1024 - 1));
         assertEquals(DownloadPolicy.Verdict.OK, p.verdict(casino, 20 * S, 1 * S, 20 * 16 * 1024));
-        assertEquals(DownloadPolicy.Verdict.OK, p.verdict(casino, 299 * S, 0, 5_000_000));
-        assertEquals(DownloadPolicy.Verdict.OVERTIME, p.verdict(casino, 300 * S, 0, 4_700_000));
+        assertEquals(DownloadPolicy.Verdict.OK, p.verdict(casino, 449 * S, 0, 7_400_000));
+        assertEquals(DownloadPolicy.Verdict.OVERTIME, p.verdict(casino, 450 * S, 0, 7_400_000));
         assertEquals(DownloadPolicy.Verdict.OK, p.verdict(songs, 90 * S, 0, 20_000_000), "music may take longer");
         assertEquals(DownloadPolicy.Verdict.OVERTIME, p.verdict(songs, 180 * S, 0, 22_000_000));
         assertEquals(DownloadPolicy.Verdict.STALLED, p.verdict(songs, 60 * S, 16 * S, 20_000_000),

@@ -34,6 +34,7 @@ class ChipShopCatalogTest {
         all.add(de.tigges.kaboofcasino.cashier.CashierService.recipe());
         all.addAll(de.tigges.kaboofcasino.board.BoardService.recipes());
         all.add(ChipShopService.recipe());
+        all.add(de.tigges.kaboofcasino.jukebox.JukeboxService.recipe());
         return all;
     }
 
@@ -131,7 +132,8 @@ class ChipShopCatalogTest {
         // machines unchanged at 1.25, the guide first, the dealer station with them
         assertEquals("roulettecasino:casino_guide", c.of(ChipShopCategory.MACHINES).getFirst().id());
         assertTrue(c.entry("roulettecasino:dealer_station").orElseThrow().category() == ChipShopCategory.MACHINES);
-        assertEquals(13, c.of(ChipShopCategory.TECH).size(), "speaker, three TVs and nine leaderboards");
+        assertEquals(14, c.of(ChipShopCategory.TECH).size(), "speaker, three TVs, the jukebox and nine leaderboards");
+        assertEquals(ChipShopCategory.TECH, c.entry("roulettecasino:jukebox").orElseThrow().category());
         assertEquals("casinosound:casino_speaker", c.of(ChipShopCategory.TECH).getFirst().id(), "boards after the TVs");
         for (List<ChipShopCatalog.Entry> l : List.of(c.of(ChipShopCategory.FLOORS), c.of(ChipShopCategory.MACHINES))) {
             for (ChipShopCatalog.Entry e : l) {

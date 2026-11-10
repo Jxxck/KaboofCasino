@@ -295,6 +295,78 @@ class HoldemHandTest {
         assertEquals(5, h.board().size());
     }
 
+    @Test
+    void aPlayerWhoLeavesGetsBackTheBetNobodyMatched() {
+        // 3 seats, button 0: seat 0 short (100) goes all-in pre-flop, 1 and 2 call; on the flop seat 1 bets 500 and
+        // leaves before seat 2 answers: 500 above seat 2's commitment comes back and the board runs out
+        Log log = new Log();
+        HoldemHand h = new HoldemHand(rigged(), log, new int[] {100, 2000, 2000}, 0, 5, 10, TURN);
+        assertEquals(0, untilTurn(h));
+        assertTrue(h.goAllIn(0));
+        assertTrue(h.checkOrCall(1));
+        assertTrue(h.checkOrCall(2));
+        assertEquals(1, untilTurn(h), "the flop: the seat after the button");
+        assertTrue(h.raiseTo(1, 500));
+        int before = h.stack(1);
+        int back = h.leave(1);
+        assertEquals(before + 500, back, "the unmatched 500 come back");
+        assertFalse(h.gone(1));
+        assertTrue(h.folded(1));
+        assertEquals(0, h.currentBet(), "nobody faces a bet any more");
+        assertEquals(HoldemHand.Street.DEALING, h.street(), "nobody left to bet against: the board runs out");
+        runOut(h);
+        assertTrue(log.showdown);
+        assertEquals(4100 - back, log.stacks[0] + log.stacks[2], "the rest stays between the two left in the hand");
+    }
+
+    @Test
+    void aPlayerWhoLeavesWhenNothingIsLeftToDecideKeepsHisResult() {
+        for (long seed = 1; seed <= 200; seed++) {
+            Log log = new Log();
+            HoldemHand h = new HoldemHand(new BlackjackShoe(new ShoeRandom(seed), 1), log, new int[] {2000, 100}, 0, 5,
+                    10, TURN);
+            assertEquals(0, untilTurn(h));
+            assertTrue(h.raiseTo(0, 500));
+            assertTrue(h.checkOrCall(1), "the short stack calls all-in");
+            // the board runs out: seat 0 drops in the middle of it
+            for (int i = 0; i < 30; i++) {
+                h.tick();
+            }
+            assertTrue(h.settledByShoe());
+            int promised = h.leave(0);
+            assertTrue(h.gone(0));
+            assertFalse(h.folded(0));
+            assertTrue(promised >= 1500, "the 400 nobody matched are his in any case: " + promised);
+            runOut(h);
+            assertEquals(promised, log.stacks[0], "seed " + seed);
+            assertEquals(2100, log.stacks[0] + log.stacks[1]);
+        }
+    }
+
+    @Test
+    void aShortBigBlindDoesNotMakeTheOtherPayMore() {
+        Log log = new Log();
+        HoldemHand h = new HoldemHand(rigged(), log, new int[] {1000, 3}, 0, 5, 10, TURN);
+        assertEquals(5, h.currentBet(), "the 5 of the small blind is the bet, not the big blind's 10");
+        runOut(h);
+        assertTrue(log.showdown, "nothing to decide: the board runs out");
+        assertTrue(log.timedOut.isEmpty(), "nobody had to act");
+        assertEquals(1003, log.stacks[0] + log.stacks[1]);
+    }
+
+    @Test
+    void aTurnCanBeExtendedOnce() {
+        Log log = new Log();
+        HoldemHand h = new HoldemHand(rigged(), log, new int[] {1000, 1000}, 0, 5, 10, TURN);
+        untilTurn(h);
+        int deadline = h.deadline();
+        assertTrue(h.extendTurn(400));
+        assertEquals(deadline + 400, h.deadline());
+        assertFalse(h.extendTurn(400), "once per turn");
+        assertTrue(h.checkOrCall(0));
+        assertTrue(h.extendTurn(400), "the next turn may be extended again");
+    }
+
     /** Thousands of random hands with random legal actions: the chips at the table never change. */
     @Test
     void noChipIsEverMadeOrLost() {
@@ -309,6 +381,7 @@ class HoldemHandTest {
             }
             int total = Arrays.stream(stacks).sum();
             Log log = new Log();
+            java.util.Map<Integer, Integer> promised = new java.util.HashMap<>();
             HoldemHand h = new HoldemHand(new BlackjackShoe(new ShoeRandom(hand), 1), log, stacks, r.nextInt(n), 5,
                     10, TURN);
             for (int guard = 0; guard < 10_000 && !h.isOver(); guard++) {
@@ -316,7 +389,10 @@ class HoldemHandTest {
                 if (seat >= 0 && r.nextInt(4) == 0) {
                     int what = r.nextInt(10);
                     if (what == 0 && r.nextInt(8) == 0) {
-                        h.leave(seat);
+                        int left = h.leave(seat);
+                        if (h.gone(seat)) {
+                            promised.put(seat, left);
+                        }
                     } else if (what < 2) {
                         h.fold(seat);
                     } else if (what < 6 || !h.canRaise(seat)) {
@@ -341,6 +417,9 @@ class HoldemHandTest {
             }
             assertTrue(h.isOver(), "hand " + hand + " ended");
             assertEquals(total, Arrays.stream(log.stacks).sum(), "hand " + hand);
+            for (var e : promised.entrySet()) {
+                assertEquals((int) e.getValue(), log.stacks[e.getKey()], "a leaver's booked result, hand " + hand);
+            }
             int paid = log.awards.stream().mapToInt(HoldemHand.Award::amount).sum();
             assertEquals(h.pot(), paid, "every committed chip was in a pot, hand " + hand);
             showdowns += log.showdown ? 1 : 0;

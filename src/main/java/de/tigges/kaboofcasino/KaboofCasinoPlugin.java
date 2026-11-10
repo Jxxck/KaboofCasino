@@ -75,6 +75,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private de.tigges.kaboofcasino.cashier.CashierService cashier;
     private de.tigges.kaboofcasino.board.BoardService boards;
     private de.tigges.kaboofcasino.chipshop.ChipShopService chipShop;
+    private de.tigges.kaboofcasino.jukebox.JukeboxService jukebox;
     private LedgerListener ledger;
     private MenuService menus;
 
@@ -157,6 +158,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         boards = new de.tigges.kaboofcasino.board.BoardService(ctx, db);
         chipShop = new de.tigges.kaboofcasino.chipshop.ChipShopService(ctx,
                 new de.tigges.kaboofcasino.chipshop.ChipShopLog(db));
+        jukebox = new de.tigges.kaboofcasino.jukebox.JukeboxService(ctx,
+                de.tigges.kaboofcasino.jukebox.JukeboxCatalog.load(getClassLoader()));
         roundLog.afterSettle(boards::roundSettled);
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
@@ -176,6 +179,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                     LEADERBOARD_WALL_6X4,
                     LEADERBOARD_COLUMN -> boards.controller(machine);
             case CHIP_SHOP -> chipShop.controller(machine);
+            case JUKEBOX -> jukebox.controller(machine);
         });
         BreakListener breaks = new BreakListener(machines, () -> config, () -> messages);
         de.tigges.kaboofcasino.music.MusicOptOut musicOptOut = new de.tigges.kaboofcasino.music.MusicOptOut(this);
@@ -188,6 +192,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             getServer().getPluginManager().registerEvents(l, this);
         }
         music = new de.tigges.kaboofcasino.music.MusicService(ctx);
+        music.silencedBy(jukebox::covers);
+        jukebox.optedOut(musicOptOut::optedOut);
         fullDeco = new de.tigges.kaboofcasino.deco.full.FullDecoService(ctx);
         displayDeco = new de.tigges.kaboofcasino.deco.display.DisplayDecoService(ctx, safety, sweep, music);
         music.enable();
@@ -205,6 +211,7 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         cashier.enable();
         boards.enable();
         chipShop.enable();
+        jukebox.enable();
         de.tigges.kaboofcasino.outfit.Outfits.enable();
         Recipes.register(messages);
         CasinoCommand command = new CasinoCommand(ctx, roundLog, this::reload, () -> fullDeco.status());
@@ -328,6 +335,9 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
             }
             if (fullDeco != null) {
                 fullDeco.disable();
+            }
+            if (jukebox != null) {
+                jukebox.disable();
             }
             if (music != null) {
                 music.disable();

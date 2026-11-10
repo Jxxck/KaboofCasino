@@ -74,7 +74,9 @@ public enum CasinoItem {
     LEADERBOARD_COLUMN("leaderboard_column", "kaboofcasino:leaderboard_column", Msg.BOARD_ITEM_COLUMN,
             MachineType.LEADERBOARD_COLUMN),
     /** The Chip-Shop (step 11): {@code /casino give chip_shop} or its recipe ({@code chipshop.craftable}, default on). */
-    CHIP_SHOP("chip_shop", "kaboofcasino:chip_shop", Msg.CHIPSHOP_ITEM, MachineType.CHIP_SHOP);
+    CHIP_SHOP("chip_shop", "kaboofcasino:chip_shop", Msg.CHIPSHOP_ITEM, MachineType.CHIP_SHOP),
+    /** The casino jukebox: its recipe, the Chip-Shop or {@code /casino give jukebox}. */
+    JUKEBOX("jukebox", "kaboofcasino:jukebox", Msg.JUKEBOX_ITEM, MachineType.JUKEBOX);
 
     private final String id;
     private final String model;

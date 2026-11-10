@@ -33,7 +33,7 @@ final class AdminOdds {
                     LEADERBOARD_WALL_5X3,
                     LEADERBOARD_WALL_5X4,
                     LEADERBOARD_WALL_6X4,
-                    LEADERBOARD_COLUMN, CHIP_SHOP ->
+                    LEADERBOARD_COLUMN, CHIP_SHOP, JUKEBOX ->
                     throw new IllegalArgumentException(type + " is no game");
         };
     }
@@ -58,7 +58,7 @@ final class AdminOdds {
                     LEADERBOARD_WALL_5X3,
                     LEADERBOARD_WALL_5X4,
                     LEADERBOARD_WALL_6X4,
-                    LEADERBOARD_COLUMN, CHIP_SHOP ->
+                    LEADERBOARD_COLUMN, CHIP_SHOP, JUKEBOX ->
                     throw new IllegalArgumentException(type + " is no game");
         };
     }
@@ -82,7 +82,7 @@ final class AdminOdds {
                     LEADERBOARD_WALL_5X3,
                     LEADERBOARD_WALL_5X4,
                     LEADERBOARD_WALL_6X4,
-                    LEADERBOARD_COLUMN, CHIP_SHOP ->
+                    LEADERBOARD_COLUMN, CHIP_SHOP, JUKEBOX ->
                     throw new IllegalArgumentException("no win chance for "
                     + type);
         };

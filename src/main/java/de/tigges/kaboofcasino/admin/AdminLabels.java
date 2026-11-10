@@ -75,6 +75,7 @@ final class AdminLabels {
                     new double[] {0.5, type.wallRows() + 0.5, 0.5};
             case LEADERBOARD_COLUMN -> new double[] {0.5, 3.5, 0.5};
             case CHIP_SHOP -> new double[] {0.5, 2.6, 0.5};
+            case JUKEBOX -> new double[] {0.5, 2.5, 0.5};
         };
     }
 
@@ -90,6 +91,7 @@ final class AdminLabels {
                     "Bestenliste (Wandtafel " + type.wallColumns() + "×" + type.wallRows() + ")";
             case LEADERBOARD_COLUMN -> "Bestenliste (Säule)";
             case CHIP_SHOP -> "Chip-Shop";
+            case JUKEBOX -> "Jukebox";
             default -> AdminTexts.GERMAN.get("block.roulettecasino." + type.id());
         };
         return german + " #" + number;

@@ -114,6 +114,12 @@ public final class HoldemHand {
     private List<Award> awards = List.of();
     /** The stacks before the awards while the showdown is still being shown (the books already hold the awards). */
     private int[] shown;
+    /** Players who left while nothing was left to decide: still in the hand, their result booked at their leave. */
+    private final boolean[] gone;
+    /** The blind each seat posted (a blind is forced: it stays in the pot when the seat leaves). */
+    private final int[] blinds;
+    /** The turn's one extension (a player in danger) is used. */
+    private boolean extended;
     private int sequence;
     private int now;
     private int deadline = -1;
@@ -158,6 +164,8 @@ public final class HoldemHand {
         this.raiseOpen = new boolean[seats];
         this.won = new int[seats];
         this.scores = new int[seats];
+        this.gone = new boolean[seats];
+        this.blinds = new int[seats];
         Arrays.fill(scores, -1);
         Arrays.fill(raiseOpen, true);
         for (int s = 0; s < seats; s++) {
@@ -167,7 +175,8 @@ public final class HoldemHand {
         int bb = next(sb);
         post(sb, smallBlind, false);
         post(bb, bigBlind, true);
-        currentBet = bigBlind;
+        // a big blind all-in for less: nobody has to pay more than was really put in (the raise size stays the blind)
+        currentBet = bets[bb] < bigBlind ? Math.max(bets[sb], bets[bb]) : bigBlind;
         lastRaise = bigBlind;
         int t = 0;
         if (shoe.needsShuffle()) {
@@ -403,21 +412,147 @@ public final class HoldemHand {
         return checkOrCall(seat);
     }
 
-    /** The player has left: the seat folds at once, its chips in the pot stay there. */
-    public void leave(int seat) {
-        if (folded[seat] || street.ordinal() >= Street.SHOWDOWN.ordinal()) {
-            return;
+    /**
+     * The player has left (quit, death, standing up is only possible outside a hand). Returns his chips from now on:
+     * <ul>
+     *   <li>nothing is left to decide at the table (everybody all-in, or one player with chips who has matched every
+     *       bet) and all hole cards are out: he stays in the hand, the rest of the board is already in the shoe, so his
+     *       result is certain and booked now ({@link #projected()} has everybody's);</li>
+     *   <li>from the showdown on: the pots are booked, his stack is final;</li>
+     *   <li>else he folds: first the part of his bet nobody else matched comes back (never his blind, which is
+     *       forced), the bet the others face is the highest one still alive; his chips in the pot stay there.</li>
+     * </ul>
+     */
+    public int leave(int seat) {
+        if (folded[seat] || gone[seat]) {
+            return stacks[seat];
+        }
+        if (street.ordinal() >= Street.SHOWDOWN.ordinal()) {
+            gone[seat] = true;
+            return stacks[seat];
+        }
+        if (holesComplete() && !decisionsLeft()) {
+            gone[seat] = true;
+            return projected()[seat];
+        }
+        int others = blinds[seat];
+        for (int s = 0; s < seats; s++) {
+            if (s != seat && !folded[s]) {
+                others = Math.max(others, committed[s]);
+            }
+        }
+        int excess = committed[seat] - others;
+        if (excess > 0) {
+            stacks[seat] += excess;
+            committed[seat] -= excess;
+            bets[seat] -= Math.min(excess, bets[seat]);
         }
         folded[seat] = true;
+        int live = 0;
+        for (int s = 0; s < seats; s++) {
+            if (!folded[s]) {
+                live = Math.max(live, bets[s]);
+            }
+        }
+        currentBet = Math.min(currentBet, live);
         listener.acted(seat, Action.FOLD, 0, now);
         if (street == Street.DEALING) {
             if (inHand() == 1) {
                 steps.clear();
                 endByFolds();
             }
-            return;
+            return stacks[seat];
         }
         afterAction(seat);
+        return stacks[seat];
+    }
+
+    /** True if the seat left the table but stays in the hand (its result was booked at the leave). */
+    public boolean gone(int seat) {
+        return gone[seat];
+    }
+
+    private boolean holesComplete() {
+        for (int s = 0; s < seats; s++) {
+            if (!folded[s] && holes.get(s).size() < 2) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Somebody with chips still has to or may act (a bet to answer, or two players who can still bet). */
+    private boolean decisionsLeft() {
+        int able = canAct();
+        if (able >= 2) {
+            return true;
+        }
+        for (int s = 0; s < seats; s++) {
+            if (!folded[s] && stacks[s] > 0 && bets[s] < currentBet) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Everybody's stack at the end of this hand if nobody decides anything more: the rest of the board from a copy
+     * of the shoe (the live hand deals exactly these cards), the pots to the best hands. With decisions left it is
+     * only a guess; callers use it when nothing is left to decide.
+     */
+    public int[] projected() {
+        if (street.ordinal() >= Street.SHOWDOWN.ordinal()) {
+            return stacks.clone();
+        }
+        BlackjackShoe copy = shoe.copy();
+        List<Integer> brd = new ArrayList<>(board);
+        while (brd.size() < 5) {
+            brd.add(copy.draw());
+        }
+        int[] score = new int[seats];
+        for (int s = 0; s < seats; s++) {
+            if (!folded[s]) {
+                List<Integer> cards = new ArrayList<>(holes.get(s));
+                cards.addAll(brd);
+                score[s] = PokerHands.score(cards);
+            }
+        }
+        int[] out = stacks.clone();
+        for (Pot p : pots(committed, folded)) {
+            int best = -1;
+            for (int s : p.eligible) {
+                best = Math.max(best, score[s]);
+            }
+            List<Integer> winners = new ArrayList<>();
+            for (int i = 1; i <= seats; i++) {
+                int s = (button + i) % seats;
+                if (p.eligible.contains(s) && score[s] == best) {
+                    winners.add(s);
+                }
+            }
+            int each = p.amount / winners.size();
+            int odd = p.amount % winners.size();
+            for (int i = 0; i < winners.size(); i++) {
+                out[winners.get(i)] += each + (i < odd ? 1 : 0);
+            }
+        }
+        return out;
+    }
+
+    /** True once nothing is left to decide (the result is fixed by the shoe): see {@link #projected()}. */
+    public boolean settledByShoe() {
+        return street.ordinal() >= Street.SHOWDOWN.ordinal() || holesComplete() && !decisionsLeft()
+                && inHand() >= 2;
+    }
+
+    /** Gives the player whose turn it is more time once per turn (he is in danger and cannot act). */
+    public boolean extendTurn(int ticks) {
+        if (!street.betting() || current < 0 || extended) {
+            return false;
+        }
+        extended = true;
+        deadline += ticks;
+        return true;
     }
 
     public void abort() {
@@ -473,6 +608,7 @@ public final class HoldemHand {
     private void post(int seat, int amount, boolean big) {
         int pay = Math.min(amount, stacks[seat]);
         put(seat, pay);
+        blinds[seat] = pay;
         listener.blind(seat, pay, big, now);
     }
 
@@ -582,6 +718,7 @@ public final class HoldemHand {
 
     private void openTurn() {
         deadline = now + turnTicks;
+        extended = false;
         listener.turnOpened(current, deadline, now);
     }
 

@@ -159,9 +159,10 @@ public final class ChipShopCatalog {
             l.sort(java.util.Comparator.comparing(e -> !e.id().equals(ChipShopCategory.GUIDE)));
             return l;
         });
-        // the speaker and the TVs first, the leaderboards after them (stable: smallest to largest as catalogued)
+        // the speaker and the TVs first, then the jukebox, the leaderboards last (stable: smallest to largest)
         by.computeIfPresent(ChipShopCategory.TECH, (k, l) -> {
-            l.sort(java.util.Comparator.comparing(e -> e.id().startsWith("roulettecasino:leaderboard_")));
+            l.sort(java.util.Comparator.comparingInt(e -> e.id().startsWith("roulettecasino:leaderboard_") ? 2
+                    : e.id().equals("roulettecasino:" + CasinoItem.JUKEBOX.id()) ? 1 : 0));
             return l;
         });
         return new Catalog(by, unpriced);

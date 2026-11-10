@@ -72,7 +72,12 @@ public enum MachineType {
      * The Chip-Shop (step 11, PLAN-2 C6; no game): the cashier's footprint, 2 wide x 1 deep x 2 tall, the counter with
      * its display case and the sign above; both bottom cells need support.
      */
-    CHIP_SHOP("chip_shop", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 0, false, true);
+    CHIP_SHOP("chip_shop", new int[][] {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}}, 0, false, true),
+    /**
+     * The casino jukebox (Jack 2026-11-10, not in MineVegas; no game): 1 wide x 1 deep x 2 tall, the cabinet with its
+     * arch; the bottom cell needs support.
+     */
+    JUKEBOX("jukebox", new int[][] {{0, 0, 0}, {0, 1, 0}}, 0, false, true);
 
     private final String id;
     private final int[][] footprint;
@@ -99,7 +104,7 @@ public enum MachineType {
      * bias).
      */
     public boolean isGame() {
-        return this != CASHIER && this != CHIP_SHOP && !isBoard();
+        return this != CASHIER && this != CHIP_SHOP && this != JUKEBOX && !isBoard();
     }
 
     /** The leaderboard kinds (step 10). */

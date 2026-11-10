@@ -44,9 +44,10 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
  * written into all players' records in the same tick; standing up settles the record (the chips come back). So a stop,
  * a crash or a removed table in the middle of a hand voids that hand for everybody (each gets the chips of its start),
  * and nothing can pay twice. A quit or a death in the middle of a hand is a fold: before the ledger settles, the
- * table's {@link #playerLeaving} hook folds him (the pot may go to the last one left right there) and writes what he
- * has behind into his record, so the chips he put in stay in the pot. When a player leaves the table, the other seated
- * players are saved too, so no player file can hold a win whose losses another file does not yet hold.
+ * table's {@link #playerLeaving} hook lets the hand handle it ({@link HoldemHand#leave}: with nothing left to decide
+ * his result is fixed by the shoe and booked for every seat, else he folds after getting back a bet nobody matched)
+ * and writes his chips into his record before the ledger settles it. After every hand and every leave the seated
+ * players' files are saved one per tick, so no file can hold a win whose losses another file does not yet hold.
  *
  * <p>The felt shows every player's two cards face down at his seat (the client never gets their faces), the board,
  * and at the showdown the hands still in play turned over. Thread: MAIN.
@@ -77,6 +78,8 @@ final class HoldemTable implements HoldemHand.Listener {
         String action = "";
         boolean winner;
         int won;
+        /** Turns in a row that ran out: at two he stands up after the hand (nobody waits for an empty chair). */
+        int timeouts;
 
         Seat(UUID player, String name, int spot, UUID round, int boughtIn, long endsMillis) {
             this.player = player;
@@ -109,6 +112,10 @@ final class HoldemTable implements HoldemHand.Listener {
     private long lastExtend;
     private int turnSerial;
     private Component shownPanel;
+    /** The seat whose turn just ran out (its automatic check or fold does not count as his own action). */
+    private int timingOut = -1;
+    /** Players whose file is saved next, one per tick (every file then holds the same hands; see the class comment). */
+    private final java.util.ArrayDeque<UUID> saveQueue = new java.util.ArrayDeque<>();
 
     HoldemTable(PokerController controller, CasinoContext ctx, Machine machine) {
         this.controller = controller;
@@ -254,7 +261,7 @@ final class HoldemTable implements HoldemHand.Listener {
         revise(player, s, chips, why);
         controller.holdemSettle(player.getUniqueId(), player.getName(), s.round, SettleReason.NORMAL);
         remove(s, why + " with " + chips);
-        saveSeated(player);
+        queueSaves(player);
         ctx.messages().get().send(player, message, Messages.text("chips", ChipText.chips(chips)));
         if (MenuService.openMenu(player) instanceof HoldemMenu menu && menu.controller() == controller) {
             player.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
@@ -270,13 +277,23 @@ final class HoldemTable implements HoldemHand.Listener {
         if (s == null) {
             return;
         }
-        if (inHand(s)) {
-            hand.leave(s.index);
-        }
         int chips = behind(s);
+        if (inHand(s) || hand != null && s.index >= 0 && hand.street() == HoldemHand.Street.SHOWDOWN) {
+            chips = hand.leave(s.index);
+            if (hand != null && hand.settledByShoe()) {
+                // the result is fixed by the shoe: every record holds it now, so no file can disagree after a crash
+                int[] end = hand.projected();
+                for (Seat other : seats.values()) {
+                    if (other != s && !other.gone && other.index >= 0) {
+                        revise(Bukkit.getPlayer(other.player), other, end[other.index], "hand " + handNumber
+                                + " decided by the shoe");
+                    }
+                }
+            }
+        }
         revise(player, s, chips, death ? "died at the table" : "quit at the table");
-        remove(s, (death ? "died" : "quit") + " with " + chips + " behind");
-        saveSeated(null);
+        remove(s, (death ? "died" : "quit") + " with " + chips);
+        queueSaves(null);
     }
 
     private void remove(Seat s, String why) {
@@ -290,16 +307,27 @@ final class HoldemTable implements HoldemHand.Listener {
         }
     }
 
-    /** Saves the files of the seated players (and of {@code also}): every file then holds the same hands. */
-    private void saveSeated(Player also) {
+    /**
+     * Saves the files of the seated players (and of {@code also}) one per tick: Paper saves every player on his own
+     * schedule, so without this a crash could restore one file from after a hand and another from before it.
+     * {@code Player.saveData} is slow on this disk, hence one per tick.
+     */
+    private void queueSaves(Player also) {
         for (Seat s : seats.values()) {
-            Player p = Bukkit.getPlayer(s.player);
-            if (p != null && p.isOnline() && !p.isDead()) {
-                p.saveData();
+            if (!saveQueue.contains(s.player)) {
+                saveQueue.add(s.player);
             }
         }
-        if (also != null && also.isOnline()) {
-            also.saveData();
+        if (also != null && !saveQueue.contains(also.getUniqueId())) {
+            saveQueue.add(also.getUniqueId());
+        }
+    }
+
+    private void saveNext() {
+        UUID id = saveQueue.poll();
+        Player p = id == null ? null : Bukkit.getPlayer(id);
+        if (p != null && p.isOnline()) {
+            p.saveData();
         }
     }
 
@@ -365,13 +393,23 @@ final class HoldemTable implements HoldemHand.Listener {
                 remove(s, "gone");
             }
         }
+        saveNext();
         if (hand == null) {
-            // between hands: whoever walked away from the table stands up (no blinds for an empty chair)
+            // between hands: whoever walked away from the table or let two turns run out stands up
             for (Seat s : List.copyOf(seats.values())) {
                 Player p = Bukkit.getPlayer(s.player);
                 if (p != null && !controller.holdemNear(p, AWAY)) {
                     standUp(p, s, Msg.POKER_HOLDEM_AWAY, "walked away");
+                } else if (p != null && s.timeouts >= 2) {
+                    standUp(p, s, Msg.POKER_HOLDEM_IDLE, "let two turns run out");
                 }
+            }
+        } else {
+            // a player in danger cannot act (his menu closes): his turn gets more time once
+            Seat acting = seatOf(hand.current());
+            Player p = acting == null ? null : Bukkit.getPlayer(acting.player);
+            if (p != null && !ctx.menus().safe(p) && hand.deadline() - hand.now() <= 100 && hand.extendTurn(400)) {
+                ctx.messages().get().actionBar(p, Msg.POKER_HOLDEM_DANGER_TIME);
             }
         }
         if (hand != null) {
@@ -389,8 +427,17 @@ final class HoldemTable implements HoldemHand.Listener {
         if (now - lastExtend >= EXTEND_EVERY_TICKS) {
             // the records keep paying the stack at the start of the hand; only their end moves on
             lastExtend = now;
-            for (Seat s : seats.values()) {
-                revise(Bukkit.getPlayer(s.player), s, s.stack, hand == null ? "waiting" : "hand " + handNumber);
+            for (Seat s : List.copyOf(seats.values())) {
+                Player p = Bukkit.getPlayer(s.player);
+                if (revise(p, s, s.stack, hand == null ? "waiting" : "hand " + handNumber)
+                        == WagerEngine.Revision.GONE && p != null && p.isOnline()) {
+                    // his record was paid out elsewhere (the start of the hand): the hand cannot go on with his chips
+                    Log.critical("HOLDEM_RECORD_GONE", "poker #{} (Texas Hold'em): the record of {} was settled "
+                            + "outside the table; hand {} is void, the seat is closed", machine.record().number(), s.name,
+                            handNumber);
+                    voidHand(now);
+                    remove(s, "record settled elsewhere");
+                }
             }
         }
     }
@@ -424,9 +471,8 @@ final class HoldemTable implements HoldemHand.Listener {
             in.get(i).index = i;
             stacks[i] = in.get(i).stack;
         }
-        if (shoe == null) {
-            shoe = new BlackjackShoe(new ShoeRandom(ctx.random().nextLong()), 1);
-        }
+        // a fresh deck from a fresh seed every hand: nobody can learn the generator from the cards he has seen
+        shoe = new BlackjackShoe(new ShoeRandom(ctx.random().nextLong()), 1);
         playing = List.copyOf(in);
         handNumber++;
         handStart = now;
@@ -459,6 +505,22 @@ final class HoldemTable implements HoldemHand.Listener {
         if (hand.isOver()) {
             finishHand(now);
         }
+    }
+
+    /** The running hand does not count: everybody keeps the chips of its start (which the records hold). */
+    private void voidHand(long now) {
+        if (hand == null) {
+            return;
+        }
+        hand.abort();
+        hand = null;
+        for (Seat s : seats.values()) {
+            s.index = -1;
+            s.action = "";
+        }
+        playing = List.of();
+        view = new PokerTableState();
+        nextHandAt = now + settings().nextHandSeconds() * 20L;
     }
 
     private void finishHand(long now) {
@@ -507,26 +569,16 @@ final class HoldemTable implements HoldemHand.Listener {
 
     void checkOrCall(Player player) {
         int i = acting(player);
-        if (i >= 0 && (hand.canCheck(i) || safe(player))) {
+        if (i >= 0) {
             hand.checkOrCall(i);
         }
     }
 
     void raiseTo(Player player, int to) {
         int i = acting(player);
-        if (i >= 0 && safe(player)) {
+        if (i >= 0) {
             hand.raiseTo(i, Math.max(hand.minRaiseTo(i), Math.min(hand.maxRaiseTo(i), to)));
         }
-    }
-
-    /** Putting more chips in is a commit: never in danger (the menu closes; the turn times out to check or fold). */
-    private boolean safe(Player player) {
-        if (ctx.menus().safe(player)) {
-            return true;
-        }
-        ctx.messages().get().actionBar(player, Msg.ERROR_UNSAFE);
-        player.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
-        return false;
     }
 
     // ---- the hand's events ------------------------------------------------------------------------------------------
@@ -617,7 +669,9 @@ final class HoldemTable implements HoldemHand.Listener {
     @Override
     public void turnTimedOut(int index, int at) {
         Seat s = seatOf(index);
+        timingOut = index;
         if (s != null) {
+            s.timeouts++;
             Player p = Bukkit.getPlayer(s.player);
             if (p != null) {
                 ctx.messages().get().actionBar(p, Msg.POKER_HOLDEM_TIMEOUT);
@@ -630,6 +684,11 @@ final class HoldemTable implements HoldemHand.Listener {
         Seat s = seatOf(index);
         if (s == null) {
             return;
+        }
+        if (index == timingOut) {
+            timingOut = -1;
+        } else if (action != HoldemHand.Action.SMALL_BLIND && action != HoldemHand.Action.BIG_BLIND) {
+            s.timeouts = 0;
         }
         s.action = switch (action) {
             case FOLD -> word(Msg.POKER_HOLDEM_ACT_FOLD, 0);
@@ -675,8 +734,15 @@ final class HoldemTable implements HoldemHand.Listener {
                 continue;
             }
             s.stack = stacks[i];
-            revise(Bukkit.getPlayer(s.player), s, s.stack, "after hand " + handNumber);
+            Player p = Bukkit.getPlayer(s.player);
+            if (revise(p, s, s.stack, "after hand " + handNumber) == WagerEngine.Revision.GONE && p != null
+                    && p.isOnline()) {
+                Log.critical("HOLDEM_RECORD_GONE", "poker #{} (Texas Hold'em): the record of {} was settled outside "
+                        + "the table; the seat is closed", machine.record().number(), s.name);
+                remove(s, "record settled elsewhere");
+            }
         }
+        queueSaves(null);
         List<String> log = new ArrayList<>();
         for (int i = 0; i < playing.size(); i++) {
             Seat s = playing.get(i);

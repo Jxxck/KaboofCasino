@@ -120,7 +120,7 @@ public final class MachineSettings {
                     LEADERBOARD_WALL_5X3,
                     LEADERBOARD_WALL_5X4,
                     LEADERBOARD_WALL_6X4,
-                    LEADERBOARD_COLUMN, CHIP_SHOP ->
+                    LEADERBOARD_COLUMN, CHIP_SHOP, JUKEBOX ->
                     throw new IllegalArgumentException(type + " is no game");
         };
     }
@@ -142,7 +142,7 @@ public final class MachineSettings {
                     LEADERBOARD_WALL_5X3,
                     LEADERBOARD_WALL_5X4,
                     LEADERBOARD_WALL_6X4,
-                    LEADERBOARD_COLUMN, CHIP_SHOP ->
+                    LEADERBOARD_COLUMN, CHIP_SHOP, JUKEBOX ->
                     throw new IllegalArgumentException(type + " has no win chance");
         };
     }
@@ -164,7 +164,7 @@ public final class MachineSettings {
                     LEADERBOARD_WALL_5X3,
                     LEADERBOARD_WALL_5X4,
                     LEADERBOARD_WALL_6X4,
-                    LEADERBOARD_COLUMN, CHIP_SHOP ->
+                    LEADERBOARD_COLUMN, CHIP_SHOP, JUKEBOX ->
                     throw new IllegalArgumentException(type + " has no win chance");
         };
     }

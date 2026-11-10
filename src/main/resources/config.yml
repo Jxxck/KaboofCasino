@@ -166,6 +166,13 @@ music:
   # Für das Paket gilt eine Änderung ab dem nächsten Login, für die Musik sofort nach /casino reload.
   enabled: true
 
+jukebox:
+  # Die Casino-Jukebox (craftbar, im Chip-Shop unter Technik): 98 Titel in 9 Musikrichtungen, die Minecraft-Musik des
+  # Spiels selbst (alle Schallplatten, Overworld, Kreativ, Nether, Unterwasser, Das Ende) und die Casino-Lounge des
+  # Musikpakets. Jeder in der Nähe kann Titel, Modus und Reichweite (16/32/48 Blöcke) wählen; in ihrer Reichweite
+  # schweigen die Casino-Lautsprecher. /casino musik aus schaltet auch die Jukebox ab. false: alle Jukeboxen schweigen.
+  enabled: true
+
 leaderboard:
   # Die Bestenliste (Schritt 10): Tafeln an der Wand (2x2 bis 6x4) und Säulen (1x3), dazu /casino top. Aufstellen:
   # /casino give leaderboard_wall (3x2), leaderboard_wall_4x4 usw. bzw. leaderboard_column. Gezählt werden nur Runden mit Chips.

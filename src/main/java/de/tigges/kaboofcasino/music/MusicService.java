@@ -72,9 +72,16 @@ public final class MusicService implements SpeakerHooks, Listener {
     /** Worlds whose speakers changed this tick: their listeners are checked at the next tick. */
     private final Set<String> changed = new HashSet<>();
     private BukkitTask task;
+    /** Players a casino jukebox covers: the speakers' lounge music stays silent for them. */
+    private java.util.function.Predicate<Player> silenced = p -> false;
 
     public MusicService(CasinoContext ctx) {
         this.ctx = ctx;
+    }
+
+    /** A playing jukebox wins over the speakers within its range. */
+    public void silencedBy(java.util.function.Predicate<Player> test) {
+        this.silenced = test;
     }
 
     /** Registers listeners and tasks. */
@@ -231,7 +238,7 @@ public final class MusicService implements SpeakerHooks, Listener {
         Entry e = worlds.get(w.getKey().asString());
         Playback.Station station = e == null ? null : e.music().playing();
         double distanceSq = Double.POSITIVE_INFINITY;
-        if (station != null) {
+        if (station != null && !silenced.test(p)) {
             Location at = p.getLocation();
             SpeakerGrid.Nearest nearest = e.music().grid().nearest(at.getX(), at.getY(), at.getZ(), Playback.RANGE);
             if (nearest != null) {
