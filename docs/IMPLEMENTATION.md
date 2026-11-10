@@ -1460,6 +1460,29 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
   the empty default does not remove them by itself.
 
+### Multiplayer poker (step 14, 0.15.0; PLAN-2 C5, not in MineVegas)
+
+- Alone at the table the mod's hand runs unchanged (`Hand`, `PokerRound`, reconnect grace). With another usable player
+  within 8 blocks the first ante opens a window of `poker.countdown-seconds` (15; shortens to 2 s once nobody near is
+  without a bet or all three seats are taken), up to 3 players take the free seat nearest to them. Until it closes an
+  ante is a PLAYING record paying it back; the round menu opens at the bet and stays open. No bias: such tables only
+  play alone.
+- `PokerTableRound` is `PokerRound` widened to seats: deal seat by seat with the dealer last in each pass (16 ticks a
+  card from three seats), the flop, one decision window of 600 ticks for everybody that closes early once all decided;
+  an undecided seat folds when it closes, a departed one at once. Anybody called: turn, river, one showdown, each called
+  seat resolved against the dealer; nobody called: the hand ends without them. The turn and the river are the next two
+  cards of the shoe whoever calls, so `PokerCall.call` on a copy of the shoe at a seat's call is that seat's outcome
+  (`PokerTableRoundTest` checks it over 3000 hands in random orders).
+- Records: at the start they pay the fold (as for one player), at the decision their end moves on, at a call they take
+  the call stake and the predicted outcome (`WagerEngine.revise`), at the showdown the table confirms them per seat.
+  Quit before the seat decided: `holdsForReconnect` keeps them in his file until the window closes (back in time =
+  re-attached, else the fold settles at his join); death or a quit after deciding settles them as they stand; the others
+  play on. Removal refunds every undecided seat in full. `TABLE_RECORD_ENDS_MILLIS` 5 min.
+- Display: a player card lies at the seat it was dealt to (`PokerTableState.slot` uses `card.spot`, plugin change); the
+  dealer watches the middle seat during the decision. The panel (`PokerPanel.table`) shows the seconds left to bet or to
+  decide, one line per player (stakes, his hand with the board, the result; a fold at once) and the dealer's hand.
+  Bot: `testing/poker-mp-test.sh`.
+
 ### Multiplayer blackjack (step 13, 0.14.0; PLAN-2 C5, not in MineVegas) and square signs
 
 - Alone at the table the mod's hand runs unchanged (`Hand`, `BlackjackRound`). With another usable player within 8 blocks
@@ -1689,6 +1712,11 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
+- 0.15.0 (multiplayer poker): remove `KaboofCasino-0.14.1.jar`. The live `config.yml` gets `poker.countdown-seconds: 15`
+  merged in, `messages_de.yml` the new `poker.joined`, `already`, `full`, `decide`, `called-wait`, `countdown` and
+  `decide-countdown` keys (all new, nothing to delete). No database migration, no new ledger version. Rollback: the
+  0.14.1 jar once no shared hand is open (a clean stop settles them).
+- 0.14.1 (shop): jar swap only.
 - Download limits (step 4 fix, raised by the orchestrator): the casino pack has 16 slots and a 300 s cap with a 16 KiB/s
   minimum, so a 4.7 MB download needs about 16 KiB/s on average (slower clients fail it, and with enforce are kicked; a
   17th simultaneous first download of a new pack version gets 503); the music pack's 180 s needs about 124 KiB/s

@@ -146,8 +146,8 @@ class MachineSettingsTest {
             }
         }
         assertEquals(List.of(), hits);
-        // slot, wheel, plinko, roulette solo + window close, blackjack solo + window close, poker, derby solo + group
-        // allowed + group draw + lobby snapshot
-        assertEquals(12, asks);
+        // slot, wheel, plinko, roulette solo + window close, blackjack solo + window close, poker solo + window close,
+        // derby solo + group allowed + group draw + lobby snapshot
+        assertEquals(13, asks);
     }
 }

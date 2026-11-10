@@ -152,8 +152,12 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      * @param bias         the mod's admin setting "which side the cards favour" (-100..100, default 0 = a fair deck;
      *                     {@code CasinoSettings.bias}); the win chance does not apply to poker in the mod
      * @param needsSupport at least one of the twelve cells needs solid ground below (false = the mod)
+     * @param countdownSeconds the betting window when others are near (PLAN-2 C5; 0 = always one player)
      */
-    public record Poker(int bias, boolean needsSupport) {
+    public record Poker(int bias, boolean needsSupport, int countdownSeconds) {
+        public Poker(int bias, boolean needsSupport) {
+            this(bias, needsSupport, 15);
+        }
     }
 
     /**

@@ -27,9 +27,12 @@ import de.tigges.kaboofcasino.wager.SettleReason;
 import de.tigges.kaboofcasino.wager.WagerEngine;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import org.bukkit.Bukkit;
@@ -61,7 +64,16 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
  *   <li>The decision: the payout is checked against the records, the records settle 21 ticks later with the first coin,
  *       one coin every 3 ticks, the table is free 15 ticks after the round is over (or on the owner's next click).</li>
  * </ul>
- * One clock: the world's game time (the view, the rig, the menu). Thread: MAIN.
+ * One clock: the world's game time (the view, the rig, the menu).
+ *
+ * <p>Several players (PLAN-2 C5, not in the mod): alone at the table everything above applies. With somebody else near,
+ * the first bet opens a window of {@code poker.countdown-seconds}, up to three players take a seat each; until it
+ * closes an ante is a PLAYING record paying it back, so quit, death or stop refund it. Then one {@link PokerTableRound}
+ * runs: the records pay the fold, everybody sees the same flop and decides on his own in one window; a call stores
+ * that seat's outcome after turn and river ({@link PokerCall} on a copy of the shoe: the same two cards whoever calls)
+ * and takes the call stake; one dealer shows down for all and each seat is confirmed, settled and paid on its own. A
+ * quit before the seat's call keeps its records for a reconnect until the window closes (then it folds); death, or a
+ * quit after the call, settles his records as they stand; the others play on. Thread: MAIN.
  */
 public final class PokerController extends MachineController {
 
@@ -88,6 +100,12 @@ public final class PokerController extends MachineController {
      * decision even at 5 TPS; the table owns the records another 60 s beyond it.
      */
     static final long DECISION_ENDS_MILLIS = 120_000;
+    /** A shared hand (deal, 30 s decision, board, payout): its records may wait this long for their next rewrite. */
+    static final long TABLE_RECORD_ENDS_MILLIS = 300_000;
+    /** Whoever stands this near the table (blocks) makes a hand wait for bets. */
+    static final double NEAR = 8.0;
+    /** Once everybody near has bet, the cards come this soon (ticks). */
+    static final int LAST_CALL_TICKS = 40;
     private static final Particle.DustOptions RED_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xDF3B4B), 1.15f);
     private static final Particle.DustOptions GOLD_CONFETTI = new Particle.DustOptions(Color.fromRGB(0xFFD168), 1.25f);
     private static final Particle.DustOptions GREEN_CONFETTI = new Particle.DustOptions(Color.fromRGB(0x36D886),
@@ -99,6 +117,49 @@ public final class PokerController extends MachineController {
     private Hand hand;
     private final PokerTableState idleView = new PokerTableState();
     private PokerPanel.Content shownPanel;
+    /** A running hand with several seats. */
+    private Table table;
+    /** Who has bet in the open window, in the order they joined. */
+    private final Map<UUID, TableSeat> waiting = new LinkedHashMap<>();
+    /** The game tick the betting window closes at, -1 when none is open. */
+    private long windowEnd = -1;
+    private PokerPanel.TableContent shownTable;
+
+    /** One player's place at a table with several players. */
+    private static final class TableSeat {
+        final UUID player;
+        final String name;
+        final int spot;
+        final long seed;
+        List<Seat> stakes;
+        long endsMillis;
+        /** His records are settled (death, a quit after his decision, gone elsewhere): no more decisions, no coins. */
+        boolean gone;
+        /** He quit before deciding: his records wait in his file for a reconnect until the window closes. */
+        boolean away;
+        PokerRound.Result result = PokerRound.Result.NONE;
+        int thirds;
+
+        TableSeat(UUID player, String name, int spot, long seed, List<Seat> stakes, long endsMillis) {
+            this.player = player;
+            this.name = name;
+            this.spot = spot;
+            this.seed = seed;
+            this.stakes = stakes;
+            this.endsMillis = endsMillis;
+        }
+
+        boolean holds(UUID round) {
+            return stakes.stream().anyMatch(s -> s.round().equals(round));
+        }
+
+        List<ItemAmount> staked() {
+            return ItemAmount.merge(stakes.stream().map(Seat::stake).toList());
+        }
+    }
+
+    private record TableCoin(String item, int spot, UUID player) {
+    }
 
     /** One filled bet slot of the running hand. */
     record Seat(int slot, ItemAmount stake, UUID round) {
@@ -230,6 +291,209 @@ public final class PokerController extends MachineController {
         }
     }
 
+    /** A running hand with several seats: what {@link Hand} is for one. */
+    private final class Table implements PokerTableRound.Listener {
+        final List<TableSeat> seats;
+        final long start;
+        long ticked;
+        final PokerTableState view;
+        final List<ScheduledSound> sounds = new ArrayList<>();
+        final Set<String> resultSounds = new HashSet<>();
+        final ArrayDeque<TableCoin> coins = new ArrayDeque<>();
+        PokerTableRound round;
+        /** The hand is decided for every seat (its reaction came): the payout runs. */
+        boolean decided;
+        int payoutWait;
+        boolean settled;
+        int endHold;
+
+        Table(List<TableSeat> seats, long start) {
+            this.seats = seats;
+            this.start = start;
+            this.ticked = start;
+            this.view = new PokerTableState(start, seats.getFirst().spot);
+            this.view.phaseChanged(PokerRound.Phase.DEALING, 0);
+        }
+
+        int index(UUID player) {
+            for (int i = 0; i < seats.size(); i++) {
+                if (seats.get(i).player.equals(player)) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private void schedule(int at, String id, float volume, float pitch) {
+            sounds.add(new ScheduledSound(at, id, volume, pitch));
+        }
+
+        @Override
+        public void shuffled(int at) {
+            view.shuffled(at);
+            schedule(at, "poker_shuffle", 0.9f, 1.0f);
+        }
+
+        @Override
+        public void cardDealt(int seat, int index, int card, boolean faceUp, int at) {
+            boolean toDealer = seat == PokerTableRound.DEALER;
+            if (!toDealer) {
+                view.seat = seats.get(seat).spot;
+            }
+            view.cardDealt(toDealer, index, card, faceUp, at);
+            float pitch = 0.94f + 0.04f * Math.min(index, 4) + (toDealer ? 0.05f : 0.0f);
+            schedule(at + 7, "poker_card_flip", 0.3f, 0.75f);
+            schedule(at + 14, "poker_card_deal", 0.8f, pitch);
+        }
+
+        @Override
+        public void holeCardRevealed(int index, int card, int at) {
+            view.holeCardRevealed(index, card, at);
+            schedule(at + 4 + 2, "poker_card_flip", 0.9f, 1.0f);
+        }
+
+        @Override
+        public void decisionOpened(int deadline, int at) {
+            // the dealer watches the middle of the table while everybody decides
+            view.seat = 1;
+            view.turnOpened(deadline, at);
+            schedule(at, "poker_turn", 0.5f, 1.5f);
+            Messages m = ctx.messages().get();
+            String seconds = Long.toString(PokerRound.TURN_TIMEOUT / 20);
+            Log.get().info("poker #{}: decision open for {} player(s)", machine.record().number(), seats.size());
+            for (int i = 0; i < seats.size(); i++) {
+                TableSeat s = seats.get(i);
+                Player p = Bukkit.getPlayer(s.player);
+                if (p != null && !s.gone && !s.away && !p.isDead()) {
+                    m.actionBar(p, Msg.POKER_DECIDE, Messages.text("seconds", seconds));
+                    // the records' end moves on (still the fold), so nothing releases them during the decision
+                    if (reviseSeat(p, this, i, s.stakes, z -> List.of(), "decision open, then fold", List.of())
+                            == WagerEngine.Revision.GONE) {
+                        dropSeat(this, i, "records already settled at the decision");
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void decisionTimedOut(int seat, int at) {
+            TableSeat s = seats.get(seat);
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && !s.gone && !s.away) {
+                ctx.messages().get().actionBar(p, Msg.POKER_TIMEOUT);
+            }
+        }
+
+        @Override
+        public void phaseChanged(PokerRound.Phase phase, int at) {
+            view.phaseChanged(phase, at);
+        }
+
+        @Override
+        public void decided(int seat, PokerRound.Result result, int thirds, int at) {
+            TableSeat s = seats.get(seat);
+            s.result = result;
+            s.thirds = thirds;
+            Log.get().info("poker #{}: hand of {} ends {} (player {}, dealer {}, board {}{}{})",
+                    machine.record().number(), s.name, result, cards(round.hand(seat)), cards(round.dealer()),
+                    cards(round.board()), round.called(seat) ? ", called" : "",
+                    s.gone ? ", owner gone" : s.away ? ", owner away" : "");
+            if (result == PokerRound.Result.FOLD) {
+                // the records already pay the fold
+                return;
+            }
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && !p.isDead() && !s.gone) {
+                confirmSeat(p, this, seat, result, thirds);
+            }
+            World world = world();
+            if (world != null) {
+                String sound = result.isWin() ? "poker_win" : result.isPush() ? "poker_push" : "poker_lose";
+                if (result.isWin()) {
+                    celebrate(world, s.spot, PokerHands.antePays(round.score(seat)) >= 3);
+                }
+                if (resultSounds.add(sound)) {
+                    schedule(at + 6, sound, result.isWin() ? 1.1f : 0.95f, 1.0f);
+                }
+            }
+        }
+
+        @Override
+        public void reaction(BlackjackRound.Reaction reaction, int at) {
+            view.reaction(reaction, at);
+            PokerRound.Result shown = PokerRound.Result.FOLD;
+            for (TableSeat s : seats) {
+                if (s.result != PokerRound.Result.FOLD && s.result != PokerRound.Result.NONE) {
+                    shown = s.result;
+                }
+            }
+            // the view's result time drives when the panel shows the results (as for one player)
+            view.decided(shown, at);
+            decided = true;
+            payoutWait = PAYOUT_DELAY;
+        }
+
+        @Override
+        public void cleared(int at) {
+            view.cleared(at);
+            schedule(at + 7, "poker_card_deal", 0.55f, 0.8f);
+        }
+
+        PokerPanel.TableContent content(long now) {
+            List<PokerPanel.SeatLine> lines = new ArrayList<>();
+            boolean shown = view.resultAt >= 0 && now >= view.resultAt + PokerPanel.RESULT_DELAY;
+            for (TableSeat s : seats) {
+                int result = s.result == PokerRound.Result.FOLD || shown && s.result != PokerRound.Result.NONE
+                        ? s.result.code : 0;
+                lines.add(new PokerPanel.SeatLine(s.player, s.name, s.stakes.stream().map(Seat::stake).toList(),
+                        PokerPanel.seatHand(view, s.spot, now), result));
+            }
+            PokerPanel.Hands dealer = PokerPanel.dealerHand(view, now);
+            long decide = round.phase() == PokerRound.Phase.DECISION
+                    ? Math.max(0, round.deadline() - round.now() + 19) / 20 : -1;
+            return new PokerPanel.TableContent(lines, dealer.dealer(), dealer.qualifies(), -1, decide);
+        }
+
+        PokerSnapshot snapshot(int seat, Player viewer, long now) {
+            TableSeat s = seats.get(seat);
+            PokerTableRound r = round;
+            boolean folded = r.choice(seat) == PokerTableRound.Choice.FOLDED;
+            int phase = switch (r.phase()) {
+                case DEALING -> PokerSnapshot.PHASE_DEALING;
+                case DECISION -> folded ? PokerSnapshot.PHASE_RESULT : PokerSnapshot.PHASE_DECISION;
+                case BOARD -> folded ? PokerSnapshot.PHASE_RESULT : PokerSnapshot.PHASE_BOARD;
+                case SHOWDOWN -> folded ? PokerSnapshot.PHASE_RESULT : PokerSnapshot.PHASE_SHOWDOWN;
+                default -> PokerSnapshot.PHASE_RESULT;
+            };
+            List<Long> playerAt = new ArrayList<>();
+            List<Long> dealerAt = new ArrayList<>(List.of(-1L, -1L));
+            List<Long> boardAt = new ArrayList<>();
+            List<Long> revealedAt = new ArrayList<>(List.of(-1L, -1L));
+            for (BlackjackCardMotion.Card c : view.cards) {
+                if (!c.toDealer) {
+                    if (c.spot == s.spot) {
+                        playerAt.add(c.dealtAt);
+                    }
+                } else if (c.index < 2) {
+                    dealerAt.set(c.index, c.dealtAt);
+                    revealedAt.set(c.index, c.flipAt);
+                } else {
+                    boardAt.add(c.dealtAt);
+                }
+            }
+            dealerAt = dealerAt.subList(0, Math.min(2, r.dealer().size()));
+            revealedAt = revealedAt.subList(0, dealerAt.size());
+            boolean open = r.canCall(seat) && !s.gone;
+            int left = r.phase() == PokerRound.Phase.DECISION && open ? Math.max(0, r.deadline() - r.now()) : 0;
+            List<ItemAmount> shown = s.stakes.stream().map(Seat::stake).toList();
+            boolean known = s.result != PokerRound.Result.NONE;
+            return new PokerSnapshot(phase, r.hand(seat), r.dealerVisible(), r.board(), playerAt, dealerAt, boardAt,
+                    revealedAt, left, known ? s.result.code : 0, open, open, r.called(seat),
+                    open && afford(viewer, shown), s.thirds, shown,
+                    known ? net(s.stakes, s.result, s.thirds, s.seed) : List.of(), now);
+        }
+    }
+
     public PokerController(Machine machine, CasinoContext ctx) {
         super(machine, ctx);
     }
@@ -238,7 +502,23 @@ public final class PokerController extends MachineController {
 
     @Override
     protected boolean running() {
-        return hand != null;
+        return hand != null || table != null;
+    }
+
+    private boolean windowOpen() {
+        return windowEnd >= 0;
+    }
+
+    /** Breaking is refused while cards are out or antes wait for them (their records are open). */
+    @Override
+    public boolean busy() {
+        return running() || windowOpen();
+    }
+
+    /** Everybody opens his own betting menu: nobody holds the table. */
+    @Override
+    protected boolean holdsClaim(Player player) {
+        return true;
     }
 
     @Override
@@ -255,10 +535,12 @@ public final class PokerController extends MachineController {
     @Override
     protected GameMenu newMenu(Player player) {
         Hand h = hand;
-        if (h != null && h.player.equals(player.getUniqueId())) {
-            return new PokerRoundMenu(player.getUniqueId(), this, ctx);
+        Table t = table;
+        UUID id = player.getUniqueId();
+        if (h != null && h.player.equals(id) || waiting.containsKey(id) || t != null && t.index(id) >= 0) {
+            return new PokerRoundMenu(id, this, ctx);
         }
-        return new PokerBetMenu(player.getUniqueId(), this, ctx);
+        return new PokerBetMenu(id, this, ctx);
     }
 
     /**
@@ -269,6 +551,25 @@ public final class PokerController extends MachineController {
     public void interact(Player player) {
         Messages m = ctx.messages().get();
         UUID id = player.getUniqueId();
+        Table t = table;
+        if (t != null) {
+            if (t.index(id) < 0) {
+                m.actionBar(player, Msg.POKER_BUSY, Messages.text("name", t.seats.getFirst().name));
+            } else if (mayOpen(player)) {
+                ctx.menus().open(player, newMenu(player));
+            }
+            return;
+        }
+        if (waiting.containsKey(id)) {
+            if (mayOpen(player)) {
+                ctx.menus().open(player, newMenu(player));
+            }
+            return;
+        }
+        if (waiting.size() >= PokerLayout.SEATS) {
+            m.actionBar(player, Msg.POKER_FULL);
+            return;
+        }
         Hand h = hand;
         if (h != null && h.player.equals(id) && h.round.isOver() && h.settled && h.coins.isEmpty()) {
             finish();
@@ -276,11 +577,6 @@ public final class PokerController extends MachineController {
         }
         if (h != null && !h.player.equals(id)) {
             m.actionBar(player, Msg.POKER_BUSY, Messages.text("name", h.name));
-            return;
-        }
-        if (h == null && claimant != null && !claimant.equals(id) && claimantActive()) {
-            Player other = Bukkit.getPlayer(claimant);
-            m.actionBar(player, Msg.POKER_BUSY, Messages.text("name", other == null ? "?" : other.getName()));
             return;
         }
         if (!mayOpen(player)) {
@@ -308,6 +604,10 @@ public final class PokerController extends MachineController {
         if (h != null && !h.player.equals(player.getUniqueId())) {
             return false;
         }
+        Table t = table;
+        if (t != null && t.index(player.getUniqueId()) < 0) {
+            return false;
+        }
         return player.getLocation().distanceSquared(at(w, RANGE_POINT)) <= RANGE * RANGE;
     }
 
@@ -324,6 +624,7 @@ public final class PokerController extends MachineController {
         }
         rig.spawn();
         shownPanel = null;
+        shownTable = null;
     }
 
     @Override
@@ -341,6 +642,19 @@ public final class PokerController extends MachineController {
     /** Poker before the call keeps its records over the owner's quit and rejoin (the mod keeps the round). */
     @Override
     public boolean holdsForReconnect(UUID roundId) {
+        Table t = table;
+        if (t != null) {
+            for (int i = 0; i < t.seats.size(); i++) {
+                TableSeat s = t.seats.get(i);
+                if (s.holds(roundId)) {
+                    // a seat that has not decided yet waits for him until the window closes (its records pay the fold)
+                    PokerRound.Phase phase = t.round.phase();
+                    return !s.gone && t.round.choice(i) == PokerTableRound.Choice.OPEN
+                            && (phase == PokerRound.Phase.DEALING || phase == PokerRound.Phase.DECISION)
+                            && ownsRound(roundId);
+                }
+            }
+        }
         Hand h = hand;
         return h != null && !h.ownerGone && h.decided == PokerRound.Result.NONE && !h.round.called()
                 && ownsRound(roundId);
@@ -348,6 +662,20 @@ public final class PokerController extends MachineController {
 
     @Override
     public boolean ownsRound(UUID roundId) {
+        long clock = ctx.clock().getAsLong();
+        for (TableSeat s : waiting.values()) {
+            if (s.holds(roundId)) {
+                return owns(heartbeat, clock, s.endsMillis, false);
+            }
+        }
+        Table t = table;
+        if (t != null) {
+            for (TableSeat s : t.seats) {
+                if (s.holds(roundId)) {
+                    return owns(heartbeat, clock, s.endsMillis, t.settled);
+                }
+            }
+        }
         Hand h = hand;
         return h != null && owns(heartbeat, ctx.clock().getAsLong(), h.endsMillis, h.settled)
                 && h.seats.stream().anyMatch(s -> s.round().equals(roundId));
@@ -391,6 +719,33 @@ public final class PokerController extends MachineController {
             holdChunk(h, false);
         }
         hand = null;
+        for (TableSeat s : waiting.values()) {
+            for (Seat z : s.stakes) {
+                settleRound(s.player, s.name, z.round(), SettleReason.MACHINE_GONE);
+            }
+        }
+        waiting.clear();
+        windowEnd = -1;
+        Table t = table;
+        if (t != null) {
+            if (!t.settled) {
+                t.settled = true;
+                for (int i = 0; i < t.seats.size(); i++) {
+                    TableSeat s = t.seats.get(i);
+                    Player p = Bukkit.getPlayer(s.player);
+                    if (s.result == PokerRound.Result.NONE && p != null && !p.isDead() && !s.gone) {
+                        // undecided: ante and call back in full, as for one player
+                        reviseSeat(p, t, i, s.stakes, z -> List.of(z.stake()), "refund (table removed)", List.of());
+                    }
+                    for (Seat z : s.stakes) {
+                        settleRound(s.player, s.name, z.round(), SettleReason.MACHINE_GONE);
+                    }
+                }
+            }
+            t.round.abort();
+            table = null;
+        }
+        keepChunkLoaded(false);
         claimant = null;
         closeMenus();
     }
@@ -406,6 +761,14 @@ public final class PokerController extends MachineController {
         List<StakeMenu.Stake> stakes = menu.stakes();
         if (stakes.isEmpty()) {
             m.actionBar(player, Msg.POKER_NO_BET);
+            return;
+        }
+        if (waiting.containsKey(player.getUniqueId())) {
+            m.actionBar(player, Msg.POKER_ALREADY, Messages.text("seconds", Long.toString(secondsLeft())));
+            return;
+        }
+        if (windowOpen() || playsWithOthers(player)) {
+            join(player, menu, stakes);
             return;
         }
         if (shoe == null) {
@@ -449,6 +812,11 @@ public final class PokerController extends MachineController {
      * Not enough items: the mod's message, nothing changes.
      */
     void call(Player player) {
+        Table t = table;
+        if (t != null) {
+            tableCall(player, t);
+            return;
+        }
         Hand h = ownHand(player);
         if (h == null || !h.round.canCall() || !safeDecision(player)) {
             return;
@@ -485,11 +853,428 @@ public final class PokerController extends MachineController {
 
     /** FOLD (button 2): the records already hold the fold. Allowed in danger: it only gives up the ante. */
     void fold(Player player) {
+        Table t = table;
+        if (t != null) {
+            int seat = actingSeat(player, t);
+            if (seat >= 0 && t.round.fold(seat)) {
+                Log.get().info("poker #{}: {} folds", machine.record().number(), player.getName());
+            }
+            return;
+        }
         Hand h = ownHand(player);
         if (h == null || !h.round.canFold()) {
             return;
         }
         h.round.fold();
+    }
+
+    // ---- a table with several players ---------------------------------------------------------------------------------
+
+    /** True if this bet waits for others: the window exists, nobody forces the cards, and somebody else is near. */
+    private boolean playsWithOthers(Player player) {
+        var config = ctx.config().get();
+        return config.poker().countdownSeconds() > 0 && MachineSettings.bias(config, machine) == 0
+                && othersWaiting(player.getWorld(), player.getUniqueId()) > 0;
+    }
+
+    private long othersWaiting(World world, UUID self) {
+        return playersNear(world, NEAR, id -> id.equals(self) || waiting.containsKey(id));
+    }
+
+    private long secondsLeft() {
+        World w = world();
+        return windowOpen() && w != null ? Math.max(0, windowEnd - w.getGameTime() + 19) / 20 : 0;
+    }
+
+    /** The free seat nearest to where the player stands. */
+    private int freeSeat(Player player) {
+        double[] p = tablePosition(player.getLocation());
+        int best = PokerLayout.nearestSeat(p[0], p[1]);
+        Set<Integer> taken = new HashSet<>();
+        waiting.values().forEach(s -> taken.add(s.spot));
+        for (int d = 0; d < PokerLayout.SEATS; d++) {
+            for (int seat : new int[] {best - d, best + d}) {
+                if (seat >= 0 && seat < PokerLayout.SEATS && !taken.contains(seat)) {
+                    return seat;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** An ante into the betting window (opened by the first): the chips leave now, as records paying them back. */
+    private void join(Player player, StakeMenu menu, List<StakeMenu.Stake> stakes) {
+        Messages m = ctx.messages().get();
+        int seat = freeSeat(player);
+        if (waiting.size() >= PokerLayout.SEATS || seat < 0) {
+            m.actionBar(player, Msg.POKER_FULL);
+            return;
+        }
+        World world = player.getWorld();
+        long now = world.getGameTime();
+        long until = windowOpen() ? windowEnd : now + ctx.config().get().poker().countdownSeconds() * 20L;
+        long ends = ctx.clock().getAsLong() + (until - now) * 50L + TABLE_RECORD_ENDS_MILLIS;
+        List<WagerEngine.Request> requests = new ArrayList<>();
+        for (StakeMenu.Stake s : stakes) {
+            requests.add(new WagerEngine.Request(machine.id(), GAME, s.amount(), List.of(s.amount()), ends,
+                    "slot=" + s.slot() + " refund until the start", RoundState.PLAYING).withTake(s.chips()));
+        }
+        List<UUID> rounds = commit(player, requests, Msg.POKER_NO_BET);
+        if (rounds == null) {
+            menu.render();
+            return;
+        }
+        if (!windowOpen()) {
+            windowEnd = until;
+            keepChunkLoaded(true);
+            Log.get().info("poker #{}: betting window opened by {}", machine.record().number(), player.getName());
+        }
+        List<Seat> seats = new ArrayList<>();
+        for (int i = 0; i < stakes.size(); i++) {
+            seats.add(new Seat(stakes.get(i).slot(), stakes.get(i).amount(), rounds.get(i)));
+        }
+        waiting.put(player.getUniqueId(), new TableSeat(player.getUniqueId(), player.getName(), seat,
+                ctx.random().nextLong(), seats, ends));
+        menu.clearStakes();
+        if (othersWaiting(world, player.getUniqueId()) == 0 || waiting.size() >= PokerLayout.SEATS) {
+            windowEnd = Math.min(windowEnd, now + LAST_CALL_TICKS);
+        }
+        Log.get().info("{} joins poker #{} with {} at seat {} ({} player(s))", player.getName(),
+                machine.record().number(), stakes.stream().map(s -> s.amount().toString()).toList(), seat,
+                waiting.size());
+        // the round menu opens now, in the click: a menu may not open by itself later, and it stays open for the hand
+        ctx.menus().open(player, new PokerRoundMenu(player.getUniqueId(), this, ctx));
+        m.actionBar(player, Msg.POKER_JOINED, Messages.text("seconds", Long.toString(secondsLeft())));
+    }
+
+    /** Every tick of the window: who quit or died was refunded by that hook; at its end the cards come. */
+    private void windowTick(World world, long now) {
+        waiting.values().removeIf(s -> {
+            Player p = Bukkit.getPlayer(s.player);
+            boolean gone = p == null || !p.isOnline() || p.isDead();
+            if (gone) {
+                Log.get().info("poker #{}: {} left the betting window (refunded by the quit/death)",
+                        machine.record().number(), s.name);
+            }
+            return gone;
+        });
+        if (waiting.isEmpty()) {
+            closeWindow("nobody left");
+        } else if (now >= windowEnd) {
+            startTable(world, now);
+        }
+    }
+
+    private void closeWindow(String why) {
+        windowEnd = -1;
+        waiting.clear();
+        keepChunkLoaded(false);
+        closeMenus();
+        Log.get().info("poker #{}: betting window closed without a hand ({})", machine.record().number(), why);
+    }
+
+    /** The window has closed: the hand starts for everybody whose records are still open. */
+    private void startTable(World world, long now) {
+        windowEnd = -1;
+        if (MachineSettings.bias(ctx.config().get(), machine) != 0) {
+            // an admin set a bias during the window: it is for one player, so nobody plays and all get their ante
+            for (TableSeat s : waiting.values()) {
+                for (Seat z : s.stakes) {
+                    settleRound(s.player, s.name, z.round(), SettleReason.NORMAL);
+                }
+            }
+            closeWindow("bias set meanwhile: refunded");
+            return;
+        }
+        List<TableSeat> seated = new ArrayList<>();
+        for (TableSeat s : waiting.values()) {
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && p.isOnline() && !p.isDead() && recordsOpen(p, s)) {
+                seated.add(s);
+            } else {
+                Log.get().info("poker #{}: {} drops out at the start (records already settled)",
+                        machine.record().number(), s.name);
+            }
+        }
+        if (seated.isEmpty()) {
+            closeWindow("nobody left at the start");
+            return;
+        }
+        seated.sort(Comparator.comparingInt(s -> s.spot));
+        if (shoe == null) {
+            shoe = new BlackjackShoe(new ShoeRandom(ctx.random().nextLong()), 1);
+        }
+        Table t = new Table(seated, now);
+        table = t;
+        waiting.clear();
+        t.round = new PokerTableRound(shoe, t, seated.size());
+        closeBetMenus();
+        for (int i = 0; i < seated.size(); i++) {
+            TableSeat s = seated.get(i);
+            Player p = Bukkit.getPlayer(s.player);
+            // from now on the records pay the fold, as for one player (no card is out yet)
+            if (p == null || reviseSeat(p, t, i, s.stakes, z -> List.of(), "deal, then fold", List.of())
+                    != WagerEngine.Revision.DONE) {
+                dropSeat(t, i, "records gone at the deal");
+            }
+        }
+        Log.get().info("poker #{}: hand for {} player(s): {}", machine.record().number(), seated.size(),
+                seated.stream().map(s -> s.name + "@" + s.spot).toList());
+    }
+
+    /** The bets are closed: whoever is still choosing an ante has missed this hand. */
+    private void closeBetMenus() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (MenuService.openMenu(p) instanceof PokerBetMenu menu && menu.controller() == this) {
+                p.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            }
+        }
+    }
+
+    private boolean recordsOpen(Player p, TableSeat s) {
+        try {
+            var ledger = new PlayerAccount(p).ledger();
+            return s.stakes.stream().allMatch(z -> ledger.round(z.round()).isPresent());
+        } catch (LedgerCodec.CorruptLedgerException e) {
+            Log.critical("LEDGER_UNREADABLE", "poker seat of {} dropped: {}", s.name, e.getMessage());
+            return false;
+        }
+    }
+
+    /** A seat whose records are settled: it decides nothing more (an open seat folds) and gets no coins. */
+    private void dropSeat(Table t, int seat, String why) {
+        TableSeat s = t.seats.get(seat);
+        if (!s.gone) {
+            s.gone = true;
+            t.round.leave(seat);
+            Log.get().info("poker #{}: {} is out of the hand ({})", machine.record().number(), s.name, why);
+        }
+    }
+
+    /** One seat's records: {@code stakes} and payouts from {@code pay}, plus {@code extra} taken, in one ledger write. */
+    private WagerEngine.Revision reviseSeat(Player player, Table t, int seat, List<Seat> stakes,
+                                           Function<Seat, List<ItemAmount>> pay, String why, List<ItemAmount> extra) {
+        TableSeat s = t.seats.get(seat);
+        try {
+            PlayerAccount account = new PlayerAccount(player);
+            long ends = ctx.clock().getAsLong() + TABLE_RECORD_ENDS_MILLIS;
+            List<RoundRecord> revised = new ArrayList<>();
+            for (Seat z : stakes) {
+                RoundRecord old = account.ledger().round(z.round()).orElse(null);
+                if (old == null) {
+                    return WagerEngine.Revision.GONE;
+                }
+                revised.add(new RoundRecord(old.id(), old.machine(), old.game(), RoundState.PLAYING, z.stake(),
+                        pay.apply(z), old.created(), ends, detail(z.slot(), t.round.hand(seat), t.round.dealer(),
+                        t.round.board(), t.round.called(seat) || !extra.isEmpty(), why)));
+            }
+            WagerEngine.Revision r = ctx.engine().revise(account, revised, extra);
+            if (r == WagerEngine.Revision.DONE) {
+                s.endsMillis = ends;
+            }
+            return r;
+        } catch (LedgerCodec.CorruptLedgerException e) {
+            Log.critical("LEDGER_UNREADABLE", "poker {} for {} refused: {}", why, s.name, e.getMessage());
+            return WagerEngine.Revision.GONE;
+        }
+    }
+
+    /** At a seat's showdown: its records must hold this result; the live hand deals the predicted cards, so they do. */
+    private void confirmSeat(Player p, Table t, int seat, PokerRound.Result result, int thirds) {
+        TableSeat s = t.seats.get(seat);
+        try {
+            PlayerAccount account = new PlayerAccount(p);
+            boolean differs = false;
+            for (Seat z : s.stakes) {
+                RoundRecord r = account.ledger().round(z.round()).orElse(null);
+                if (r != null && !r.payout().equals(PokerPayout.payout(z.stake(), result, thirds,
+                        PokerPayout.roll(s.seed, z.slot())))) {
+                    differs = true;
+                }
+            }
+            if (differs) {
+                Log.get().warn("poker #{}: the hand of {} ended {} but its records held another result; records "
+                        + "follow the table", machine.record().number(), s.name, result);
+            }
+            reviseSeat(p, t, seat, s.stakes, z -> PokerPayout.payout(z.stake(), result, thirds,
+                    PokerPayout.roll(s.seed, z.slot())), "result " + result, List.of());
+        } catch (LedgerCodec.CorruptLedgerException e) {
+            Log.critical("LEDGER_UNREADABLE", "poker result of {} not recorded: {}", s.name, e.getMessage());
+        }
+    }
+
+    /** The seat of a player who may decide now, or -1. */
+    private int actingSeat(Player player, Table t) {
+        int seat = t.index(player.getUniqueId());
+        return seat >= 0 && !t.seats.get(seat).gone && Usability.usable(player) ? seat : -1;
+    }
+
+    /**
+     * CALL at a table: the seat's outcome after turn and river (the next two cards of the shoe, whoever else calls)
+     * and the call stake in one write, then the seat is called.
+     */
+    private void tableCall(Player player, Table t) {
+        int seat = actingSeat(player, t);
+        if (seat < 0 || !t.round.canCall(seat) || !safeDecision(player)) {
+            return;
+        }
+        TableSeat s = t.seats.get(seat);
+        PokerCall.Outcome next = PokerCall.call(t.round.hand(seat), t.round.dealer(), t.round.board(), shoe.copy(), 0);
+        List<ItemAmount> extra = s.stakes.stream().map(z -> new ItemAmount(z.stake().item(), z.stake().count() * 2))
+                .toList();
+        List<Seat> called = s.stakes.stream().map(z -> new Seat(z.slot(),
+                new ItemAmount(z.stake().item(), z.stake().count() * 3), z.round())).toList();
+        WagerEngine.Revision r = reviseSeat(player, t, seat, called, z -> PokerPayout.payout(z.stake(), next.result(),
+                next.thirds(), PokerPayout.roll(s.seed, z.slot())), "call, then " + next.result(), extra);
+        if (r == WagerEngine.Revision.NOT_ENOUGH) {
+            boolean chips = s.stakes.stream()
+                    .anyMatch(z -> de.tigges.kaboofcasino.wager.Chips.isValue(z.stake().item()));
+            ctx.messages().get().actionBar(player, chips ? Msg.CHIPS_CANNOT_CALL : Msg.POKER_CANNOT_CALL);
+            return;
+        }
+        if (r == WagerEngine.Revision.GONE) {
+            ctx.messages().get().actionBar(player, Msg.POKER_HAND_SETTLED);
+            dropSeat(t, seat, "records already settled at the call");
+            return;
+        }
+        if (r == WagerEngine.Revision.DONE) {
+            s.stakes = new ArrayList<>(called);
+            t.round.call(seat);
+            Log.get().info("poker #{}: {} calls", machine.record().number(), s.name);
+            if (t.round.phase() == PokerRound.Phase.DECISION) {
+                ctx.messages().get().actionBar(player, Msg.POKER_CALLED_WAIT);
+            }
+        }
+    }
+
+    /**
+     * Where each seated player is. Dead: his death drained the records (a fold, or his called outcome), the seat is
+     * out. Offline after his decision: the quit settled what is stored. Offline before it: the quit kept the records
+     * ({@link #holdsForReconnect}), the seat waits until the window closes and folds then. Back before that: he
+     * decides again (records' end renewed).
+     */
+    private void followSeats(Table t) {
+        for (int i = 0; i < t.seats.size(); i++) {
+            TableSeat s = t.seats.get(i);
+            if (s.gone) {
+                continue;
+            }
+            Player p = Bukkit.getPlayer(s.player);
+            boolean online = p != null && p.isOnline();
+            boolean open = t.round.choice(i) == PokerTableRound.Choice.OPEN;
+            if (online && p.isDead()) {
+                dropSeat(t, i, "died in the hand");
+            } else if (!online && !open) {
+                // decided before the quit (settled there), or the window closed while he was away (folded)
+                String why = s.away ? "away when the decision closed (folds; settled at the join)"
+                        : "left after deciding (settled at the quit)";
+                s.away = false;
+                dropSeat(t, i, why);
+            } else if (!online && !s.away) {
+                s.away = true;
+                Log.get().info("poker #{}: {} left the hand before deciding; the seat waits until the decision "
+                        + "closes (records kept)", machine.record().number(), s.name);
+            } else if (online && s.away) {
+                s.away = false;
+                if (open && t.round.canCall(i) || t.round.phase() == PokerRound.Phase.DEALING) {
+                    Log.get().info("poker #{}: {} is back in the hand", machine.record().number(), s.name);
+                    if (reviseSeat(p, t, i, s.stakes, z -> List.of(), "rejoined, then fold", List.of())
+                            == WagerEngine.Revision.GONE) {
+                        dropSeat(t, i, "records gone at the rejoin");
+                    }
+                } else {
+                    // decided (timed out) while he was away: the join settled the fold
+                    dropSeat(t, i, "back after the decision closed");
+                }
+            }
+        }
+    }
+
+    private void runTable(World world, Table t, long now) {
+        // up to three seats of coins: twice the single hand's limit
+        if (now - t.start > 2 * MAX_HAND_TICKS) {
+            Log.get().warn("poker #{}: the shared hand is stuck in {} after {} ticks; it ends, its records settle as "
+                    + "stored", machine.record().number(), t.round.phase(), now - t.start);
+            if (!t.settled) {
+                t.settled = true;
+                for (TableSeat s : t.seats) {
+                    for (Seat z : s.stakes) {
+                        settleRound(s.player, s.name, z.round(), SettleReason.TIMEOUT);
+                    }
+                }
+            }
+            t.round.abort();
+            t.coins.clear();
+            finishTable(t);
+            return;
+        }
+        followSeats(t);
+        if (now <= t.ticked) {
+            return;
+        }
+        t.ticked = now;
+        t.round.tick();
+        int at = t.round.now();
+        for (int i = t.sounds.size() - 1; i >= 0; i--) {
+            ScheduledSound s = t.sounds.get(i);
+            if (s.at() <= at) {
+                t.sounds.remove(i);
+                sound(world, s.id(), ANCHOR_CENTRE, s.volume(), s.pitch());
+            }
+        }
+        if (t.decided && (!t.settled || !t.coins.isEmpty()) && --t.payoutWait <= 0) {
+            if (!t.settled) {
+                t.settled = true;
+                for (TableSeat s : t.seats) {
+                    ArrayDeque<String> stacks = new ArrayDeque<>();
+                    for (Seat z : s.stakes) {
+                        settleRound(s.player, s.name, z.round(), SettleReason.NORMAL);
+                        if (!s.gone && !s.away) {
+                            queueCoins(stacks, PokerPayout.payout(z.stake(), s.result, s.thirds,
+                                    PokerPayout.roll(s.seed, z.slot())));
+                        }
+                    }
+                    stacks.forEach(item -> t.coins.add(new TableCoin(item, s.spot, s.player)));
+                }
+            }
+            if (!t.coins.isEmpty()) {
+                TableCoin c = t.coins.poll();
+                rig.coin(c.item(), c.spot(), coinTarget(world, c.player()), now);
+                sound(world, "poker_payout", ANCHOR_CENTRE, 0.43f, 0.95f + ctx.random().nextFloat() * 0.2f);
+            }
+            t.payoutWait = PAYOUT_STEP;
+        }
+        if (t.round.isOver() && t.settled && t.coins.isEmpty() && ++t.endHold > END_HOLD) {
+            finishTable(t);
+        }
+    }
+
+    private void finishTable(Table t) {
+        table = null;
+        claimant = null;
+        keepChunkLoaded(false);
+        for (TableSeat s : t.seats) {
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && MenuService.openMenu(p) instanceof PokerRoundMenu menu && menu.controller() == this) {
+                p.closeInventory(InventoryCloseEvent.Reason.PLUGIN);
+            }
+        }
+    }
+
+    /** The panel of a table with several players, or of the betting window; sent only when something changed. */
+    private void tablePanel(Table t, long now) {
+        PokerPanel.TableContent content = null;
+        if (t != null) {
+            content = t.content(now);
+        } else if (windowOpen() && !waiting.isEmpty()) {
+            content = new PokerPanel.TableContent(waiting.values().stream().map(s -> new PokerPanel.SeatLine(
+                    s.player, s.name, s.stakes.stream().map(Seat::stake).toList(), -1, 0)).toList(), -1, false,
+                    secondsLeft(), -1);
+        }
+        if (content == null ? shownTable != null : !content.equals(shownTable)) {
+            rig.tablePanel(content == null ? null : PokerPanel.table(ctx.messages().get(), content));
+            shownTable = content;
+        }
     }
 
     private Hand ownHand(Player player) {
@@ -665,19 +1450,35 @@ public final class PokerController extends MachineController {
         }
         long now = world.getGameTime();
         rig.tickCoins(now);
+        if (windowOpen()) {
+            windowTick(world, now);
+        }
         Hand h = hand;
         if (h != null) {
             runHand(world, h, now);
         }
+        Table running = table;
+        if (running != null) {
+            runTable(world, running, now);
+        }
         heartbeat.beat(ctx.clock().getAsLong());
         Hand current = hand;
-        rig.update(current != null ? current.view : idleView, now);
+        Table currentTable = table;
+        rig.update(currentTable != null ? currentTable.view : current != null ? current.view : idleView, now);
         panel(current);
+        tablePanel(currentTable, now);
         if (current != null) {
             Player owner = Bukkit.getPlayer(current.player);
             if (owner != null && MenuService.openMenu(owner) instanceof PokerRoundMenu menu
                     && menu.controller() == this) {
                 menu.refresh(snapshot(owner));
+            }
+        }
+        List<TableSeat> seats = currentTable != null ? currentTable.seats : List.copyOf(waiting.values());
+        for (TableSeat s : seats) {
+            Player p = Bukkit.getPlayer(s.player);
+            if (p != null && MenuService.openMenu(p) instanceof PokerRoundMenu menu && menu.controller() == this) {
+                menu.refresh(snapshot(p));
             }
         }
     }
@@ -802,6 +1603,17 @@ public final class PokerController extends MachineController {
     PokerSnapshot snapshot(Player viewer) {
         World w = world();
         long now = w != null ? w.getGameTime() : viewer.getWorld().getGameTime();
+        Table t = table;
+        if (t != null) {
+            int seat = t.index(viewer.getUniqueId());
+            return seat >= 0 ? t.snapshot(seat, viewer, now) : PokerSnapshot.betting(now);
+        }
+        TableSeat waits = waiting.get(viewer.getUniqueId());
+        if (waits != null) {
+            return new PokerSnapshot(PokerSnapshot.PHASE_DEALING, List.of(), List.of(), List.of(), List.of(),
+                    List.of(), List.of(), List.of(), 0, 0, false, false, false, false, 0,
+                    waits.stakes.stream().map(Seat::stake).toList(), List.of(), now);
+        }
         Hand h = hand;
         if (h == null || !h.player.equals(viewer.getUniqueId())) {
             return PokerSnapshot.betting(now);
@@ -831,7 +1643,7 @@ public final class PokerController extends MachineController {
         dealerAt = dealerAt.subList(0, Math.min(2, r.dealer().size()));
         revealedAt = revealedAt.subList(0, dealerAt.size());
         int left = r.phase() == PokerRound.Phase.DECISION ? Math.max(0, r.deadline() - r.now()) : 0;
-        boolean afford = r.canCall() && afford(viewer, h);
+        boolean afford = r.canCall() && afford(viewer, h.seats.stream().map(Seat::stake).toList());
         return new PokerSnapshot(phase, r.player(), r.dealerVisible(), r.board(), playerAt, dealerAt, boardAt,
                 revealedAt, left, r.result().code, r.canCall(), r.canFold(), r.called(), afford, r.payoutThirds(),
                 h.seats.stream().map(Seat::stake).toList(), h.decided == PokerRound.Result.NONE ? List.of() : h.net,
@@ -839,10 +1651,10 @@ public final class PokerController extends MachineController {
     }
 
     /** {@code PokerMenu.canAffordCall}: 2 x the ante of every item kind as plain items in the storage slots. */
-    private static boolean afford(Player player, Hand h) {
+    private static boolean afford(Player player, List<ItemAmount> antes) {
         PlayerAccount account = new PlayerAccount(player);
-        for (ItemAmount need : ItemAmount.merge(h.seats.stream()
-                .map(s -> new ItemAmount(s.stake().item(), s.stake().count() * 2)).toList())) {
+        for (ItemAmount need : ItemAmount.merge(antes.stream()
+                .map(s -> new ItemAmount(s.item(), s.count() * 2)).toList())) {
             if (account.countPlain(need.item()) < need.count()) {
                 return false;
             }

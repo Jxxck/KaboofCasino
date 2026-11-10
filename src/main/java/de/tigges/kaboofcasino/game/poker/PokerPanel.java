@@ -1,5 +1,7 @@
 package de.tigges.kaboofcasino.game.poker;
 
+import de.tigges.kaboofcasino.config.Messages;
+import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.game.PanelText;
 import de.tigges.kaboofcasino.game.blackjack.BlackjackCardMotion;
 import de.tigges.kaboofcasino.wager.ItemAmount;
@@ -116,6 +118,94 @@ public final class PokerPanel {
         int result = view.result != PokerRound.Result.NONE && now >= (double) (view.resultAt + RESULT_DELAY)
                 ? view.result.code : 0;
         return new Hands(playerHand, dealerHand, qualifies, result);
+    }
+
+    // ---- a table with several players (PLAN-2 C5, not in the mod) ---------------------------------------------------
+
+    /** One player's line at a table with several: stakes, hand category (-1 = none yet), result code (0 = none). */
+    public record SeatLine(UUID player, String name, List<ItemAmount> stakes, int hand, int result) {
+        public SeatLine {
+            Objects.requireNonNull(player, "player");
+            Objects.requireNonNull(name, "name");
+            stakes = List.copyOf(stakes);
+        }
+    }
+
+    /**
+     * The panel of a table with several players: the dealer's hand category (-1 = not both cards up yet) and whether he
+     * qualifies; {@code betSeconds} / {@code decideSeconds} -1 = no such countdown.
+     */
+    public record TableContent(List<SeatLine> seats, int dealer, boolean qualifies, long betSeconds,
+                               long decideSeconds) {
+        public TableContent {
+            seats = List.copyOf(seats);
+        }
+    }
+
+    /** The hand of the cards at {@code spot} plus the board as the panel shows them ({@link #hands}), -1 before. */
+    static int seatHand(PokerTableState view, int spot, double now) {
+        List<Integer> player = new ArrayList<>();
+        List<Integer> board = new ArrayList<>();
+        for (BlackjackCardMotion.Card card : view.cards) {
+            if (now - (double) card.dealtAt < APPEAR_DELAY) {
+                continue;
+            }
+            int value = card.flipAt >= 0L && now - (double) card.flipAt < FLIP_HIDE ? -1 : card.value;
+            if (!card.toDealer && card.spot == spot) {
+                player.add(value);
+            } else if (card.toDealer && card.index >= 2) {
+                board.add(value);
+            }
+        }
+        if (player.isEmpty()) {
+            return -1;
+        }
+        player.addAll(board);
+        return PokerHands.category(PokerHands.score(player));
+    }
+
+    /** The dealer's hand as the panel shows it: {@link #hands} without the player. */
+    static Hands dealerHand(PokerTableState view, double now) {
+        Hands h = hands(view, now);
+        return new Hands(-1, h.dealer(), h.qualifies(), 0);
+    }
+
+    /** The time left to bet or to decide, one line per player, the dealer's hand last. */
+    static Component table(Messages m, TableContent c) {
+        Component nl = Component.newline();
+        TextComponent.Builder text = Component.text();
+        boolean first = true;
+        if (c.betSeconds() >= 0) {
+            text.append(m.render(Msg.POKER_COUNTDOWN, Messages.text("seconds", Long.toString(c.betSeconds()))));
+            first = false;
+        } else if (c.decideSeconds() >= 0) {
+            text.append(m.render(Msg.POKER_DECIDE_COUNTDOWN,
+                    Messages.text("seconds", Long.toString(c.decideSeconds()))));
+            first = false;
+        }
+        for (SeatLine l : c.seats()) {
+            if (!first) {
+                text.append(nl);
+            }
+            first = false;
+            text.append(PanelText.header(l.player(), l.name())).append(Component.text("  "))
+                    .append(PanelText.stakes(l.stakes().subList(0, Math.min(STAKES, l.stakes().size()))));
+            if (l.hand() >= 0) {
+                text.append(Component.text("  ")).append(handName(l.hand()).color(GOLD));
+            }
+            if (l.result() != 0) {
+                int code = Math.max(0, Math.min(l.result(), RESULT_COLORS.length - 1));
+                text.append(Component.text("  ")).append(Component.text()
+                        .append(word("gui.roulettecasino.poker.result_" + code, RESULTS[code]))
+                        .color(TextColor.color(RESULT_COLORS[code])).decorate(TextDecoration.BOLD).build());
+            }
+        }
+        if (c.dealer() >= 0) {
+            text.append(nl).append(Component.text()
+                    .append(word(DEALER_KEY, DEALER)).append(Component.text(" ")).append(handName(c.dealer()))
+                    .color(c.qualifies() ? PanelText.WHITE : RED).build());
+        }
+        return text.build();
     }
 
     private static Component word(String key, String fallback) {

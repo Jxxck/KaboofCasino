@@ -116,6 +116,10 @@ poker:
   # true: mindestens eines der zwölf Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
   # Leere). false = wie im Mod, ganz ohne Stütze.
   needs-support: true
+  # Stehen andere Spieler am Tisch, wartet der Croupier so viele Sekunden auf ihre Einsätze (bis zu 3 Plätze, ein
+  # gemeinsamer Flop, jeder entscheidet selbst: mitgehen oder aussteigen). Wer allein am Tisch steht, spielt sofort.
+  # 0 = immer nur ein Spieler. Mit einer Ausrichtung (bias nicht 0) gibt es keine gemeinsamen Runden.
+  countdown-seconds: 15
 
 lights:
   # Leerlauf-Lichter aller Automaten zusammen: höchstens so viele Updates pro Tick (reihum). Jedes Update schickt

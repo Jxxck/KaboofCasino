@@ -86,7 +86,7 @@ public final class PokerRig {
     static final int LIGHT_EVERY = 40;
     /** {@code BlackjackCardMotion.SHUFFLE_CARDS}. */
     static final int DECK = BlackjackCardMotion.SHUFFLE_CARDS;
-    /** Safety cap on card displays ({@code PokerTableState.decode} allows 16; a hand has 9). */
+    /** Safety cap on card displays (a hand has 9, a full table of three 13). */
     static final int MAX_CARDS = 16;
 
     private final MachineRecord record;
@@ -109,9 +109,10 @@ public final class PokerRig {
     private PokerPanel.Content shownContent;
     private PokerTableState lastView = new PokerTableState();
     private long lastNow;
+    private Component tableText;
 
-    /** A dealt card's identity within a view. */
-    private record CardKey(boolean toDealer, int index, long dealtAt) {
+    /** A dealt card's identity within a view (the seat tells the players' cards of a shared hand apart). */
+    private record CardKey(boolean toDealer, int spot, int index, long dealtAt) {
     }
 
     private static final class CardDisplay {
@@ -261,6 +262,7 @@ public final class PokerRig {
         panel.hide();
         shownHands = null;
         shownContent = null;
+        tableText = null;
         coins.clear();
     }
 
@@ -316,7 +318,7 @@ public final class PokerRig {
             if (shownNow == null || seen.size() >= MAX_CARDS) {
                 continue;
             }
-            CardKey key = new CardKey(card.toDealer, card.index, card.dealtAt);
+            CardKey key = new CardKey(card.toDealer, card.toDealer ? -1 : card.spot, card.index, card.dealtAt);
             if (!seen.add(key)) {
                 continue;
             }
@@ -504,6 +506,23 @@ public final class PokerRig {
                 record.anchor().z() + p[2]), text);
         shownContent = content;
         shownHands = hands;
+    }
+
+    /** The panel of a table with several players, already rendered ({@code null} hides it). */
+    public void tablePanel(Component text) {
+        if (text == null) {
+            if (tableText != null) {
+                panel.hide();
+                tableText = null;
+            }
+            return;
+        }
+        if (spawned() && (!text.equals(tableText) || panel.broken())) {
+            double[] p = panelPoint(facing);
+            panel.show(world, new Location(world, record.anchor().x() + p[0], record.anchor().y() + p[1],
+                    record.anchor().z() + p[2]), text);
+            tableText = text;
+        }
     }
 
     // ---- coins ------------------------------------------------------------------------------------------------------

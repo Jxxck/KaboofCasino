@@ -9,6 +9,8 @@ import java.util.List;
 
 // Verbatim port of the MineVegas Casino class of the same name (MIT, byMehd,
 // https://www.curseforge.com/minecraft/mc-mods/minevegas-casino): decompiled source, package renamed. Pure.
+// Plugin change (PLAN-2 C5, several players): a player card lies at the seat it was dealt to (card.spot, set from
+// seat at the deal), not at the current seat; with one player both are the same.
 public final class PokerTableState implements PokerRound.Listener {
    private static final int FORMAT = 1;
 
@@ -44,7 +46,7 @@ public final class PokerTableState implements PokerRound.Listener {
    }
 
    public BlackjackLayout.Slot slot(BlackjackCardMotion.Card card) {
-      return PokerLayout.slot(card.toDealer, this.seat, card.index);
+      return PokerLayout.slot(card.toDealer, card.spot, card.index);
    }
 
    @Override

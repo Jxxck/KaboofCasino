@@ -273,6 +273,14 @@ poker:
   timeout: "<yellow>Die Zeit ist um: Du steigst aus."
   # plugin text: CALL found the hand's records already settled (they paid the fold), so the hand folds
   hand-settled: "<yellow>Diese Hand ist schon abgerechnet (ausgestiegen): Mitgehen geht nicht mehr."
+  # mehrere Spieler an einem Tisch (seconds: bis ausgeteilt wird bzw. bis die Entscheidung endet)
+  joined: "<gold>Du bist dabei.</gold> <gray>Es wird in <seconds> s ausgeteilt."
+  already: "<yellow>Du hast schon gesetzt. Es wird in <seconds> s ausgeteilt."
+  full: "<yellow>An diesem Tisch sind alle 3 Plätze besetzt."
+  decide: "<gold>Mitgehen oder aussteigen? <gray>Noch <seconds> s"
+  called-wait: "<gold>Du gehst mit.</gold> <gray>Warte auf die anderen."
+  countdown: "<gold>Einsätze noch <seconds> s"
+  decide-countdown: "<gold>Mitgehen oder aussteigen: noch <seconds> s"
 
 derby:
   # message.roulettecasino.derby.busy / received / personal_win / personal_push / personal_loss / no_bet
