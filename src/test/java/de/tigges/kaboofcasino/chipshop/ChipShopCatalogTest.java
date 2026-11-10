@@ -30,6 +30,10 @@ class ChipShopCatalogTest {
         List<Recipes.Def> all = new ArrayList<>(Recipes.parse(ChipShopCatalogTest.class.getClassLoader().getResourceAsStream("pack/recipes.json")));
         all.addAll(de.tigges.kaboofcasino.outfit.Outfits.recipes());
         all.addAll(de.tigges.kaboofcasino.deco.display.DecoItems.ownRecipes());
+        // the optional recipes the shop prices from even while they are off (ChipShopService.pricing)
+        all.add(de.tigges.kaboofcasino.cashier.CashierService.recipe());
+        all.addAll(de.tigges.kaboofcasino.board.BoardService.recipes());
+        all.add(ChipShopService.recipe());
         return all;
     }
 
@@ -65,10 +69,26 @@ class ChipShopCatalogTest {
         assertTrue(c.entry("casinosound:casino_speaker").isPresent());
         assertTrue(c.entry("roulettecasino:dealer_station").isPresent());
         for (String never : List.of("roulettecasino:blackjack_table", "roulettecasino:poker_table",
-                "roulettecasino:croupier_badge", "roulettecasino:croupier_hand", "roulettecasino:cashier",
-                "roulettecasino:croupier_hiring_card", "kaboofcasino:chip_25", "roulettecasino:leaderboard_wall")) {
+                "roulettecasino:croupier_badge", "roulettecasino:croupier_hand",
+                "roulettecasino:croupier_hiring_card", "kaboofcasino:chip_25")) {
             assertFalse(c.entry(never).isPresent(), never);
         }
+        // Jack 2026-11-10: every item and recipe except the croupier's things
+        for (CasinoItem i : CasinoItem.values()) {
+            String id = "roulettecasino:" + i.id();
+            boolean croupier = ChipShopCatalog.NEVER.contains(id) || ChipShopCatalog.TABLES.contains(id);
+            assertEquals(!croupier, c.entry(id).isPresent(), id);
+        }
+        for (String id : ids()) {
+            if (!id.startsWith("roulettecasino:") && !id.startsWith("kaboofcasino:")) {
+                assertTrue(c.entry(id).isPresent(), "every deco, seat and outfit: " + id);
+            }
+        }
+        assertEquals(ChipShopCategory.TECH, c.entry("roulettecasino:leaderboard_wall_6x4").orElseThrow().category());
+        assertEquals(ChipShopCategory.MACHINES, c.entry("roulettecasino:cashier").orElseThrow().category());
+        assertEquals(ChipShopCategory.MACHINES, c.entry("roulettecasino:chip_shop").orElseThrow().category());
+        assertTrue(c.entry("roulettecasino:leaderboard_wall_6x4").orElseThrow().total(1)
+                > c.entry("roulettecasino:leaderboard_wall_4x4").orElseThrow().total(1), "a bigger board costs more");
         int deco = DecoBlock.values().length + DecoType.values().length;
         assertTrue(c.size() >= deco, "all deco plus the machines: " + c.size());
         // the tables with chipshop.tables
@@ -111,7 +131,8 @@ class ChipShopCatalogTest {
         // machines unchanged at 1.25, the guide first, the dealer station with them
         assertEquals("roulettecasino:casino_guide", c.of(ChipShopCategory.MACHINES).getFirst().id());
         assertTrue(c.entry("roulettecasino:dealer_station").orElseThrow().category() == ChipShopCategory.MACHINES);
-        assertEquals(4, c.of(ChipShopCategory.TECH).size(), "speaker and three TVs");
+        assertEquals(13, c.of(ChipShopCategory.TECH).size(), "speaker, three TVs and nine leaderboards");
+        assertEquals("casinosound:casino_speaker", c.of(ChipShopCategory.TECH).getFirst().id(), "boards after the TVs");
         for (List<ChipShopCatalog.Entry> l : List.of(c.of(ChipShopCategory.FLOORS), c.of(ChipShopCategory.MACHINES))) {
             for (ChipShopCatalog.Entry e : l) {
                 assertTrue(e.total(64) >= e.perPiece() * 64 - 1e-6, e.id());

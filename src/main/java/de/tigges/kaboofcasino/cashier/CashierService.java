@@ -79,7 +79,7 @@ public final class CashierService {
     // ---- the recipe -------------------------------------------------------------------------------------------------
 
     /** The cashier's own recipe ({@code kaboofcasino:cashier}), see {@link CashierSettings#RECIPE}. */
-    static Recipes.Def recipe() {
+    public static Recipes.Def recipe() {
         return new Recipes.Def("cashier", false, CashierSettings.RECIPE, CashierSettings.RECIPE_KEY, List.of(),
                 "roulettecasino:" + CasinoItem.CASHIER.id(), 1, List.of(CashierSettings.RECIPE_UNLOCK));
     }

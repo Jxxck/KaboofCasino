@@ -127,7 +127,7 @@ public final class BoardService implements Listener {
      * with a small casino sign. The other sizes grow from a smaller board with gold and green wool: a row more with the
      * wool on top, a column more with the wool beside it; the 2 x 2 is a short version of the wall board's recipe.
      */
-    static List<Recipes.Def> recipes() {
+    public static List<Recipes.Def> recipes() {
         return List.of(
                 new Recipes.Def("leaderboard_wall_2x2", false, List.of("GS", "WW"), Map.of('G', "minecraft:gold_ingot",
                         'S', "casinodeco:small_casino_sign", 'W', "minecraft:green_wool"), List.of(),

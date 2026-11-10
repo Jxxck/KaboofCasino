@@ -12,9 +12,10 @@ import java.util.Set;
 
 /**
  * What the Chip-Shop sells (PLAN-2 C6), built from the casino's item ids (the item catalog): every deco block, seat,
- * the speaker, the TVs, the dealer station, the guide and the machines without a croupier's badge with their parts;
- * not the chips, the croupier's badge, hiring card and hand, the cashier, the leaderboards and the shop itself; the
- * blackjack and poker tables only with {@code chipshop.tables}. Each entry has its tab, its unit price (a fixed price
+ * the speaker, the TVs, the dealer station, the guide, the machines without a croupier's badge with their parts, the
+ * cashier, the leaderboards and the shop itself (Jack 2026-11-10: everything except what needs a croupier); not the
+ * chips and the croupier's badge, hiring card and hand; the blackjack and poker tables only with
+ * {@code chipshop.tables}. Each entry has its tab, its unit price (a fixed price
  * from the config, else from the recipe cost) and its daily limit; hidden items and items without a price are left
  * out (the latter are reported). Pure.
  */
@@ -60,16 +61,9 @@ public final class ChipShopCatalog {
         }
     }
 
+    /** The croupier's things: never sold (the tables need the badge too, see {@link #TABLES}). */
     static final Set<String> NEVER = ids(CasinoItem.CROUPIER_BADGE, CasinoItem.CROUPIER_HIRING_CARD,
-            CasinoItem.CROUPIER_HAND, CasinoItem.CASHIER, CasinoItem.LEADERBOARD_WALL, CasinoItem.LEADERBOARD_COLUMN,
-            CasinoItem.LEADERBOARD_WALL_2X2,
-            CasinoItem.LEADERBOARD_WALL_3X3,
-            CasinoItem.LEADERBOARD_WALL_4X3,
-            CasinoItem.LEADERBOARD_WALL_4X4,
-            CasinoItem.LEADERBOARD_WALL_5X3,
-            CasinoItem.LEADERBOARD_WALL_5X4,
-            CasinoItem.LEADERBOARD_WALL_6X4,
-            CasinoItem.CHIP_SHOP);
+            CasinoItem.CROUPIER_HAND);
     static final Set<String> TABLES = ids(CasinoItem.BLACKJACK_TABLE, CasinoItem.POKER_TABLE);
 
     /** The catalog ids ({@code roulettecasino:<id>}) of machine items. */
@@ -97,12 +91,19 @@ public final class ChipShopCatalog {
         }
         nugget(v, "minecraft:gold_nugget", "minecraft:gold_ingot");
         nugget(v, "minecraft:iron_nugget", "minecraft:iron_ingot");
+        // the cashier's and the shop's recipes take glass panes: 6 glass make 16 (also with an older values list)
+        derive(v, "minecraft:glass_pane", "minecraft:glass", 6.0 / 16.0);
         return v;
     }
 
     private static void nugget(Map<String, Double> v, String nugget, String ingot) {
-        if (!v.containsKey(nugget) && v.containsKey(ingot)) {
-            v.put(nugget, v.get(ingot) / 9.0);
+        derive(v, nugget, ingot, 1.0 / 9.0);
+    }
+
+    /** {@code part} at {@code factor} times {@code whole}, unless the values list prices it itself. */
+    private static void derive(Map<String, Double> v, String part, String whole, double factor) {
+        if (!v.containsKey(part) && v.containsKey(whole)) {
+            v.put(part, v.get(whole) * factor);
         }
     }
 
@@ -156,6 +157,11 @@ public final class ChipShopCatalog {
         }
         by.computeIfPresent(ChipShopCategory.MACHINES, (k, l) -> {
             l.sort(java.util.Comparator.comparing(e -> !e.id().equals(ChipShopCategory.GUIDE)));
+            return l;
+        });
+        // the speaker and the TVs first, the leaderboards after them (stable: smallest to largest as catalogued)
+        by.computeIfPresent(ChipShopCategory.TECH, (k, l) -> {
+            l.sort(java.util.Comparator.comparing(e -> e.id().startsWith("roulettecasino:leaderboard_")));
             return l;
         });
         return new Catalog(by, unpriced);

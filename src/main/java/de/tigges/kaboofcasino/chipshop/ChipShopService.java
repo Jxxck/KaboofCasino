@@ -1,8 +1,10 @@
 package de.tigges.kaboofcasino.chipshop;
 
 import de.tigges.kaboofcasino.CasinoContext;
+import de.tigges.kaboofcasino.board.BoardService;
 import de.tigges.kaboofcasino.cashier.Cashbox;
 import de.tigges.kaboofcasino.cashier.CashierLog;
+import de.tigges.kaboofcasino.cashier.CashierService;
 import de.tigges.kaboofcasino.cashier.DailyLimits;
 import de.tigges.kaboofcasino.cashier.Prizes;
 import de.tigges.kaboofcasino.cashier.ShopEntry;
@@ -71,7 +73,7 @@ public final class ChipShopService {
         CasinoConfig now = ctx.config().get();
         List<String> ids = ItemCatalog.ids();
         if (now != catalogOf || ids.size() != catalogIds || catalog == null) {
-            catalog = ChipShopCatalog.build(ids, Recipes.all(), now.chipshop(), now.cashier());
+            catalog = ChipShopCatalog.build(ids, pricing(), now.chipshop(), now.cashier());
             catalogOf = now;
             catalogIds = ids.size();
             if (!catalog.unpriced().isEmpty()) {
@@ -80,6 +82,20 @@ public final class ChipShopService {
             }
         }
         return catalog;
+    }
+
+    /**
+     * The recipes the prices come from: every registered one plus the optional recipes of the cashier, the
+     * leaderboards and the shop, so these are priced even while their recipes are switched off (live:
+     * {@code leaderboard.craftable: false}, {@code cashier.craftable: false}). A recipe listed twice changes nothing,
+     * the cheapest counts.
+     */
+    public static List<Recipes.Def> pricing() {
+        List<Recipes.Def> all = new java.util.ArrayList<>(Recipes.all());
+        all.add(CashierService.recipe());
+        all.addAll(BoardService.recipes());
+        all.add(recipe());
+        return all;
     }
 
     // ---- the recipe -------------------------------------------------------------------------------------------------

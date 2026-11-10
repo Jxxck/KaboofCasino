@@ -1402,9 +1402,12 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
 - **Catalog** (`chipshop/ChipShopCatalog`, built from the item catalog, rebuilt after a reload): every deco block
   (full blocks, stairs, slabs), seats and sofa, the speaker, the TVs, the dealer station, the guide, and the machines
   without a croupier's badge with all their parts (slot machine, reel and mechanism, roulette mechanism, wheel, Plinko,
-  roulette table, the four ducks, derby mechanism, duck derby); never the chips, the croupier's badge, hiring card and
-  hand, the cashier, the leaderboards, the shop itself; the blackjack and poker tables only with `chipshop.tables`.
-  Tabs (`ChipShopCategory`): Böden und Wände, Möbel, Bar & Tische, Licht & Schilder, Technik, Maschinen.
+  roulette table, the four ducks, derby mechanism, duck derby); since 0.14.1 (Jack 2026-11-10: "alle neuen Rezepte und
+  Items in den Shop, außer die Sachen wo du einen Croupier brauchst") also the cashier and the shop itself (Maschinen)
+  and all nine leaderboards (Technik). Never the chips and the croupier's badge, hiring card and hand; the blackjack
+  and poker tables only with `chipshop.tables`. The optional recipes of the cashier, the leaderboards and the shop
+  price these items even while they are switched off (`ChipShopService.pricing`).
+  Tabs (`ChipShopCategory`): Böden und Wände, Möbel, Bar & Tische, Licht & Schilder, Technik, Maschinen, Outfits.
 - **Prices** (`ChipShopPrices`): an item's cost is the cheapest of its mod recipes, the sum of its ingredients per
   crafted item; ores at the cashier's rates (`cashier.rates`, nuggets a ninth of the ingot), the other ingredients from
   `chipshop.values` (wool 1, dye 0.5, planks 0.25, signs 0.54, torch 0.28, paper 0.5, glass 0.5, glowstone 4, piston

@@ -2,6 +2,7 @@ package de.tigges.kaboofcasino.admin;
 
 import de.tigges.kaboofcasino.CasinoContext;
 import de.tigges.kaboofcasino.chipshop.ChipShopCatalog;
+import de.tigges.kaboofcasino.chipshop.ChipShopService;
 import de.tigges.kaboofcasino.chipshop.ChipShopSettings;
 import de.tigges.kaboofcasino.config.CasinoConfig;
 import de.tigges.kaboofcasino.config.ConfigEdits;
@@ -101,7 +102,7 @@ final class ChipShopEditor implements Listener {
 
     private List<ChipShopCatalog.Row> rows() {
         CasinoConfig c = ctx.config().get();
-        return ChipShopCatalog.rows(ItemCatalog.ids(), Recipes.all(), c.chipshop(), c.cashier());
+        return ChipShopCatalog.rows(ItemCatalog.ids(), ChipShopService.pricing(), c.chipshop(), c.cashier());
     }
 
     private Component name(String id) {

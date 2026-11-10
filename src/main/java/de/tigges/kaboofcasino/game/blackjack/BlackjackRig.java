@@ -216,6 +216,7 @@ public final class BlackjackRig {
         panel.hide();
         shownTotals = null;
         shownContent = null;
+        tableText = null;
         coins.clear();
     }
 

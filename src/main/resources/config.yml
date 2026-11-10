@@ -167,7 +167,8 @@ leaderboard:
   weekly-log: true
 
 chipshop:
-  # Der Chip-Shop (Schritt 11): Casino-Deko, Möbel, Technik und Maschinen für Chips. Aufstellen: /casino give chip_shop
+  # Der Chip-Shop (Schritt 11): Casino-Deko, Möbel, Technik, Maschinen, Kasse, Bestenlisten und der Shop selbst für
+  # Chips (alles außer den Croupier-Sachen). Aufstellen: /casino give chip_shop
   # oder craften (Rezept kaboofcasino:chip_shop: Glasscheibe, kleines Casino-Schild, Glasscheibe über schwarzer
   # Marmor-Bar, Chip-Stapel, schwarzer Marmor-Bar). false: nur per /casino give, wie die Kasse.
   craftable: true

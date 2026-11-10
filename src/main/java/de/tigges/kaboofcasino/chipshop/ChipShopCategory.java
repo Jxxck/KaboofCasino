@@ -1,5 +1,6 @@
 package de.tigges.kaboofcasino.chipshop;
 
+import de.tigges.kaboofcasino.machine.CasinoItem;
 import java.util.Set;
 
 /**
@@ -32,7 +33,8 @@ public enum ChipShopCategory {
             "roulettecasino:roulette_mechanism", "roulettecasino:fortune_wheel", "roulettecasino:plinko",
             "roulettecasino:roulette_table", "roulettecasino:blackjack_table", "roulettecasino:poker_table",
             "roulettecasino:derby_duck_yellow", "roulettecasino:derby_duck_red", "roulettecasino:derby_duck_white",
-            "roulettecasino:derby_duck_black", "roulettecasino:duck_derby_mechanism", "roulettecasino:duck_derby");
+            "roulettecasino:derby_duck_black", "roulettecasino:duck_derby_mechanism", "roulettecasino:duck_derby",
+            "roulettecasino:" + CasinoItem.CASHIER.id(), "roulettecasino:" + CasinoItem.CHIP_SHOP.id());
 
     private final String id;
     private final String icon;
@@ -52,7 +54,8 @@ public enum ChipShopCategory {
     }
 
     /**
-     * The tab of a catalog item: the listed seats, lights and signs, technology and machines; the rest of the bar
+     * The tab of a catalog item: the listed seats, lights and signs, technology (with the leaderboards) and machines
+     * (with the cashier and the shop); the rest of the bar
      * ({@code *_bar}, glasses, bottles, tables, shelves, chip pile and case, register, tray) at the bar; everything else
      * (the full blocks, stairs and slabs) under floors and walls.
      */
@@ -63,7 +66,7 @@ public enum ChipShopCategory {
         if (MACHINE_IDS.contains(id)) {
             return MACHINES;
         }
-        if (TECH_IDS.contains(id)) {
+        if (TECH_IDS.contains(id) || id.startsWith("roulettecasino:leaderboard_")) {
             return TECH;
         }
         if (LIGHT_IDS.contains(id)) {
