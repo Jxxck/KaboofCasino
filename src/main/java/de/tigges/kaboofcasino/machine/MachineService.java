@@ -139,6 +139,17 @@ public final class MachineService {
         return false;
     }
 
+    /** Before the ledger settles a leaving player's records (quit, kick, death): every loaded machine may react. */
+    public void playerLeaving(org.bukkit.entity.Player player, boolean death) {
+        for (Machine m : List.copyOf(byId.values())) {
+            try {
+                m.game().playerLeaving(player, death);
+            } catch (RuntimeException e) {
+                Log.get().error("machine #{}: leaving player {} not handled", m.record().number(), player.getName(), e);
+            }
+        }
+    }
+
     /** True if a loaded machine will settle this round itself (watchdog). */
     public boolean ownsRound(UUID roundId) {
         for (Machine m : byId.values()) {

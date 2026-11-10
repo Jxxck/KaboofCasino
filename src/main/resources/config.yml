@@ -116,10 +116,21 @@ poker:
   # true: mindestens eines der zwölf Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
   # Leere). false = wie im Mod, ganz ohne Stütze.
   needs-support: true
-  # Stehen andere Spieler am Tisch, wartet der Croupier so viele Sekunden auf ihre Einsätze (bis zu 3 Plätze, ein
-  # gemeinsamer Flop, jeder entscheidet selbst: mitgehen oder aussteigen). Wer allein am Tisch steht, spielt sofort.
-  # 0 = immer nur ein Spieler. Mit einer Ausrichtung (bias nicht 0) gibt es keine gemeinsamen Runden.
-  countdown-seconds: 15
+  # Texas Hold'em gegeneinander (No-Limit): Steht noch jemand am Tisch, setzt man sich mit Chips hin (bis zu 3
+  # Plätze), der Croupier teilt nur aus, gespielt wird um die Chips der anderen. Allein am Tisch: Casino Hold'em gegen
+  # den Croupier wie bisher. Aufstehen (GEHEN) zahlt die Chips am Tisch aus.
+  holdem:
+    enabled: true
+    small-blind: 5
+    big-blind: 10
+    # Einkauf (Chips, mit denen man sich hinsetzt)
+    min-buy-in: 100
+    max-buy-in: 2000
+    # Bedenkzeit pro Zug; danach wird gecheckt, wenn möglich, sonst gepasst
+    turn-seconds: 30
+    # Wartezeit vor der ersten Hand, sobald zwei sitzen, und Pause zwischen zwei Händen
+    start-seconds: 10
+    next-hand-seconds: 6
 
 lights:
   # Leerlauf-Lichter aller Automaten zusammen: höchstens so viele Updates pro Tick (reihum). Jedes Update schickt

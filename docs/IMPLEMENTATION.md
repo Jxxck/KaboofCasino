@@ -1460,28 +1460,36 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   24 limit 0 (an entry with another price, count or limit was edited by Jack: keep it). A list key never merges, so
   the empty default does not remove them by itself.
 
-### Multiplayer poker (step 14, 0.15.0; PLAN-2 C5, not in MineVegas)
+### Texas Hold'em (0.16.0; Jack 2026-11-10, not in MineVegas; replaces the shared hand of 0.15.0)
 
-- Alone at the table the mod's hand runs unchanged (`Hand`, `PokerRound`, reconnect grace). With another usable player
-  within 8 blocks the first ante opens a window of `poker.countdown-seconds` (15; shortens to 2 s once nobody near is
-  without a bet or all three seats are taken), up to 3 players take the free seat nearest to them. Until it closes an
-  ante is a PLAYING record paying it back; the round menu opens at the bet and stays open. No bias: such tables only
-  play alone.
-- `PokerTableRound` is `PokerRound` widened to seats: deal seat by seat with the dealer last in each pass (16 ticks a
-  card from three seats), the flop, one decision window of 600 ticks for everybody that closes early once all decided;
-  an undecided seat folds when it closes, a departed one at once. Anybody called: turn, river, one showdown, each called
-  seat resolved against the dealer; nobody called: the hand ends without them. The turn and the river are the next two
-  cards of the shoe whoever calls, so `PokerCall.call` on a copy of the shoe at a seat's call is that seat's outcome
-  (`PokerTableRoundTest` checks it over 3000 hands in random orders).
-- Records: at the start they pay the fold (as for one player), at the decision their end moves on, at a call they take
-  the call stake and the predicted outcome (`WagerEngine.revise`), at the showdown the table confirms them per seat.
-  Quit before the seat decided: `holdsForReconnect` keeps them in his file until the window closes (back in time =
-  re-attached, else the fold settles at his join); death or a quit after deciding settles them as they stand; the others
-  play on. Removal refunds every undecided seat in full. `TABLE_RECORD_ENDS_MILLIS` 5 min.
-- Display: a player card lies at the seat it was dealt to (`PokerTableState.slot` uses `card.spot`, plugin change); the
-  dealer watches the middle seat during the decision. The panel (`PokerPanel.table`) shows the seconds left to bet or to
-  decide, one line per player (stakes, his hand with the board, the result; a fold at once) and the dealer's hand.
-  Bot: `testing/poker-mp-test.sh`.
+- Jack: "Poker so bauen, dass man es im Multiplayer gegeneinander spielen kann (Texas Hold'em)". Alone at a poker
+  table the mod's Casino Hold'em against the croupier runs unchanged. With another usable player within 8 blocks, or
+  players already seated, a click opens the buy-in menu (`HoldemBuyInMenu`: the poker bet view with the table's terms
+  instead of the paytable and HINSETZEN) and the table plays No-Limit Texas Hold'em (`HoldemTable`, `HoldemHand`):
+  up to three players, the croupier only deals. `poker.holdem.*`: enabled, blinds 5/10, buy-in 100-2000, 30 s to act,
+  10 s before the first hand, 6 s between hands. A table with a bias only plays solo. Between hands a seated player
+  more than 16 blocks away (or in another world) stands up automatically (no blinds for an empty chair).
+- `HoldemHand` (pure): blinds (heads-up the button posts the small blind and acts first before the flop), four betting
+  rounds (check, call, bet, raise of at least the last full raise, all-in; an incomplete all-in raise does not reopen
+  the betting for whoever acted on the last full raise), timeout = check if possible else fold, a leaving player folds
+  at once. Pots by commitment level (an uncalled bet comes back as its own pot), split on a tie with the odd chips from
+  the seat after the button. The pots are booked when the showdown starts (`stack`) and shown when the cards have
+  turned (`shownStack`). `HoldemHandTest`: order, raises, side pots, splits, timeouts, leaving, and 4000 random hands in
+  which no chip is made or lost.
+- Books: one PLAYING record per seated player, stake = the buy-in, payout = the chips at the table at the start of the
+  current hand; each hand's result is written into all records in one tick; GEHEN settles it (the chips come back).
+  Stop, crash or a removed table mid-hand void that hand (everybody gets its start). Quit or death mid-hand: the new
+  `MachineGame.playerLeaving` hook (called by `LedgerListener` before quit and death settle anything) folds the player
+  (the pot may go to the last one left right then) and writes what he has behind into his record, so his chips in the
+  pot stay there. When a player leaves the table the seated players' files are saved too (`Player.saveData`, slow on
+  this disk, so only then), so no file can hold a win whose losses another file lacks after a crash.
+- Display: hole cards lie face down at their seats (`BlackjackCards.HIDDEN`; the client gets the faces only at the
+  showdown, `revealed` turns them over); the board as in the mod. The panel (`HoldemPanel`) shows the blinds, the pot or
+  the seconds to the next hand, one line per seat (turn marker, head, chips, [D], last action, at the showdown the
+  hand). The menu (`HoldemMenu`, art from the pack tool's `HoldemGui` on the poker round panel): board and own cards,
+  pot and to-call in the left box, bet size with four small buttons, players as heads with their chips, status line,
+  timer, PASSEN/GEHEN, CHECKEN/MITGEHEN, SETZEN/ERHÖHEN/ALL-IN (keys 1/2/3, F). Previews: `PokerGuiPreviewTest`
+  (`build/reports/gui/holdem-*.png`). Bot: `testing/holdem-test.sh`.
 
 ### Multiplayer blackjack (step 13, 0.14.0; PLAN-2 C5, not in MineVegas) and square signs
 
@@ -1712,10 +1720,12 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
 - ProtocolLib is installed on live: the combination was tested on the test instance.
 - Keep `require-resource-pack=false` and `resource-pack=` empty in `server.properties`.
 - Backup + Jack's OK + restart with warning (PLAN "Ablauf pro Schritt").
-- 0.15.0 (multiplayer poker): remove `KaboofCasino-0.14.1.jar`. The live `config.yml` gets `poker.countdown-seconds: 15`
-  merged in, `messages_de.yml` the new `poker.joined`, `already`, `full`, `decide`, `called-wait`, `countdown` and
-  `decide-countdown` keys (all new, nothing to delete). No database migration, no new ledger version. Rollback: the
-  0.14.1 jar once no shared hand is open (a clean stop settles them).
+- 0.16.0 (Texas Hold'em): remove `KaboofCasino-0.15.0.jar`; delete the obsolete `poker.countdown-seconds` line from the
+  live `config.yml` (the `poker.holdem` block merges in) and the seven 0.15.0 keys `poker.joined`, `already`, `decide`,
+  `called-wait`, `countdown`, `decide-countdown` from the live `messages_de.yml` (`poker.full` stays); the `poker.holdem-*`
+  and `gui.holdem.*` keys merge in. No database migration; pack grows by ~0.3 MB (Hold'em GUI items). Rollback: the 0.15.0
+  jar once nobody is seated (a clean stop settles the seats).
+- 0.15.0 (multiplayer poker against the croupier, replaced by 0.16.0): `poker.countdown-seconds` and seven messages.
 - 0.14.1 (shop): jar swap only.
 - Download limits (step 4 fix, raised by the orchestrator): the casino pack has 16 slots and a 300 s cap with a 16 KiB/s
   minimum, so a 4.7 MB download needs about 16 KiB/s on average (slower clients fail it, and with enforce are kicked; a

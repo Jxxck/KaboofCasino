@@ -152,11 +152,34 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      * @param bias         the mod's admin setting "which side the cards favour" (-100..100, default 0 = a fair deck;
      *                     {@code CasinoSettings.bias}); the win chance does not apply to poker in the mod
      * @param needsSupport at least one of the twelve cells needs solid ground below (false = the mod)
-     * @param countdownSeconds the betting window when others are near (PLAN-2 C5; 0 = always one player)
+     * @param holdem       Texas Hold'em between the players (Jack 2026-11-10)
      */
-    public record Poker(int bias, boolean needsSupport, int countdownSeconds) {
+    public record Poker(int bias, boolean needsSupport, Holdem holdem) {
         public Poker(int bias, boolean needsSupport) {
-            this(bias, needsSupport, 15);
+            this(bias, needsSupport, Holdem.DEFAULTS);
+        }
+    }
+
+    /**
+     * {@code poker.holdem:} No-Limit Texas Hold'em at a poker table as soon as two players are near it.
+     *
+     * @param enabled         false: a poker table only plays against the croupier
+     * @param smallBlind      the small blind in chips
+     * @param bigBlind        the big blind (at least the small blind)
+     * @param minBuyIn        the fewest chips to sit down with (at least the big blind)
+     * @param maxBuyIn        the most chips to sit down with
+     * @param turnSeconds     the time to act; then check if possible, else fold
+     * @param startSeconds    the wait before the first hand once two are seated (others may still sit down)
+     * @param nextHandSeconds the pause between two hands
+     */
+    public record Holdem(boolean enabled, int smallBlind, int bigBlind, int minBuyIn, int maxBuyIn, int turnSeconds,
+                         int startSeconds, int nextHandSeconds) {
+        public static final Holdem DEFAULTS = new Holdem(true, 5, 10, 100, 2000, 30, 10, 6);
+
+        public Holdem {
+            bigBlind = Math.max(bigBlind, smallBlind);
+            minBuyIn = Math.max(minBuyIn, bigBlind);
+            maxBuyIn = Math.max(maxBuyIn, minBuyIn);
         }
     }
 

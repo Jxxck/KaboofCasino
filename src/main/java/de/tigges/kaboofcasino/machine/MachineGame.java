@@ -39,6 +39,13 @@ public interface MachineGame {
         return false;
     }
 
+    /**
+     * A player is about to leave by quit (also kick) or death, before the ledger settles his records: a game where
+     * players play against each other (Texas Hold'em) folds him and writes what his records must pay. Default: nothing.
+     */
+    default void playerLeaving(org.bukkit.entity.Player player, boolean death) {
+    }
+
     /** Respawns rig entities that disappeared (/kill, other plugins). */
     void checkRig();
 }

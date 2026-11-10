@@ -129,6 +129,7 @@ final class PokerGui {
         out.add(GuiFont.Anchor.text("pk_round_title", STATUS_CENTRE, -8, "center"));
         out.add(GuiFont.Anchor.text("pk_round_dealer", PokerGuiArt.DEALER_X + 2, PokerGuiArt.BOX_Y - 9, "left"));
         out.add(GuiFont.Anchor.text("pk_round_you", PokerGuiArt.PLAYER_X + 2, PokerGuiArt.BOX_Y - 9, "left"));
+        out.addAll(HoldemGui.anchors());
         return out;
     }
 
@@ -154,6 +155,7 @@ final class PokerGui {
         button(tree, text, "call_off", lang(lang, "call"), false, CALL_ART_SLOT, CALL_X);
         button(tree, text, "fold_on", lang(lang, "fold"), true, FOLD_ART_SLOT, FOLD_X);
         button(tree, text, "fold_off", lang(lang, "fold"), false, FOLD_ART_SLOT, FOLD_X);
+        HoldemGui.add(tree, text);
     }
 
     static String lang(JsonObject lang, String key) {

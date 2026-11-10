@@ -53,6 +53,7 @@ public final class LedgerListener implements Listener {
     private final Supplier<Messages> messages;
     private final Predicate<UUID> liveRound;
     private final Predicate<UUID> held;
+    private final java.util.function.BiConsumer<Player, Boolean> leaving;
     /** What went into the drops at LOW per player, taken back out if the death ends cancelled. */
     private final Map<UUID, DeathDrops.Applied<ItemStack>> drained = new HashMap<>();
     /** Players whose ledger could not be read (CRITICAL logged once; casino blocked for them). */
@@ -60,10 +61,17 @@ public final class LedgerListener implements Listener {
 
     public LedgerListener(WagerEngine engine, Supplier<Messages> messages, Predicate<UUID> liveRound,
                           Predicate<UUID> held) {
+        this(engine, messages, liveRound, held, (p, death) -> { });
+    }
+
+    /** {@code leaving}: called before a quit or death settles anything (a machine may first rewrite his records). */
+    public LedgerListener(WagerEngine engine, Supplier<Messages> messages, Predicate<UUID> liveRound,
+                          Predicate<UUID> held, java.util.function.BiConsumer<Player, Boolean> leaving) {
         this.engine = engine;
         this.messages = messages;
         this.liveRound = liveRound;
         this.held = held;
+        this.leaving = leaving;
     }
 
     /** True if the ledger of this player is unreadable (all casino actions refused). */
@@ -102,6 +110,7 @@ public final class LedgerListener implements Listener {
         if (player.isDead()) {
             return;
         }
+        leaving.accept(player, false);
         guarded(player, "quit", a -> {
             List<RoundRecord> settled = engine.settleAll(a, SettleReason.QUIT, held);
             int kept = a.ledger().rounds().size();
@@ -119,6 +128,7 @@ public final class LedgerListener implements Listener {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getPlayer();
+        leaving.accept(player, true);
         guarded(player, "death", a -> {
             if (event.getKeepInventory()) {
                 engine.settleAll(a, SettleReason.DEATH);

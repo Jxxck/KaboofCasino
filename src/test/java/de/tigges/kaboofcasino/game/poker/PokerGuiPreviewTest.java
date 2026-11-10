@@ -248,6 +248,70 @@ class PokerGuiPreviewTest {
         assertEquals(9, cards);
     }
 
+    // ---- Texas Hold'em ----------------------------------------------------------------------------------------------
+
+    private static HoldemView holdem(String status, boolean myTurn, int pot, List<Integer> board, boolean result) {
+        java.util.UUID me = java.util.UUID.nameUUIDFromBytes("me".getBytes(StandardCharsets.UTF_8));
+        List<HoldemView.Seat> seats = List.of(
+                new HoldemView.Seat(me, "Jxxq", 0, result ? 1295 : 480, result ? 0 : 20, myTurn, false, false, true,
+                        result, true, result ? "gewinnt 815" : "Small Blind 5"),
+                new HoldemView.Seat(java.util.UUID.randomUUID(), "Freund", 1, result ? 405 : 1200, result ? 0 : 40,
+                        !myTurn && !result, false, false, false, false, false, "erhöht auf 40"),
+                new HoldemView.Seat(java.util.UUID.randomUUID(), "Dritter", 2, 95, 0, false, true, false, false, false,
+                        false, "passt"));
+        return new HoldemView(status, HOLE, dealt(HOLE), board, dealt(board), pot, myTurn ? 20 : 0, myTurn, myTurn,
+                false, myTurn, myTurn, false, 80, 500, myTurn ? 400 : 0, !result, 1, seats, 10_000);
+    }
+
+    @Test
+    void holdemViewsFitTheCommonScreens() throws IOException {
+        Component buy = HoldemBuyInMenu.title(layout, raw, de.tigges.kaboofcasino.config.CasinoConfig.Holdem.DEFAULTS,
+                1);
+        Map<Integer, Item> items = new HashMap<>();
+        items.put(29, Item.stack("minecraft:diamond", 12));
+        items.put(PokerBetMenu.BUTTON_ART, Item.model("kaboofcasino:gui/holdem/sit_on"));
+        items.put(PokerBetMenu.BETS, Item.stack("minecraft:book", 1));
+        render("holdem-buy-in", buy, 480, 270, BET_IMPORTANT, items);
+        Component title = HoldemMenu.title(layout, raw, 5, 10);
+        render("holdem-my-turn", title, 480, 270, ROUND_IMPORTANT, holdemCells(holdem("your_turn", true, 95, FLOP,
+                false)));
+        render("holdem-waiting", title, 427, 240, ROUND_IMPORTANT, holdemCells(holdem("waiting", false, 95,
+                BOARD.subList(0, 4), false)));
+        render("holdem-won", title, 427, 240, ROUND_IMPORTANT, holdemCells(holdem("won", false, 0, BOARD, true)));
+    }
+
+    /** Every model key the Hold'em menus show resolves to an item definition in the pack. */
+    @Test
+    void everyHoldemModelIsInThePack() {
+        List<String> keys = new ArrayList<>(List.of("hd_pot", "hd_call", "hd_amount", "hd_stack_0", "hd_stack_1",
+                "hd_stack_2"));
+        for (HoldemMenu.Action a : HoldemMenu.Action.values()) {
+            keys.add("hd_" + a.model + "_on");
+            keys.add("hd_" + a.model + "_off");
+        }
+        for (String status : List.of("your_turn", "waiting", "dealing", "all_in", "showdown", "won", "split", "lost",
+                "folded", "next", "lobby")) {
+            keys.add("hd_status_" + status);
+        }
+        for (String k : keys) {
+            assertTrue(pack.containsKey("assets/kaboofcasino/items/gui/poker/" + k + ".json"), k);
+        }
+        assertTrue(pack.containsKey("assets/kaboofcasino/items/gui/holdem/sit_on.json"));
+    }
+
+    private Map<Integer, Item> holdemCells(HoldemView v) {
+        HoldemMenu.Cell[] cells = new HoldemMenu.View().cells(v, false, 600);
+        Map<Integer, Item> out = new HashMap<>();
+        for (int i = 0; i < cells.length; i++) {
+            HoldemMenu.Cell c = cells[i];
+            if (c != null) {
+                out.put(i, c.head() != null ? Item.stack("minecraft:player_head", 1)
+                        : new Item(c.model(), null, 1, c.strings(), c.colors(), c.floats()));
+            }
+        }
+        return out;
+    }
+
     /** Every model key the round menu can show resolves to an item definition in the pack. */
     @Test
     void everyRoundModelIsInThePack() {
