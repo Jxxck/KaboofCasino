@@ -428,7 +428,12 @@ public final class HoldemMenu extends GameMenu {
         ItemStack stack;
         if (c.action() != null) {
             var chips = Messages.text("chips", ChipText.chips(c.chips()));
-            stack = DisplayCopies.model(c.model(), m.render(c.action().name, chips), m.lines(c.action().lore, chips));
+            boolean size = c.action() == Action.MIN || c.action() == Action.MINUS || c.action() == Action.PLUS
+                    || c.action() == Action.MAX;
+            // a size button without a bet to size says so (not "Einsatz jetzt: 0 Chips")
+            List<net.kyori.adventure.text.Component> lore = size && !c.enabled()
+                    ? m.lines(Msg.GUI_HOLDEM_SIZE_WAIT) : m.lines(c.action().lore, chips);
+            stack = DisplayCopies.model(c.model(), m.render(c.action().name, chips), lore);
         } else {
             stack = DisplayCopies.model(c.model(), null, List.of());
         }

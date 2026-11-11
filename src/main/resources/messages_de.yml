@@ -116,9 +116,6 @@ board:
   # Wochensieger im Server-Log (nicht im Spiel gezeigt): <week> = "03.11.–09.11.2026", <lines> = je Kategorie die Top 3
   weekly: "Bestenliste der Woche <week>: <lines>"
 
-# Chip-Shop (Schritt 11): Casino-Deko, Möbel und Maschinen für Chips. Texte im Menü-Titel (brand, category.*, help,
-# label-*) sind schlichter Text ohne Farben; help hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
-# Chip-Beträge (<price>) kommen fertig mit "Chip"/"Chips".
 jukebox:
   # Die Casino-Jukebox; <title> = Titel, <range> = Blöcke, <mode> = Modus, <length> = m:ss, <count> = Anzahl
   item: "Casino-Jukebox"
@@ -126,9 +123,9 @@ jukebox:
   now-playing: "<gold>♪ <white><title>"
   brand: "JUKEBOX"
   help: "Titel anklicken:\ner läuft sofort.\nUnten: Modus,\nStart, Weiter,\nReichweite."
-  label-playing: "Läuft: <title>"
+  # Quittung im Menü-Titel (schlichter Text, höchstens etwa 15 Zeichen): darunter steht der Titel
+  label-playing: "Jetzt läuft:"
   label-stopped: "Gerade still"
-  label-range: "<range> Blöcke · <mode>"
   mode-order: "der Reihe nach"
   mode-shuffle: "Zufall"
   mode-repeat: "Wiederholen"
@@ -148,7 +145,14 @@ jukebox:
   genre-music-pack: "<dark_gray>Braucht das Musikpaket"
   prev: "<gold>Vorige Seite"
   next: "<gold>Nächste Seite"
+  needs-music-pack: "<gray>♪ <title> <dark_gray>– dafür brauchst du das Casino-Musikpaket"
+  disabled: "<yellow>Die Jukeboxen sind gerade ausgeschaltet."
+  cooldown: "<gray>Einen Moment – die Musik wurde gerade erst gewechselt."
+  no-settings: "<gray>Die Jukebox hat keine Einstellungen. Ohne Croupier-Hand öffnet ein Rechtsklick ihr Menü."
 
+# Chip-Shop (Schritt 11): Casino-Deko, Möbel und Maschinen für Chips. Texte im Menü-Titel (brand, category.*, help,
+# label-*) sind schlichter Text ohne Farben; help hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
+# Chip-Beträge (<price>) kommen fertig mit "Chip"/"Chips".
 chipshop:
   item: "Chip-Shop"
   item-lore: "<gray>Casino-Deko, Möbel und Maschinen für Chips"
@@ -313,7 +317,7 @@ poker:
   holdem-left: "<gray>Du bist aufgestanden: <gold><chips></gold> zurück."
   holdem-away: "<yellow>Du warst zu weit vom Pokertisch weg und bist aufgestanden: <gold><chips></gold> zurück."
   holdem-idle: "<yellow>Zweimal ist deine Zeit abgelaufen: Du bist aufgestanden, <gold><chips></gold> zurück."
-  holdem-danger-time: "<yellow>Gefahr! Du bekommst 20 Sekunden mehr für deinen Zug."
+  holdem-danger-time: "<yellow>Gefahr! Du bekommst 20 Sekunden mehr für deinen Zug (bis zu dreimal)."
   holdem-solo-hint: "<gray>Allein gegen den Croupier: schleichend den Tisch anklicken."
   holdem-busted: "<yellow>Du hast keine Chips mehr am Tisch."
   holdem-won: "<gray>Poker: <gold><name></gold> gewinnt <gold><chips></gold><hand>."
@@ -598,6 +602,7 @@ gui:
     size-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: um einen Big Blind\n<gray>Umschalt-Klick: um zehn Big Blinds"
     min-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: der kleinste erlaubte Einsatz"
     max-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: alle deine Chips"
+    size-wait: "<gray>Den Einsatz wählst du, wenn du\n<gray>dran bist und setzen darfst."
     head-stack: "<gray>Chips: <gold><chips>"
     head-bet: "<gray>Im Pot (diese Runde): <yellow><chips>"
     head-dealer: "<white>Dealer"

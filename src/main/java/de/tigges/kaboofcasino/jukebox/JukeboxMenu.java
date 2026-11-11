@@ -116,13 +116,33 @@ public final class JukeboxMenu extends GameMenu {
                 t.text("chipshop_help_" + i, help[i].strip(), MUTED, false, false);
             }
         }
-        String playing = state.playing() ? raw.apply(Msg.JUKEBOX_LABEL_PLAYING).replace("<title>", track.title())
-                : raw.apply(Msg.JUKEBOX_LABEL_STOPPED);
-        t.text("chipshop_label_a", fit(layout, playing, RECEIPT_W), CREAM, false, true);
-        String range = raw.apply(Msg.JUKEBOX_LABEL_RANGE).replace("<range>", Integer.toString(state.range()))
-                .replace("<mode>", mode(raw, state.mode()));
-        t.text("chipshop_label_b", fit(layout, range, RECEIPT_W), CREAM, false, true);
+        // mode and range show on their buttons; the receipt names what plays (a long title on both lines)
+        String[] receipt = receipt(layout, raw, state, track);
+        t.text("chipshop_label_a", receipt[0], CREAM, false, true);
+        if (!receipt[1].isEmpty()) {
+            t.text("chipshop_label_b", receipt[1], CREAM, false, true);
+        }
         return t.build();
+    }
+
+    /** The receipt's two lines: "Jetzt läuft:" and the title, or a title too long for one line on both. */
+    public static String[] receipt(GuiLayout layout, Function<Msg, String> raw, JukeboxState state,
+                            JukeboxCatalog.Track track) {
+        if (!state.playing()) {
+            return new String[] {fit(layout, raw.apply(Msg.JUKEBOX_LABEL_STOPPED), RECEIPT_W), ""};
+        }
+        String title = track.title();
+        if (layout.width(title) <= RECEIPT_W) {
+            return new String[] {fit(layout, raw.apply(Msg.JUKEBOX_LABEL_PLAYING), RECEIPT_W), title};
+        }
+        String[] words = title.split(" ");
+        StringBuilder first = new StringBuilder(words[0]);
+        int i = 1;
+        while (i < words.length && layout.width(first + " " + words[i]) <= RECEIPT_W) {
+            first.append(' ').append(words[i++]);
+        }
+        String rest = String.join(" ", java.util.Arrays.copyOfRange(words, i, words.length));
+        return new String[] {fit(layout, first.toString(), RECEIPT_W), fit(layout, rest, RECEIPT_W)};
     }
 
     static String length(long millis) {
@@ -150,6 +170,12 @@ public final class JukeboxMenu extends GameMenu {
         return stack;
     }
 
+    /** A list entry's name: white and upright (not the italic aqua of a renamed disc). */
+    private static Component plain(String text) {
+        return Component.text(text, net.kyori.adventure.text.format.NamedTextColor.WHITE)
+                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
+    }
+
     private void click(Player p) {
         p.playSound(p, Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);
     }
@@ -168,7 +194,7 @@ public final class JukeboxMenu extends GameMenu {
             if (catalog.of(g.id()).stream().anyMatch(JukeboxCatalog.Track::needsMusicPack)) {
                 lore.addAll(m.lines(Msg.JUKEBOX_GENRE_MUSIC_PACK));
             }
-            ItemStack stack = icon(g.icon(), Component.text(g.name()), lore);
+            ItemStack stack = icon(g.icon(), plain(g.name()), lore);
             int index = i;
             if (i == genre) {
                 stack.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
@@ -199,7 +225,7 @@ public final class JukeboxMenu extends GameMenu {
             if (t.needsMusicPack()) {
                 lore.addAll(m.lines(Msg.JUKEBOX_GENRE_MUSIC_PACK));
             }
-            ItemStack stack = icon(t.icon(), Component.text(t.title()), lore);
+            ItemStack stack = icon(t.icon(), plain(t.title()), lore);
             if (now) {
                 stack.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
             }
@@ -234,7 +260,7 @@ public final class JukeboxMenu extends GameMenu {
                     m.lines(on ? Msg.JUKEBOX_STOP_LORE : Msg.JUKEBOX_PLAY_LORE, Messages.text("title",
                             current.title()))), (p, c) -> {
                                 click(p);
-                                controller.togglePlay(p);
+                                controller.setPlaying(p, !on);
                             }));
         }
         ItemStack skip = DisplayCopies.model(GUI + (on ? "skip_on" : "skip_off"), m.render(Msg.JUKEBOX_SKIP),

@@ -88,6 +88,32 @@ public final class MenuService implements Listener {
         return true;
     }
 
+    /**
+     * Replaces the menu the player has open by {@code menu}, a fresh copy of the same menu (new texts in its title):
+     * not an opening, so no interaction tick is needed, but only if {@code same} accepts the open menu, the player can
+     * use menus and is safe. A menu never appears by itself this way.
+     */
+    public boolean replace(Player player, Menu menu, java.util.function.Predicate<Menu> same) {
+        Threads.requireMain();
+        Menu current = openMenu(player);
+        if (current == null || !menu.viewer().equals(player.getUniqueId()) || !same.test(current)
+                || !Usability.usable(player) || !danger.safeToOpen(player)) {
+            return false;
+        }
+        menu.render();
+        opening = menu;
+        try {
+            player.openInventory(menu.getInventory());
+        } finally {
+            opening = null;
+        }
+        if (!menu.isOpenFor(player)) {
+            return false;
+        }
+        menu.markOpened(currentTick.getAsInt());
+        return true;
+    }
+
     /** True if the player is safe right now (combat and environment); commits check it too (server.md 1.2). */
     public boolean safe(Player player) {
         return danger.safeToOpen(player);

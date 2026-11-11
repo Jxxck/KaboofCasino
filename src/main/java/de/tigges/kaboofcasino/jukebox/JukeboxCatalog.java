@@ -18,10 +18,10 @@ import net.kyori.adventure.key.Key;
 
 /**
  * What the jukebox can play ({@code jukebox/tracks.json} in the plugin jar, the same file the pack tool builds the
- * sound events from): nine genres in tab order and their tracks in list order. A vanilla track plays the client's own
- * file through {@code kaboofcasino:jukebox.<id>} (every player with the casino pack hears it); a lounge track is the
- * music pack's {@code casinosound:<id>} (only players who loaded the music pack hear it). Lengths are the exact file
- * lengths. Pure.
+ * sound events from): nine genres in tab order and their tracks in list order. Every track plays through its own
+ * {@code kaboofcasino:jukebox.<id>}: a vanilla track is the client's own file (every player with the casino pack hears
+ * it), a lounge track the music pack's file (only players who loaded the music pack hear it). Lengths are the exact
+ * file lengths. Pure.
  */
 public final class JukeboxCatalog {
 
@@ -81,8 +81,8 @@ public final class JukeboxCatalog {
         for (JsonElement e : root.getAsJsonArray("tracks")) {
             JsonObject t = e.getAsJsonObject();
             String id = t.get("id").getAsString();
-            boolean lounge = t.has("sound");
-            Key sound = lounge ? Key.key(t.get("sound").getAsString()) : Key.key("kaboofcasino", "jukebox." + id);
+            boolean lounge = t.has("pack") && t.get("pack").getAsString().equals("music");
+            Key sound = Key.key("kaboofcasino", "jukebox." + id);
             long millis = Math.round(t.get("seconds").getAsDouble() * 1000);
             tracks.add(new Track(id, t.get("genre").getAsString(), t.get("title").getAsString(), sound, millis,
                     t.get("icon").getAsString(), lounge));

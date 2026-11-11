@@ -21,10 +21,10 @@ import java.util.List;
  *       brass frame (the plugin's rig turns the playing record behind it), and a stepped walnut arch outlined in amber
  *       light with a red note in its middle;</li>
  *   <li>{@code kaboofcasino:jukebox}: the placing item, a 32x32 icon of the jukebox ({@link #icon()});</li>
- *   <li>{@code kaboofcasino:jukebox.<id>} sound events for every track of {@code pack-src/jukebox/tracks.json} that
- *       is a vanilla file: they point at the client's own file ({@code minecraft:records/cat},
- *       {@code minecraft:music/game/...}) at the vanilla volume, streamed, so the pack ships no music for them. The
- *       lounge tracks are the music pack's {@code casinosound:<id>} events.</li>
+ *   <li>{@code kaboofcasino:jukebox.<id>} sound events for every track of {@code pack-src/jukebox/tracks.json}: they
+ *       point at the client's own file ({@code minecraft:records/cat}, {@code minecraft:music/game/...}) at the vanilla
+ *       volume, or at the music pack's lounge file ({@code casinosound:music/<id>}), streamed, so the pack ships no music
+ *       and the jukebox never shares a sound key with the casino speakers.</li>
  * </ul>
  */
 final class JukeboxPack {
@@ -93,7 +93,7 @@ final class JukeboxPack {
             out.add("jukebox." + t.get("id").getAsString(), event);
             n++;
         }
-        if (n < 90) {
+        if (n < 98) {
             throw new IllegalStateException("the jukebox catalog has only " + n + " vanilla tracks");
         }
         return out;
@@ -139,7 +139,7 @@ final class JukeboxPack {
         el.add(box(WINDOW_X1, 16.5, RECESS_Z, 15, 24, 13.5, "#wood", 0));
         el.add(box(WINDOW_X0, 16.5, RECESS_Z, WINDOW_X1, WINDOW_Y0, 13.5, "#wood", 0));
         el.add(box(WINDOW_X0, WINDOW_Y1, RECESS_Z, WINDOW_X1, 24, 13.5, "#wood", 0));
-        el.add(box(WINDOW_X0, WINDOW_Y0, RECESS_Z - 0.1, WINDOW_X1, WINDOW_Y1, RECESS_Z, "#velvet", 0));
+        el.add(box(WINDOW_X0, WINDOW_Y0, RECESS_Z, WINDOW_X1, WINDOW_Y1, RECESS_Z + 0.05, "#velvet", 0));
         el.add(box(WINDOW_X0, WINDOW_Y0, GLASS_Z, WINDOW_X1, WINDOW_Y1, GLASS_Z + 0.1, "#glass", 0));
         el.add(box(WINDOW_X0 - 0.5, WINDOW_Y0 - 0.5, 13.5, WINDOW_X1 + 0.5, WINDOW_Y0, 13.75, "#brass", 0));
         el.add(box(WINDOW_X0 - 0.5, WINDOW_Y1, 13.5, WINDOW_X1 + 0.5, WINDOW_Y1 + 0.5, 13.75, "#brass", 0));

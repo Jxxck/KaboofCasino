@@ -50,9 +50,11 @@ public record JukeboxState(boolean playing, String track, Mode mode, int range) 
         mode = mode == null ? Mode.ORDER : mode;
     }
 
-    /** A new jukebox: stopped, on the catalog's first track. */
+    /** A new jukebox: stopped, on the first track everybody can hear (not a lounge track of the music pack). */
     public static JukeboxState fresh(JukeboxCatalog catalog) {
-        return new JukeboxState(false, catalog.tracks().getFirst().id(), Mode.ORDER, DEFAULT_RANGE);
+        String first = catalog.tracks().stream().filter(t -> !t.needsMusicPack()).findFirst()
+                .orElse(catalog.tracks().getFirst()).id();
+        return new JukeboxState(false, first, Mode.ORDER, DEFAULT_RANGE);
     }
 
     public String encode() {
@@ -116,6 +118,15 @@ public record JukeboxState(boolean playing, String track, Mode mode, int range) 
      * one when shuffled ({@code random} gives a number below its argument), the same one on repeat.
      */
     public String next(JukeboxCatalog catalog, IntUnaryOperator random) {
+        return next(catalog, random, mode);
+    }
+
+    /** "Nächster Titel" by hand: like {@link #next}, but repeat goes on in list order (a skip should skip). */
+    public String skipped(JukeboxCatalog catalog, IntUnaryOperator random) {
+        return next(catalog, random, mode == Mode.REPEAT ? Mode.ORDER : mode);
+    }
+
+    private String next(JukeboxCatalog catalog, IntUnaryOperator random, Mode mode) {
         JukeboxCatalog.Track current = catalog.track(track).orElse(catalog.tracks().getFirst());
         List<JukeboxCatalog.Track> list = catalog.of(current.genre());
         int at = list.indexOf(current);

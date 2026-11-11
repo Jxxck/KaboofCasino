@@ -238,7 +238,7 @@ public final class AdminService {
             shop.forget(player);
             pins.forget(player);
             chipShop.forget(player);
-            machine.game().interact(player);
+            ctx.messages().get().actionBar(player, Msg.JUKEBOX_NO_SETTINGS);
             return;
         }
         if (machine.type() == MachineType.CHIP_SHOP) {

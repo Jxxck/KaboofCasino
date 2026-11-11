@@ -124,6 +124,27 @@ public final class JukeboxService implements Listener {
         }
     }
 
+    /** Another jukebox takes over a listener only when it is this much closer (no flipping between two). */
+    static final double SWITCH_MARGIN = 4.0;
+
+    /**
+     * The jukebox a player hears: {@code current} while it plays and covers him, unless another one is closer by
+     * {@link #SWITCH_MARGIN}; else the nearest playing jukebox whose range covers him, or null.
+     */
+    JukeboxController hear(Location at, UUID current) {
+        JukeboxController best = nearest(at);
+        JukeboxController keep = current == null ? null : loaded.get(current);
+        if (keep == null || keep == best || !keep.playing() || keep.centre() == null
+                || !keep.centre().getWorld().equals(at.getWorld())) {
+            return best;
+        }
+        double keepD = keep.centre().distance(at);
+        if (keepD > keep.range()) {
+            return best;
+        }
+        return best != null && best.centre().distance(at) + SWITCH_MARGIN < keepD ? best : keep;
+    }
+
     /** The nearest playing jukebox whose range covers {@code at}, or null. */
     JukeboxController nearest(Location at) {
         JukeboxController best = null;
@@ -167,8 +188,8 @@ public final class JukeboxService implements Listener {
     private void check(Player p, long tick) {
         UUID id = p.getUniqueId();
         boolean may = enabled() && !p.isDead() && !optedOut.test(id) && ctx.packs().hasPack(id);
-        JukeboxController j = may ? nearest(p.getLocation()) : null;
         JukeboxListening l = listeners.get(id);
+        JukeboxController j = may ? hear(p.getLocation(), l == null ? null : l.jukebox()) : null;
         if (j == null) {
             if (l != null) {
                 l.stop(new Out(p));
@@ -232,9 +253,18 @@ public final class JukeboxService implements Listener {
         public void stopVanillaMusic() {
             player.stopSound(SoundStop.source(Sound.Source.MUSIC));
         }
+
+        @Override
+        public void inaudible(String title) {
+            ctx.messages().get().actionBar(player, Msg.JUKEBOX_NEEDS_MUSIC_PACK, Messages.text("title", title));
+        }
     }
 
     void logChange(JukeboxController j, String who, String what) {
-        Log.get().info("jukebox #{}: {} {}", j.number(), who, what);
+        if (who == null) {
+            Log.get().debug("jukebox #{}: {}", j.number(), what);
+        } else {
+            Log.get().info("jukebox #{}: {} {}", j.number(), who, what);
+        }
     }
 }

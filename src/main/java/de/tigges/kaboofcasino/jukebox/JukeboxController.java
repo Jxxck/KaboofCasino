@@ -25,12 +25,15 @@ public final class JukeboxController extends MachineController {
 
     /** Note particles over a playing jukebox this often (ticks). */
     static final int NOTE_TICKS = 16;
+    /** A player's change of the music waits this long after the last one (no restarting the music for everybody). */
+    static final int COOLDOWN_TICKS = 20;
 
     private final JukeboxService service;
     private final JukeboxRig rig;
     private JukeboxState state;
     private long startedNanos = System.nanoTime();
     private long serial;
+    private long lastChangeTick = Long.MIN_VALUE / 2;
 
     JukeboxController(Machine machine, CasinoContext ctx, JukeboxService service) {
         super(machine, ctx);
@@ -180,26 +183,53 @@ public final class JukeboxController extends MachineController {
 
     // ---- what the players do ----------------------------------------------------------------------------------------
 
+    /**
+     * False (with a word to the player) while jukeboxes are switched off ({@code starts}: the click would start music)
+     * or the last change of the music was a moment ago.
+     */
+    private boolean may(Player player, boolean starts) {
+        if (starts && !service.enabled()) {
+            ctx.messages().get().actionBar(player, Msg.JUKEBOX_DISABLED);
+            return false;
+        }
+        long now = Bukkit.getCurrentTick();
+        if (now - lastChangeTick < COOLDOWN_TICKS) {
+            ctx.messages().get().actionBar(player, Msg.JUKEBOX_COOLDOWN);
+            return false;
+        }
+        lastChangeTick = now;
+        return true;
+    }
+
     /** Plays {@code trackId} from its beginning (its genre becomes the playlist). */
     void choose(Player player, String trackId) {
-        if (service.catalog().track(trackId).isEmpty()) {
+        if (service.catalog().track(trackId).isEmpty() || !may(player, true)) {
             return;
         }
         change(state.withTrack(trackId).withPlaying(true), player, "plays " + trackId);
     }
 
-    void togglePlay(Player player) {
-        change(state.withPlaying(!state.playing()), player, state.playing() ? "stops it" : "starts it");
+    /** ABSPIELEN or STOPPEN as the player's menu showed it (not a toggle: a stale menu cannot do the opposite). */
+    void setPlaying(Player player, boolean on) {
+        if (state.playing() == on) {
+            reopenMenus();
+            return;
+        }
+        if (!may(player, on)) {
+            return;
+        }
+        change(state.withPlaying(on), player, on ? "starts it" : "stops it");
     }
 
     void skip(Player player) {
-        if (!state.playing()) {
+        if (!state.playing() || !may(player, true)) {
             return;
         }
-        change(state.withTrack(state.next(service.catalog(), n -> ThreadLocalRandom.current().nextInt(n))), player,
-                "skips to the next track");
+        change(state.withTrack(state.skipped(service.catalog(), n -> ThreadLocalRandom.current().nextInt(n))),
+                player, "skips to the next track");
     }
 
+    /** Mode and range touch nobody's music: no waiting between clicks (cycling through them takes a few). */
     void cycleMode(Player player) {
         settle(state.withNextMode(), player, "mode");
     }
@@ -218,7 +248,7 @@ public final class JukeboxController extends MachineController {
         }
         save();
         service.changed(this);
-        service.logChange(this, by == null ? "jukebox" : by.getName(), what + " -> " + (state.playing()
+        service.logChange(this, by == null ? null : by.getName(), what + " -> " + (state.playing()
                 ? track().id() : "stopped"));
         reopenMenus();
     }
@@ -228,7 +258,7 @@ public final class JukeboxController extends MachineController {
         state = next;
         save();
         service.changed(this);
-        service.logChange(this, by == null ? "jukebox" : by.getName(), what + " -> " + state.mode().id() + "/"
+        service.logChange(this, by == null ? null : by.getName(), what + " -> " + state.mode().id() + "/"
                 + state.range());
         reopenMenus();
     }
@@ -242,11 +272,15 @@ public final class JukeboxController extends MachineController {
         ctx.machines().saveData(machine, state.encode());
     }
 
-    /** Every open menu of this jukebox shows the new state (its texts are part of the title). */
+    /**
+     * Every open menu of this jukebox shows the new state: its texts are part of the title, so each is replaced by a
+     * fresh copy on the same tab and page ({@code MenuService.replace}: also for viewers who did not click).
+     */
     void reopenMenus() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (MenuService.openMenu(p) instanceof JukeboxMenu menu && menu.controller() == this) {
-                ctx.menus().open(p, new JukeboxMenu(p.getUniqueId(), this, ctx, menu.genre(), menu.page()));
+                ctx.menus().replace(p, new JukeboxMenu(p.getUniqueId(), this, ctx, menu.genre(), menu.page()),
+                        open -> open instanceof JukeboxMenu m && m.controller() == this);
             }
         }
     }
@@ -254,7 +288,8 @@ public final class JukeboxController extends MachineController {
     /** Shows another genre tab or page in the player's menu. */
     void show(Player player, int genre, int page) {
         if (menuValid(player)) {
-            ctx.menus().open(player, new JukeboxMenu(player.getUniqueId(), this, ctx, genre, page));
+            ctx.menus().replace(player, new JukeboxMenu(player.getUniqueId(), this, ctx, genre, page),
+                    open -> open instanceof JukeboxMenu m && m.controller() == this);
         }
     }
 }

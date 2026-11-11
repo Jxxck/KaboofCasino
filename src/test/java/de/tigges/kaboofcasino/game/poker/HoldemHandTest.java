@@ -344,6 +344,18 @@ class HoldemHandTest {
     }
 
     @Test
+    void aLeavingBigBlindKeepsOnlyWhatAnAllInSmallBlindCanMatch() {
+        // heads-up, the small blind all-in for 3: the big blind leaves while the cards are dealt; 7 of his blind can
+        // never be matched and come back, the small blind wins 3 of it
+        Log log = new Log();
+        HoldemHand h = new HoldemHand(rigged(), log, new int[] {3, 1000}, 0, 5, 10, TURN);
+        assertEquals(HoldemHand.Street.DEALING, h.street());
+        assertEquals(997, h.leave(1));
+        runOut(h);
+        assertArrayEquals(new int[] {6, 997}, log.stacks);
+    }
+
+    @Test
     void aShortBigBlindDoesNotMakeTheOtherPayMore() {
         Log log = new Log();
         HoldemHand h = new HoldemHand(rigged(), log, new int[] {1000, 3}, 0, 5, 10, TURN);
@@ -355,14 +367,16 @@ class HoldemHandTest {
     }
 
     @Test
-    void aTurnCanBeExtendedOnce() {
+    void aTurnCanBeExtendedAFewTimes() {
         Log log = new Log();
         HoldemHand h = new HoldemHand(rigged(), log, new int[] {1000, 1000}, 0, 5, 10, TURN);
         untilTurn(h);
         int deadline = h.deadline();
-        assertTrue(h.extendTurn(400));
-        assertEquals(deadline + 400, h.deadline());
-        assertFalse(h.extendTurn(400), "once per turn");
+        for (int i = 1; i <= HoldemHand.MAX_EXTENSIONS; i++) {
+            assertTrue(h.extendTurn(400));
+            assertEquals(deadline + 400 * i, h.deadline());
+        }
+        assertFalse(h.extendTurn(400), "at most " + HoldemHand.MAX_EXTENSIONS + " per turn");
         assertTrue(h.checkOrCall(0));
         assertTrue(h.extendTurn(400), "the next turn may be extended again");
     }

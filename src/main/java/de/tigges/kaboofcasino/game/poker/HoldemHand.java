@@ -26,7 +26,10 @@ import java.util.TreeSet;
  *       commitment level, merged when the same players can win them) goes to the best hand among the players in it,
  *       split evenly on a tie, odd chips one by one from the seat after the button. An uncalled bet comes back as
  *       a pot of its own.</li>
- *   <li>A player who leaves folds at once (the chips in the pot stay there).</li>
+ *   <li>A player who leaves ({@link #leave}): with nothing left to decide he stays in and his result is booked from
+ *       the shoe; else he folds at once, the part of his bet nobody can still match comes back, the rest of his chips in
+ *       the pot stay there.</li>
+ *   <li>A turn can get more time a few times ({@link #extendTurn}, while the player is in danger).</li>
  * </ul>
  * The deal follows the mod's poker timing ({@link PokerRound}: shuffle, 14 ticks, 22 ticks a card, 16 with three
  * seats). Pure: chips are plain numbers (chip value), the controller keeps the books.
@@ -119,7 +122,9 @@ public final class HoldemHand {
     /** The blind each seat posted (a blind is forced: it stays in the pot when the seat leaves). */
     private final int[] blinds;
     /** The turn's one extension (a player in danger) is used. */
-    private boolean extended;
+    /** How often the current turn got more time ({@link #MAX_EXTENSIONS} at most). */
+    private int extended;
+    static final int MAX_EXTENSIONS = 3;
     private int sequence;
     private int now;
     private int deadline = -1;
@@ -419,8 +424,9 @@ public final class HoldemHand {
      *       bet) and all hole cards are out: he stays in the hand, the rest of the board is already in the shoe, so his
      *       result is certain and booked now ({@link #projected()} has everybody's);</li>
      *   <li>from the showdown on: the pots are booked, his stack is final;</li>
-     *   <li>else he folds: first the part of his bet nobody else matched comes back (never his blind, which is
-     *       forced), the bet the others face is the highest one still alive; his chips in the pot stay there.</li>
+     *   <li>else he folds: first the part of his bet nobody else matched comes back (not his blind, which is forced,
+     *       as far as somebody can still match it), the bet the others face is the highest one still alive; his chips
+     *       in the pot stay there.</li>
      * </ul>
      */
     public int leave(int seat) {
@@ -435,12 +441,17 @@ public final class HoldemHand {
             gone[seat] = true;
             return projected()[seat];
         }
-        int others = blinds[seat];
+        int matched = 0;
+        int reach = 0;
         for (int s = 0; s < seats; s++) {
             if (s != seat && !folded[s]) {
-                others = Math.max(others, committed[s]);
+                matched = Math.max(matched, committed[s]);
+                reach = Math.max(reach, committed[s] + stacks[s]);
             }
         }
+        // his blind stays in the pot, but only as far as a live player could still match it (an all-in small blind
+        // cannot win more of it than he put in himself)
+        int others = Math.max(matched, Math.min(blinds[seat], reach));
         int excess = committed[seat] - others;
         if (excess > 0) {
             stacks[seat] += excess;
@@ -545,12 +556,12 @@ public final class HoldemHand {
                 && inHand() >= 2;
     }
 
-    /** Gives the player whose turn it is more time once per turn (he is in danger and cannot act). */
+    /** Gives the player whose turn it is more time, up to {@link #MAX_EXTENSIONS} per turn (he is in danger). */
     public boolean extendTurn(int ticks) {
-        if (!street.betting() || current < 0 || extended) {
+        if (!street.betting() || current < 0 || extended >= MAX_EXTENSIONS) {
             return false;
         }
-        extended = true;
+        extended++;
         deadline += ticks;
         return true;
     }
@@ -718,7 +729,7 @@ public final class HoldemHand {
 
     private void openTurn() {
         deadline = now + turnTicks;
-        extended = false;
+        extended = 0;
         listener.turnOpened(current, deadline, now);
     }
 

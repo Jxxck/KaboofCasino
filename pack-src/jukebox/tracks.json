@@ -1,5 +1,5 @@
 {
- "_comment": "Jukebox catalog (KaboofCasino): genres in tab order, tracks in list order. Vanilla tracks play the client's own files through kaboofcasino:jukebox.<id> sound events (pack tool); lounge tracks are the music pack's casinosound events. seconds: exact length of the file (Ogg granule / rate).",
+ "_comment": "Jukebox catalog (KaboofCasino): genres in tab order, tracks in list order. Every track plays through its own kaboofcasino:jukebox.<id> sound event (pack tool): vanilla tracks point at the client's own files, the lounge tracks (pack: music) at the music pack's files, so the jukebox never shares a sound key with the casino speakers. seconds: exact length of the file (Ogg granule / rate).",
  "genres": [
   {
    "id": "lounge",
@@ -53,60 +53,66 @@
    "genre": "lounge",
    "title": "Airport Lounge",
    "artist": "Kevin MacLeod",
-   "sound": "casinosound:airport_lounge",
    "seconds": 307.7,
    "icon": "minecraft:music_disc_strad",
-   "pack": "music"
+   "pack": "music",
+   "file": "casinosound:music/airport_lounge",
+   "volume": 1.0
   },
   {
    "id": "backbay_lounge",
    "genre": "lounge",
    "title": "Backbay Lounge",
    "artist": "Kevin MacLeod",
-   "sound": "casinosound:backbay_lounge",
    "seconds": 266.6,
    "icon": "minecraft:music_disc_strad",
-   "pack": "music"
+   "pack": "music",
+   "file": "casinosound:music/backbay_lounge",
+   "volume": 1.0
   },
   {
    "id": "jazz_brunch",
    "genre": "lounge",
    "title": "Jazz Brunch",
    "artist": "Kevin MacLeod",
-   "sound": "casinosound:jazz_brunch",
    "seconds": 323.2,
    "icon": "minecraft:music_disc_strad",
-   "pack": "music"
+   "pack": "music",
+   "file": "casinosound:music/jazz_brunch",
+   "volume": 1.0
   },
   {
    "id": "george_street_shuffle",
    "genre": "lounge",
    "title": "George Street Shuffle",
    "artist": "Kevin MacLeod",
-   "sound": "casinosound:george_street_shuffle",
    "seconds": 268.4,
    "icon": "minecraft:music_disc_strad",
-   "pack": "music"
+   "pack": "music",
+   "file": "casinosound:music/george_street_shuffle",
+   "volume": 1.0
   },
   {
    "id": "cool_vibes",
    "genre": "lounge",
    "title": "Cool Vibes",
    "artist": "Kevin MacLeod",
-   "sound": "casinosound:cool_vibes",
    "seconds": 218.4,
    "icon": "minecraft:music_disc_strad",
-   "pack": "music"
+   "pack": "music",
+   "file": "casinosound:music/cool_vibes",
+   "volume": 1.0
   },
   {
    "id": "bossa_antigua",
    "genre": "lounge",
    "title": "Bossa Antigua",
    "artist": "Kevin MacLeod",
-   "sound": "casinosound:bossa_antigua",
    "seconds": 283.4,
    "icon": "minecraft:music_disc_strad",
-   "pack": "music"
+   "pack": "music",
+   "file": "casinosound:music/bossa_antigua",
+   "volume": 1.0
   },
   {
    "id": "disc_13",

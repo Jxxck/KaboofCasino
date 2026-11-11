@@ -80,6 +80,8 @@ final class HoldemTable implements HoldemHand.Listener {
         int won;
         /** Turns in a row that ran out: at two he stands up after the hand (nobody waits for an empty chair). */
         int timeouts;
+        /** What the last revision of his record changed (losers' files are saved first, see queueSaves). */
+        int gain;
 
         Seat(UUID player, String name, int spot, UUID round, int boughtIn, long endsMillis) {
             this.player = player;
@@ -110,6 +112,8 @@ final class HoldemTable implements HoldemHand.Listener {
     private int buttonSpot = -1;
     private long nextHandAt = -1;
     private long lastExtend;
+    /** A leaver's exit booked the result the shoe has fixed into every record of the running hand. */
+    private boolean shoeBooked;
     private int turnSerial;
     private Component shownPanel;
     /** The seat whose turn just ran out (its automatic check or fold does not count as his own action). */
@@ -282,9 +286,11 @@ final class HoldemTable implements HoldemHand.Listener {
             chips = hand.leave(s.index);
             if (hand != null && hand.settledByShoe()) {
                 // the result is fixed by the shoe: every record holds it now, so no file can disagree after a crash
+                shoeBooked = true;
                 int[] end = hand.projected();
                 for (Seat other : seats.values()) {
                     if (other != s && !other.gone && other.index >= 0) {
+                        other.gain = end[other.index] - other.stack;
                         revise(Bukkit.getPlayer(other.player), other, end[other.index], "hand " + handNumber
                                 + " decided by the shoe");
                     }
@@ -308,18 +314,24 @@ final class HoldemTable implements HoldemHand.Listener {
     }
 
     /**
-     * Saves the files of the seated players (and of {@code also}) one per tick: Paper saves every player on his own
-     * schedule, so without this a crash could restore one file from after a hand and another from before it.
-     * {@code Player.saveData} is slow on this disk, hence one per tick.
+     * Saves the files of the seated players (and of {@code also}) one per tick, at the front of the queue: Paper saves
+     * every player on his own schedule, so without this a crash could restore one file from after a hand and another
+     * from before it. {@code Player.saveData} is slow on this disk, hence one per tick. Losers first: an unsaved
+     * loser's old record would pay his old, bigger stack again; an unsaved winner only misses his win.
      */
     private void queueSaves(Player also) {
-        for (Seat s : seats.values()) {
-            if (!saveQueue.contains(s.player)) {
-                saveQueue.add(s.player);
-            }
+        List<Seat> order = new ArrayList<>(seats.values());
+        order.sort(java.util.Comparator.comparingInt(s -> s.gain));
+        List<UUID> ids = new ArrayList<>();
+        for (Seat s : order) {
+            ids.add(s.player);
         }
-        if (also != null && !saveQueue.contains(also.getUniqueId())) {
-            saveQueue.add(also.getUniqueId());
+        if (also != null) {
+            ids.add(also.getUniqueId());
+        }
+        saveQueue.removeAll(ids);
+        for (int i = ids.size() - 1; i >= 0; i--) {
+            saveQueue.addFirst(ids.get(i));
         }
     }
 
@@ -405,7 +417,7 @@ final class HoldemTable implements HoldemHand.Listener {
                 }
             }
         } else {
-            // a player in danger cannot act (his menu closes): his turn gets more time once
+            // a player in danger cannot act (his menu closes): his turn gets more time (a few times)
             Seat acting = seatOf(hand.current());
             Player p = acting == null ? null : Bukkit.getPlayer(acting.player);
             if (p != null && !ctx.menus().safe(p) && hand.deadline() - hand.now() <= 100 && hand.extendTurn(400)) {
@@ -425,11 +437,14 @@ final class HoldemTable implements HoldemHand.Listener {
             }
         }
         if (now - lastExtend >= EXTEND_EVERY_TICKS) {
-            // the records keep paying the stack at the start of the hand; only their end moves on
+            // the records keep paying the stack at the start of the hand (or the result the shoe has fixed, which a
+            // leaver's exit booked); only their end moves on
             lastExtend = now;
+            int[] end = hand != null && shoeBooked ? hand.projected() : null;
             for (Seat s : List.copyOf(seats.values())) {
                 Player p = Bukkit.getPlayer(s.player);
-                if (revise(p, s, s.stack, hand == null ? "waiting" : "hand " + handNumber)
+                int chips = end != null && s.index >= 0 ? end[s.index] : s.stack;
+                if (revise(p, s, chips, hand == null ? "waiting" : "hand " + handNumber)
                         == WagerEngine.Revision.GONE && p != null && p.isOnline()) {
                     // his record was paid out elsewhere (the start of the hand): the hand cannot go on with his chips
                     Log.critical("HOLDEM_RECORD_GONE", "poker #{} (Texas Hold'em): the record of {} was settled "
@@ -450,6 +465,7 @@ final class HoldemTable implements HoldemHand.Listener {
             s.action = "";
             s.winner = false;
             s.won = 0;
+            s.gain = 0;
             if (s.stack > 0) {
                 in.add(s);
             }
@@ -482,6 +498,7 @@ final class HoldemTable implements HoldemHand.Listener {
         view.phaseChanged(PokerRound.Phase.DEALING, 0);
         nextHandAt = -1;
         lastExtend = now;
+        shoeBooked = false;
         hand = new HoldemHand(shoe, this, stacks, button, h.smallBlind(), h.bigBlind(), h.turnSeconds() * 20);
         Log.get().info("poker #{} (Texas Hold'em): hand {} for {} (button {}, blinds {}/{})",
                 machine.record().number(), handNumber, playing.stream().map(s -> s.name + "=" + s.stack).toList(),
@@ -507,7 +524,10 @@ final class HoldemTable implements HoldemHand.Listener {
         }
     }
 
-    /** The running hand does not count: everybody keeps the chips of its start (which the records hold). */
+    /**
+     * The running hand does not count: everybody at the table keeps the chips of its start (which the records hold). A
+     * player who left during it keeps what his exit booked (his chips in the pot are lost, as with a fold).
+     */
     private void voidHand(long now) {
         if (hand == null) {
             return;
@@ -733,6 +753,7 @@ final class HoldemTable implements HoldemHand.Listener {
             if (s.gone) {
                 continue;
             }
+            s.gain = stacks[i] - s.stack;
             s.stack = stacks[i];
             Player p = Bukkit.getPlayer(s.player);
             if (revise(p, s, s.stack, "after hand " + handNumber) == WagerEngine.Revision.GONE && p != null

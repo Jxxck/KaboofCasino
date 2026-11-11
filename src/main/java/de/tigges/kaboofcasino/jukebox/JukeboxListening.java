@@ -41,12 +41,23 @@ final class JukeboxListening {
         void stop(Key sound);
 
         void stopVanillaMusic();
+
+        /** The jukebox plays a track this player cannot hear (a lounge track without the music pack). */
+        void inaudible(String title);
     }
+
+    /** A playing track far below the level of where the player now is starts again ({@code Playback}'s rule). */
+    static final float QUIET_TARGET = 0.3f;
+    static final float QUIET_RATIO = 3.0f;
 
     private UUID jukebox;
     private long serial;
     private Key playing;
+    private float playingVolume;
     private boolean pending;
+    /** He has started a track of this jukebox: later tracks start at once (the approach wait is for coming in). */
+    private boolean settled;
+    private boolean hinted;
     private long pendingSince;
     private double lastDistance;
     private long lastDistanceTick;
@@ -72,42 +83,62 @@ final class JukeboxListening {
             stop(out);
             return;
         }
-        out.stopVanillaMusic();
-        if (!source.jukebox().equals(jukebox) || source.serial() != serial) {
+        boolean newJukebox = !source.jukebox().equals(jukebox);
+        if (newJukebox || source.serial() != serial) {
             if (playing != null) {
                 out.stop(playing);
                 playing = null;
             }
+            if (newJukebox) {
+                settled = false;
+                pendingSince = tick;
+                lastDistance = source.distance();
+                lastDistanceTick = tick;
+            }
             jukebox = source.jukebox();
             serial = source.serial();
             pending = true;
-            pendingSince = tick;
-            lastDistance = source.distance();
-            lastDistanceTick = tick;
+            hinted = false;
         }
-        if (playing != null || !pending || !source.audible()) {
+        if (!source.audible()) {
+            // he keeps his own background music; tell him once per track why the jukebox is silent for him
+            if (!hinted) {
+                out.inaudible(source.title());
+                hinted = true;
+            }
             return;
         }
+        out.stopVanillaMusic();
         long remaining = source.lengthMillis() - source.elapsedMillis();
-        if (source.elapsedMillis() >= FRESH_MILLIS && remaining < MIN_REMAINING_MILLIS) {
+        boolean joinable = source.elapsedMillis() < FRESH_MILLIS || remaining >= MIN_REMAINING_MILLIS;
+        float target = volume(source.distance(), source.range());
+        if (playing != null) {
+            if (target < QUIET_TARGET || playingVolume * QUIET_RATIO >= target || !joinable) {
+                return;
+            }
+            // started far away, now much closer: the track again from its beginning at the right level
+            out.stop(playing);
+            playing = null;
+            pending = true;
+        }
+        if (!pending || !joinable || target < MIN_VOLUME) {
             return; // too late for this track: the next one (a new serial) starts for him
         }
-        float target = volume(source.distance(), source.range());
-        if (target < MIN_VOLUME) {
-            return;
-        }
         boolean inside = source.distance() <= source.range() * FULL_SHARE;
-        if (!inside && tick - lastDistanceTick >= CHECK_TICKS) {
+        if (!settled && !inside) {
+            if (tick - lastDistanceTick < CHECK_TICKS) {
+                return;
+            }
             boolean approaching = lastDistance - source.distance() >= APPROACH_BLOCKS;
             lastDistance = source.distance();
             lastDistanceTick = tick;
             if (approaching && tick - pendingSince < SETTLE_TICKS) {
                 return;
             }
-        } else if (!inside) {
-            return;
         }
+        settled = true;
         playing = source.sound();
+        playingVolume = target;
         pending = false;
         out.play(source.sound(), target, source.title());
     }
@@ -120,5 +151,7 @@ final class JukeboxListening {
         playing = null;
         jukebox = null;
         pending = false;
+        settled = false;
+        hinted = false;
     }
 }

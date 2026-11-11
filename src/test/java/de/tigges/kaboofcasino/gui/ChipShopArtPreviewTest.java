@@ -165,6 +165,15 @@ class ChipShopArtPreviewTest {
         for (String line : m.raw(de.tigges.kaboofcasino.config.Msg.JUKEBOX_HELP).split("\n")) {
             assertTrue(layout.width(line) <= 88, "help line too wide: " + line);
         }
+        // every title shows whole on the receipt (one line, or both for a long one): nothing cut with "..."
+        for (var t : catalog.tracks()) {
+            String[] r = de.tigges.kaboofcasino.jukebox.JukeboxMenu.receipt(layout, m::raw,
+                    new de.tigges.kaboofcasino.jukebox.JukeboxState(true, t.id(),
+                            de.tigges.kaboofcasino.jukebox.JukeboxState.Mode.REPEAT, 48), t);
+            assertTrue(!r[0].endsWith("...") && !r[1].endsWith("..."), t.title() + " -> " + String.join(" | ", r));
+            assertTrue(String.join(" ", r).contains(t.title()) || (r[0] + " " + r[1]).equals(t.title()),
+                    t.title() + " -> " + String.join(" | ", r));
+        }
         var track = catalog.track("creator_music_box").orElse(catalog.track("disc_creator_music_box").orElseThrow());
         var state = new de.tigges.kaboofcasino.jukebox.JukeboxState(true, track.id(),
                 de.tigges.kaboofcasino.jukebox.JukeboxState.Mode.SHUFFLE, 48);
