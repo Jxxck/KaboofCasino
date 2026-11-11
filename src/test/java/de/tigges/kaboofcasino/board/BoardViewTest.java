@@ -37,6 +37,19 @@ class BoardViewTest {
     }
 
     @Test
+    void theWeeklyDiscordPostListsThreePlacesPerCategory() {
+        List<BoardEntry> top = List.of(new BoardEntry(UUID.randomUUID(), "Bob_2", 1500),
+                new BoardEntry(UUID.randomUUID(), "Alice", 900), new BoardEntry(UUID.randomUUID(), "Carl", 25));
+        assertEquals("**Größter Gewinn**\n🥇 Bob\\_2 – 1.500 Chips · 🥈 Alice – 900 Chips · 🥉 Carl – 25 Chips",
+                BoardService.discordCategory(messages, BoardCategory.BIGGEST_WIN, "Größter Gewinn", top));
+        assertTrue(BoardService.discordCategory(messages, BoardCategory.MULTIPLIER, "M", top).contains("×15"));
+        assertTrue(BoardService.discordCategory(messages, BoardCategory.ROUNDS, "R", top.subList(0, 1))
+                .endsWith("🥇 Bob\\_2 – 1.500 Runden"));
+        assertTrue(BoardService.discordCategory(messages, BoardCategory.ROUNDS, "R",
+                List.of(new BoardEntry(UUID.randomUUID(), "Eve", 1))).endsWith("🥇 Eve – 1 Runde"));
+    }
+
+    @Test
     void valuesAndNames() {
         assertEquals("1.250", BoardView.value(BoardCategory.BIGGEST_WIN, 1250));
         assertEquals("12", BoardView.value(BoardCategory.ROUNDS, 12));

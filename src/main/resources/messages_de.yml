@@ -150,6 +150,28 @@ jukebox:
   cooldown: "<gray>Einen Moment – die Musik wurde gerade erst gewechselt."
   no-settings: "<gray>Die Jukebox hat keine Einstellungen. Ohne Croupier-Hand öffnet ein Rechtsklick ihr Menü."
 
+discord:
+  # Posts im Discord-Kanal über KaboofDiscord: schlichter Text, keine Farben; im Text geht Discord-Formatierung
+  # (**fett**), der Titel steht neben dem Kopf des Spielers und kann keine Formatierung. <player> = Name,
+  # <chips> = Gewinn ("1.500 Chips"), <stake> = Einsatz, <multiplier> = "100" oder "52,5", <game> = game-* unten.
+  big-win-title: "<player> gewinnt <chips> <game>!"
+  big-win-text: "🎰 **<multiplier>×** der Einsatz von <stake>"
+  # Wochensieger: <week> = "03.11.–09.11.2026"; je Kategorie eine Überschrift und die Plätze (<medal> = 🥇🥈🥉,
+  # <value> = "1.500 Chips", "×12,5" oder weekly-rounds / weekly-round)
+  weekly-title: "🏆 Casino-Bestenliste der Woche <week>"
+  weekly-category: "**<category>**"
+  weekly-place: "<medal> <player> – <value>"
+  weekly-rounds: "<count> Runden"
+  weekly-round: "1 Runde"
+  game-slot-machine: "am Spielautomaten"
+  game-fortune-wheel: "am Glücksrad"
+  game-plinko: "beim Plinko"
+  game-roulette: "beim Roulette"
+  game-blackjack: "beim Blackjack"
+  game-poker: "beim Poker"
+  game-derby: "beim Entenrennen"
+  game-other: "im Casino"
+
 # Chip-Shop (Schritt 11): Casino-Deko, Möbel und Maschinen für Chips. Texte im Menü-Titel (brand, category.*, help,
 # label-*) sind schlichter Text ohne Farben; help hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
 # Chip-Beträge (<price>) kommen fertig mit "Chip"/"Chips".
@@ -319,6 +341,8 @@ poker:
   holdem-idle: "<yellow>Zweimal ist deine Zeit abgelaufen: Du bist aufgestanden, <gold><chips></gold> zurück."
   holdem-danger-time: "<yellow>Gefahr! Du bekommst 20 Sekunden mehr für deinen Zug (bis zu dreimal)."
   holdem-solo-hint: "<gray>Allein gegen den Croupier: schleichend den Tisch anklicken."
+  # Beim ersten Hinsetzen und mit dem ? im Menü (Chat, mehrere Zeilen)
+  holdem-rules: "<gold><b>So geht Texas Hold'em</b></gold>\n<gray>Du bekommst <white>2 eigene Karten</white>, in die Mitte kommen nach und nach <white>5 gemeinsame</white> (erst 3, dann 1, dann 1). Deine beste Hand aus 5 dieser 7 Karten zählt.\n<gray>Vor jeder neuen Karte wird gesetzt: <white>Checken</white> = weiter ohne Einsatz, <white>Mitgehen</white> = den Einsatz der anderen zahlen, <white>Setzen/Erhöhen</white> = mehr bieten, <white>Passen</white> = aussteigen (was im Pot liegt, ist weg).\n<gray>Small und Big Blind sind Pflichteinsätze, die reihum gehen. Wer am Ende die beste Hand hat oder als Letzter übrig bleibt, gewinnt den Pot.\n<gold>Hände von stark nach schwach:</gold> <gray>Royal Flush, Straight Flush, Vierling, Full House, Flush, Straße, Drilling, Zwei Paare, Ein Paar, Höchste Karte.\n<dark_gray>Tasten im Menü: 1 = Checken/Mitgehen, 2 oder F = Passen, 3 = Setzen/Erhöhen."
   holdem-busted: "<yellow>Du hast keine Chips mehr am Tisch."
   holdem-won: "<gray>Poker: <gold><name></gold> gewinnt <gold><chips></gold><hand>."
   holdem-with: " mit <hand>"
@@ -603,6 +627,10 @@ gui:
     min-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: der kleinste erlaubte Einsatz"
     max-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: alle deine Chips"
     size-wait: "<gray>Den Einsatz wählst du, wenn du\n<gray>dran bist und setzen darfst."
+    help: "<gold><b>So geht Texas Hold'em"
+    help-lore: "<gray>2 eigene Karten, dazu 5 gemeinsame\n<gray>in der Mitte. Die beste Hand aus 5\n<gray>dieser 7 Karten gewinnt den Pot.\n\n<white>Checken</white> <gray>weiter ohne Einsatz\n<white>Mitgehen</white> <gray>den Einsatz zahlen\n<white>Setzen/Erhöhen</white> <gray>mehr bieten\n<white>Passen</white> <gray>aussteigen\n\n<gold>Hände, stark nach schwach:\n<gray>Royal Flush, Straight Flush,\n<gray>Vierling, Full House, Flush,\n<gray>Straße, Drilling, Zwei Paare,\n<gray>Ein Paar, Höchste Karte\n\n<dark_gray>Klick: die Erklärung im Chat"
+    head-cards: "<gray>Karten: <white><cards>"
+    head-hand: "<gray>Hand: <yellow><hand>"
     head-stack: "<gray>Chips: <gold><chips>"
     head-bet: "<gray>Im Pot (diese Runde): <yellow><chips>"
     head-dealer: "<white>Dealer"

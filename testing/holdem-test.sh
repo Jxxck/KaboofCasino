@@ -1,9 +1,9 @@
 #!/bin/bash
 # holdem-test.sh <step>: Texas Hold'em at poker table #1 (90 -57 41, facing SOUTH) on the default test instance,
 # casinobots Alice and Bob online (Carl for "three"). "setup" shortens the waits in the instance config.
-# Steps: setup | showdown | fold | allin | quit | leave | runout | solo | three
+# Steps: setup | showdown | showcards | fold | allin | quit | leave | runout | solo | three
 # Every step but solo ends with everybody standing up and checks that the chips of all bots together are unchanged.
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh
+T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh; B=$T/out/bots
 INST=$($P status | sed -n 's/^instance: \([^ ]*\).*/\1/p'); L=$INST/logs/latest.log
 S=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 q() { $P rcon "$@" >/dev/null; }
@@ -43,6 +43,10 @@ PY
   $P rcon "casino reload" | tail -1 ;;
 showdown) sit2; play "$M" call call; sleep 2; since "$M" "sits down|hand [0-9]+ for|turn of|CALL|CHECK|RAISE|FOLD|ALL_IN|decided|leaves"
   standup Alice Bob; sleep 1; since "$M" "leaves seat|settled \(NORMAL\).*holdem" | tail -4; check "$T0" Alice Bob ;;
+showcards) # at the showdown each menu shows the other's two cards (slots 19/22/25, cmd = card ids) and his head's tooltip
+  sit2; play "$M" call call; sleep 0.5; D=$(wc -l < "$B/Alice.log"); b Alice dump; sleep 0.5
+  tail -n +"$D" "$B/Alice.log" | grep -E "^  slot (19|22|25|26|8|27|30|33):|Karten:|Hand:" | cut -c1-120
+  sleep 4; standup Alice Bob; sleep 1; check "$T0" Alice Bob ;;
 fold) sit2; play "$M" raise fold; sleep 1; since "$M" "turn of|RAISE|FOLD|decided"; standup Alice Bob; sleep 1; check "$T0" Alice Bob ;;
 allin) sit2; play "$M" allin call; sleep 3; since "$M" "ALL_IN|CALL|decided|leaves"; standup Alice Bob; sleep 1; check "$T0" Alice Bob ;;
 quit) sit2; F=$(wc -l < "$L"); waitfor "$F" "turn of" 30; who=$(tail -n +"$F" "$L" | grep "turn of" | tail -1 | sed -E 's/.*turn of ([A-Za-z]+).*/\1/')
@@ -63,5 +67,5 @@ solo) chips Alice; q "tp Bob 200 -57 200"; sleep 0.5; q "tp Alice 90.5 -57 44.5 
 three) chips Alice; chips Bob; chips Carl; at Carl; T0=$(total Alice Bob Carl); M=$(wc -l < "$L"); open Alice; buyin Alice 2; open Bob; buyin Bob 2
   open Carl; buyin Carl 2; waitfor "$M" "hand [0-9]+ for" 30; play "$M" raise call fold; sleep 2
   since "$M" "hand [0-9]+ for|RAISE|CALL|FOLD|decided"; standup Alice Bob Carl; sleep 1; check "$T0" Alice Bob Carl ;;
-*) echo "usage: holdem-test.sh setup|showdown|fold|allin|quit|leave|runout|solo|three"; exit 2 ;;
+*) echo "usage: holdem-test.sh setup|showdown|showcards|fold|allin|quit|leave|runout|solo|three"; exit 2 ;;
 esac

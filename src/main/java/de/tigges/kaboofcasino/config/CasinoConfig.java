@@ -24,7 +24,8 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
                            Slot derby,
                            Lights lights, Music music,
                            de.tigges.kaboofcasino.cashier.CashierSettings cashier, Leaderboard leaderboard,
-                           de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop, Jukebox jukebox) {
+                           de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop, Jukebox jukebox,
+                           Discord discord) {
 
     /** The config without a {@code jukebox:} section (tests built before the jukebox). */
     public CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
@@ -32,7 +33,32 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
                         Lights lights, Music music, de.tigges.kaboofcasino.cashier.CashierSettings cashier,
                         Leaderboard leaderboard, de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop) {
         this(pack, bets, rounds, owed, machines, safety, gui, slot, wheel, plinko, roulette, blackjack, poker, derby,
-                lights, music, cashier, leaderboard, chipshop, Jukebox.DEFAULTS);
+                lights, music, cashier, leaderboard, chipshop, Jukebox.DEFAULTS, Discord.DEFAULTS);
+    }
+
+    /** The config without a {@code discord:} section (tests built before the Discord posts). */
+    public CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
+                        Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker, Slot derby,
+                        Lights lights, Music music, de.tigges.kaboofcasino.cashier.CashierSettings cashier,
+                        Leaderboard leaderboard, de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop,
+                        Jukebox jukebox) {
+        this(pack, bets, rounds, owed, machines, safety, gui, slot, wheel, plinko, roulette, blackjack, poker, derby,
+                lights, music, cashier, leaderboard, chipshop, jukebox, Discord.DEFAULTS);
+    }
+
+    /**
+     * {@code discord:} posts through KaboofDiscord (Jack 2026-11-11), if that plugin is there and its
+     * {@code events.casino} is on. Players hidden from the leaderboard never appear.
+     *
+     * @param bigWins         a single bet that pays at least {@code multiplier} times its stake and at least
+     *                        {@code minChips} chips is posted
+     * @param multiplier      2..10000
+     * @param minChips        0..10 million
+     * @param cooldownSeconds a player's next big win is posted only after this many seconds (0..86400)
+     * @param weekly          after each week (Monday 00:00 Berlin) its top 3 per leaderboard category are posted once
+     */
+    public record Discord(boolean bigWins, int multiplier, int minChips, int cooldownSeconds, boolean weekly) {
+        public static final Discord DEFAULTS = new Discord(true, 50, 250, 300, true);
     }
 
     /**
@@ -241,5 +267,5 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Music(true),
             de.tigges.kaboofcasino.cashier.CashierSettings.DEFAULTS,
             new Leaderboard(false, 30, 15, 25, true),
-            de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULTS, Jukebox.DEFAULTS);
+            de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULTS, Jukebox.DEFAULTS, Discord.DEFAULTS);
 }

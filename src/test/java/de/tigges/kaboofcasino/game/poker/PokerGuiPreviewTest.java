@@ -254,11 +254,13 @@ class PokerGuiPreviewTest {
         java.util.UUID me = java.util.UUID.nameUUIDFromBytes("me".getBytes(StandardCharsets.UTF_8));
         List<HoldemView.Seat> seats = List.of(
                 new HoldemView.Seat(me, "Jxxq", 0, result ? 1295 : 480, result ? 0 : 20, myTurn, false, false, true,
-                        result, true, result ? "gewinnt 815" : "Small Blind 5"),
+                        result, true, result ? "gewinnt 815" : "Small Blind 5", result ? HOLE : List.of(),
+                        result ? 4 : -1),
                 new HoldemView.Seat(java.util.UUID.randomUUID(), "Freund", 1, result ? 405 : 1200, result ? 0 : 40,
-                        !myTurn && !result, false, false, false, false, false, "erhöht auf 40"),
+                        !myTurn && !result, false, false, false, false, false, "erhöht auf 40",
+                        result ? List.of(card(11, 3), card(11, 1)) : List.of(), result ? 3 : -1),
                 new HoldemView.Seat(java.util.UUID.randomUUID(), "Dritter", 2, 95, 0, false, true, false, false, false,
-                        false, "passt"));
+                        false, "passt", List.of(), -1));
         return new HoldemView(status, HOLE, dealt(HOLE), board, dealt(board), pot, myTurn ? 20 : 0, myTurn, myTurn,
                 false, myTurn, myTurn, false, 80, 500, myTurn ? 400 : 0, !result, 1, seats, 10_000);
     }
@@ -278,16 +280,39 @@ class PokerGuiPreviewTest {
         render("holdem-waiting", title, 427, 240, ROUND_IMPORTANT, holdemCells(holdem("waiting", false, 95,
                 BOARD.subList(0, 4), false)));
         render("holdem-won", title, 427, 240, ROUND_IMPORTANT, holdemCells(holdem("won", false, 0, BOARD, true)));
+        render("holdem-won", title, 480, 270, ROUND_IMPORTANT, holdemCells(holdem("won", false, 0, BOARD, true)));
+    }
+
+    /** At the showdown the others' cards take the place of the size buttons; the rules button is always there. */
+    @Test
+    void theShowdownShowsTheOthersCardsAboveTheirStacks() {
+        HoldemMenu.Cell[] result = new HoldemMenu.View().cells(holdem("won", false, 0, BOARD, true), false, 600);
+        assertEquals(HoldemMenu.MODEL + "hd_show_1", result[HoldemMenu.SHOW[1]].model(), "Freund (head 1)");
+        assertEquals(List.of(Integer.toString(card(11, 3)), Integer.toString(card(11, 1))),
+                result[HoldemMenu.SHOW[1]].strings());
+        assertEquals(null, result[HoldemMenu.SHOW[0]], "his own cards are the big ones");
+        assertEquals(null, result[HoldemMenu.SHOW[2]], "a folded hand is not shown");
+        assertEquals(null, result[20], "no size buttons at the showdown");
+        assertEquals(HoldemMenu.Action.HELP, result[HoldemMenu.HELP].action());
+        HoldemMenu.Cell[] betting = new HoldemMenu.View().cells(holdem("your_turn", true, 95, FLOP, false), false,
+                600);
+        assertEquals(HoldemMenu.Action.MIN, betting[19].action(), "while betting: the size buttons");
+        assertEquals(HoldemMenu.Action.HELP, betting[HoldemMenu.HELP].action());
+        assertEquals("A♠", HoldemMenu.cardText(card(0, 0)));
+        assertEquals("10♣", HoldemMenu.cardText(card(9, 3)));
+        assertEquals("K♥", HoldemMenu.cardText(card(12, 1)));
     }
 
     /** Every model key the Hold'em menus show resolves to an item definition in the pack. */
     @Test
     void everyHoldemModelIsInThePack() {
         List<String> keys = new ArrayList<>(List.of("hd_pot", "hd_call", "hd_amount", "hd_stack_0", "hd_stack_1",
-                "hd_stack_2"));
+                "hd_stack_2", "hd_show_0", "hd_show_1", "hd_show_2", "hd_hand"));
         for (HoldemMenu.Action a : HoldemMenu.Action.values()) {
             keys.add("hd_" + a.model + "_on");
-            keys.add("hd_" + a.model + "_off");
+            if (a != HoldemMenu.Action.HELP) { // the rules button is never off
+                keys.add("hd_" + a.model + "_off");
+            }
         }
         for (String status : List.of("your_turn", "waiting", "dealing", "all_in", "showdown", "won", "split", "lost",
                 "folded", "next", "lobby")) {

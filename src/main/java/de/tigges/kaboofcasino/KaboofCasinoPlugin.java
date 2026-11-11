@@ -161,6 +161,10 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         jukebox = new de.tigges.kaboofcasino.jukebox.JukeboxService(ctx,
                 de.tigges.kaboofcasino.jukebox.JukeboxCatalog.load(getClassLoader()));
         roundLog.afterSettle(boards::roundSettled);
+        // Discord (Jack 2026-11-11): only through KaboofDiscord, if it is there
+        de.tigges.kaboofcasino.discord.DiscordBridge discord = new de.tigges.kaboofcasino.discord.DiscordBridge();
+        boards.discord(discord);
+        roundLog.onSettled(new de.tigges.kaboofcasino.discord.BigWins(ctx, discord, boards::hidden)::settled);
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
             case FORTUNE_WHEEL -> new WheelController(machine, ctx);

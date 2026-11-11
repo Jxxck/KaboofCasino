@@ -22,6 +22,13 @@ import java.util.Map;
  *       tinted with colour 0 over the shadow in colour 1; a blank is no model): the pot ({@code hd_pot}, slot 9) and
  *       what the player has to call ({@code hd_call}, slot 18) in the box left of the board, the stacks next to the
  *       player heads in the stake band ({@code hd_stack_<i>}, slots 28 / 31 / 34);</li>
+ *   <li>the rules button, a 12 px "?" badge at the left of slot 26's cell ({@code hd_help_on}, its tooltip explains
+ *       the game), so the player's hand name ({@code hd_hand}: the poker GUI's pictures, cut to the
+ *       {@value #HAND_CUT_W} px the names use, at the same place) comes from slot 8 instead;</li>
+ *   <li>at the showdown the two cards each other player turned up, small ({@value #MINI_W}x{@value #MINI_H}, own
+ *       faces {@code hd_mini_<id>}: the rank in the GUI font over a suit pip) above his stack ({@code hd_show_<i>} in
+ *       slots 19 / 22 / 25, custom model data strings 0 and 1 = the card ids), where the size buttons are while
+ *       betting;</li>
  *   <li>status lines ({@code hd_status_<key>}, slot 40) at the poker status position.</li>
  * </ul>
  * The words above the numbers (POT, ZU ZAHLEN, BLINDS, SPIELER) are title texts at the anchors of {@link #anchors()};
@@ -43,6 +50,16 @@ final class HoldemGui {
     static final int POT_SLOT = 9;
     static final int POT_TOP = 23;
     static final int CALL_SLOT = 18;
+    static final int HELP_SLOT = 26;
+    static final int HELP_SIZE = 12;
+    static final int HAND_SLOT = 8;
+    /** The part of a hand name picture ({@code PokerGui.NAME_W} wide) a name uses: from x 4, so it starts at 165. */
+    static final int HAND_CUT_X = 4;
+    static final int HAND_CUT_W = 61;
+    static final int[] SHOW_SLOTS = {19, 22, 25};
+    static final int MINI_W = 13;
+    static final int MINI_H = 16;
+    static final int MINI_Y = SIZE_ROW_Y + 1;
     static final int CALL_LABEL_TOP = 39;
     static final int CALL_TOP = 50;
     static final int BLINDS_TOP = 61;
@@ -101,6 +118,13 @@ final class HoldemGui {
             small(tree, "hd_" + SIZE_NAMES[i] + "_on", i, true, SIZE_SLOTS[i]);
             small(tree, "hd_" + SIZE_NAMES[i] + "_off", i, false, SIZE_SLOTS[i]);
         }
+        help(tree, "hd_help_on");
+        for (int id = 0; id < 52; id++) {
+            PokerGuiItems.texture(tree, "hd_mini_" + id, mini(text, id));
+        }
+        for (int i = 0; i < SHOW_SLOTS.length; i++) {
+            show(tree, "hd_show_" + i, SHOW_SLOTS[i], BlackjackGuiItems.slotX(STACK_SLOTS[i]));
+        }
         number(tree, "hd_amount", AMOUNT_SLOT, AMOUNT_CENTRE - 3 * AMOUNT_CHARS, SIZE_ROW_Y + 5, AMOUNT_CHARS);
         number(tree, "hd_pot", POT_SLOT, BOX_CENTRE - 3 * NUMBER_CHARS, POT_TOP, NUMBER_CHARS);
         number(tree, "hd_call", CALL_SLOT, BOX_CENTRE - 3 * NUMBER_CHARS, CALL_TOP, NUMBER_CHARS);
@@ -136,7 +160,129 @@ final class HoldemGui {
         Images.fill(img, 3, h - 4, w - 6, 1, active ? -15123668 : -15063263);
     }
 
-    /** An 18 px button over the whole slot with a drawn sign: |&lt; (smallest), - (less), + (more), &gt;| (all-in). */
+    /** The suit pips of the small cards (5x5, suit order of the card sheet: spades, hearts, diamonds, clubs). */
+    static final String[][] PIPS = {
+        {"..#..", ".###.", "#####", "..#..", ".###."},
+        {".#.#.", "#####", "#####", ".###.", "..#.."},
+        {"..#..", ".###.", "#####", ".###.", "..#.."},
+        {".###.", "#####", "#####", "..#..", ".###."}};
+
+    /** A small card face: rounded dark frame, cream face, the rank (A, 2..10, J, Q, K) over the suit pip. */
+    static BufferedImage mini(TextGlyphs text, int id) {
+        BufferedImage img = Images.blank(MINI_W, MINI_H);
+        Images.fill(img, 1, 0, MINI_W - 2, MINI_H, 0xFF2B2B2B);
+        Images.fill(img, 0, 1, MINI_W, MINI_H - 2, 0xFF2B2B2B);
+        Images.fill(img, 1, 1, MINI_W - 2, MINI_H - 2, 0xFFF4F1E8);
+        int rank = id % 13;
+        int suit = id / 13;
+        int ink = suit == 1 || suit == 2 ? 0xFFC62828 : 0xFF1B1B1B;
+        String label = rank == 0 ? "A" : rank < 10 ? Integer.toString(rank + 1) : "JQK".substring(rank - 10, rank - 9);
+        int w = text.width(label) - 1;
+        if (w > MINI_W - 2) {
+            throw new IllegalStateException(label + " does not fit a small card");
+        }
+        text.draw(img, label, (MINI_W - w) / 2, 2, ink, false);
+        for (int row = 0; row < 5; row++) {
+            for (int col = 0; col < 5; col++) {
+                if (PIPS[suit][row].charAt(col) == '#') {
+                    Images.fill(img, (MINI_W - 5) / 2 + col, 10 + row, 1, 1, ink);
+                }
+            }
+        }
+        return img;
+    }
+
+    /** The "?" of the rules button (6x8), '#' = drawn. */
+    static final String[] QUESTION = {".####.", "##..##", "....##", "...##.", "..##..", "..##..", "......", "..##.."};
+
+    /**
+     * The two cards a player turned up: a {@code composite} of two {@code select}s on custom model data string 0 / 1
+     * (card id 0..51, else nothing), {@value #MINI_W}x{@value #MINI_H} each, centred above the 36 px of his stack from
+     * window x {@code left}. A clear quad over both gives every face the same (oversized) bounds.
+     */
+    static void show(PackTree tree, String name, int slot, int left) {
+        int x0 = left + (36 - (2 * MINI_W + 1)) / 2;
+        JsonArray parts = new JsonArray();
+        for (int k = 0; k < 2; k++) {
+            int x = x0 + k * (MINI_W + 1);
+            List<String> values = new ArrayList<>();
+            List<JsonObject> models = new ArrayList<>();
+            for (int id = 0; id < 52; id++) {
+                String model = name + "_" + k + "_" + id;
+                PokerGuiItems.model(tree, model, PokerGuiItems.model(slot, List.of(
+                        new BlackjackGuiItems.Quad(PokerGuiItems.BLACKJACK + "clear", x0, MINI_Y, 2 * MINI_W + 1,
+                                MINI_H, -1, 7.8),
+                        new BlackjackGuiItems.Quad("hd_mini_" + id, x, MINI_Y, MINI_W, MINI_H, -1, 8))));
+                values.add(Integer.toString(id));
+                models.add(PokerGuiItems.plain(model, 0));
+            }
+            parts.add(PokerGuiItems.select(k, values, models));
+        }
+        JsonObject composite = new JsonObject();
+        composite.addProperty("type", "minecraft:composite");
+        composite.add("models", parts);
+        PokerGuiItems.item(tree, name, composite);
+    }
+
+    /**
+     * The rules button: a {@value #HELP_SIZE} px badge (the buttons' active frame, a gold "?") at window x
+     * slotX + 1, y slotY + 3 of {@link #HELP_SLOT}, left of the hand name (cut to start at x 165). A clear quad 17 px
+     * down from it (above the stack numbers at y 76) makes it an oversized item.
+     */
+    static void help(PackTree tree, String name) {
+        int s = HELP_SIZE;
+        BufferedImage img = Images.blank(s, s);
+        frame(img, s, s, true);
+        for (int row = 0; row < QUESTION.length; row++) {
+            for (int col = 0; col < QUESTION[row].length(); col++) {
+                if (QUESTION[row].charAt(col) == '#') {
+                    Images.fill(img, (s - 6) / 2 + col, (s - 8) / 2 + row, 1, 1, GOLD);
+                }
+            }
+        }
+        PokerGuiItems.texture(tree, name, img);
+        int x = BlackjackGuiItems.slotX(HELP_SLOT);
+        int y = BlackjackGuiItems.slotY(HELP_SLOT);
+        PokerGuiItems.model(tree, name, PokerGuiItems.model(HELP_SLOT, List.of(
+                new BlackjackGuiItems.Quad(PokerGuiItems.BLACKJACK + "clear", x + 1, y + 3, s, 17, -1, 7.8),
+                new BlackjackGuiItems.Quad(name, x + 1, y + 3, s, s, -1, 8))));
+        PokerGuiItems.item(tree, name, PokerGuiItems.plain(name, 0));
+    }
+
+    /**
+     * {@code hand_player} of the poker GUI for Hold'em, from {@link #HAND_SLOT}: its pictures ({@code pictures}, by
+     * category) cut to {@value #HAND_CUT_W} px from x {@value #HAND_CUT_X} at the same window place, tinted the same
+     * way (colour 0 over the shadow in colour 1). A name outside the cut fails the build.
+     */
+    static void hands(PackTree tree, List<BufferedImage> pictures) {
+        List<String> values = new ArrayList<>();
+        List<JsonObject> models = new ArrayList<>();
+        for (int category = 0; category < pictures.size(); category++) {
+            BufferedImage full = pictures.get(category);
+            for (int y = 0; y < full.getHeight(); y++) {
+                for (int x = 0; x < full.getWidth(); x++) {
+                    if ((full.getRGB(x, y) >>> 24) != 0 && (x < HAND_CUT_X || x >= HAND_CUT_X + HAND_CUT_W)) {
+                        throw new IllegalStateException("hand name " + category + " is wider than " + HAND_CUT_W
+                                + " px");
+                    }
+                }
+            }
+            String texture = "hd_hand_" + category;
+            PokerGuiItems.texture(tree, texture, Images.crop(full, HAND_CUT_X, 0, HAND_CUT_W, full.getHeight()));
+            int x = PokerGuiArt.PLAYER_X + 34 - PokerGui.NAME_W / 2 + HAND_CUT_X;
+            PokerGuiItems.model(tree, texture, PokerGuiItems.model(HAND_SLOT, List.of(
+                    new BlackjackGuiItems.Quad(texture, x + 1, PokerGui.NAME_TOP + 1, HAND_CUT_W, PokerGui.NAME_H, 1,
+                            7.9),
+                    new BlackjackGuiItems.Quad(texture, x, PokerGui.NAME_TOP, HAND_CUT_W, PokerGui.NAME_H, 0, 8))));
+            values.add(Integer.toString(category));
+            models.add(PokerGuiItems.plain(texture, 2));
+        }
+        PokerGuiItems.item(tree, "hd_hand", PokerGuiItems.select(0, values, models));
+    }
+
+    /**
+     * An 18 px button over the whole slot with a drawn sign: |&lt; (smallest), - (less), + (more), &gt;| (all-in).
+     */
     static void small(PackTree tree, String name, int kind, boolean active, int slot) {
         BufferedImage img = Images.blank(18, 18);
         frame(img, 18, 18, active);

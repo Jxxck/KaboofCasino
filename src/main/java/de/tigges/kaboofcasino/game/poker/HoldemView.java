@@ -42,9 +42,14 @@ public record HoldemView(String status, List<Integer> hole, List<Long> holeAt, L
 
     /**
      * One seat: who, the chips in front of the player (stack), the bet on this street, and the state as words for the
-     * tooltip ({@code action}: the last action, empty if none).
+     * tooltip ({@code action}: the last action, empty if none). {@code shown}: the hole cards the player turned up at
+     * the showdown (empty before, and for folded hands), {@code category} their hand ({@code PokerHands}, -1: none).
      */
     public record Seat(UUID player, String name, int spot, int stack, int bet, boolean acting, boolean folded,
-                       boolean allIn, boolean dealer, boolean winner, boolean me, String action) {
+                       boolean allIn, boolean dealer, boolean winner, boolean me, String action, List<Integer> shown,
+                       int category) {
+        public Seat {
+            shown = List.copyOf(shown);
+        }
     }
 }

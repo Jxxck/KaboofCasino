@@ -82,6 +82,8 @@ final class HoldemTable implements HoldemHand.Listener {
         int timeouts;
         /** What the last revision of his record changed (losers' files are saved first, see queueSaves). */
         int gain;
+        /** His hole cards as turned up at the showdown of the running hand (empty before). */
+        List<Integer> shown = List.of();
 
         Seat(UUID player, String name, int spot, UUID round, int boughtIn, long endsMillis) {
             this.player = player;
@@ -218,7 +220,16 @@ final class HoldemTable implements HoldemHand.Listener {
                 player.getName(), machine.record().number(), total, spot, seats.size());
         ctx.menus().open(player, new HoldemMenu(player.getUniqueId(), controller, ctx));
         m.actionBar(player, Msg.POKER_HOLDEM_SEATED);
+        // the first time at a Hold'em table: how it works, in the chat (the ? in the menu has it too)
+        var pdc = player.getPersistentDataContainer();
+        if (!pdc.has(RULES_SEEN, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            pdc.set(RULES_SEEN, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+            m.send(player, Msg.POKER_HOLDEM_RULES);
+        }
     }
+
+    /** Player PDC: he has been shown the Hold'em rules (on his first sit-down). */
+    static final org.bukkit.NamespacedKey RULES_SEEN = de.tigges.kaboofcasino.util.Keys.key("holdem_rules_seen");
 
     private int freeSpot(Player player) {
         double[] p = controller.tablePosition(player.getLocation());
@@ -466,6 +477,7 @@ final class HoldemTable implements HoldemHand.Listener {
             s.winner = false;
             s.won = 0;
             s.gain = 0;
+            s.shown = List.of();
             if (s.stack > 0) {
                 in.add(s);
             }
@@ -728,6 +740,10 @@ final class HoldemTable implements HoldemHand.Listener {
 
     @Override
     public void revealed(int index, List<Integer> cards, int at) {
+        Seat shownBy = seatOf(index);
+        if (shownBy != null) {
+            shownBy.shown = List.copyOf(cards);
+        }
         int spot = spotOf(index);
         for (int i = 0; i < cards.size(); i++) {
             for (BlackjackCardMotion.Card c : view.cards) {
@@ -848,9 +864,13 @@ final class HoldemTable implements HoldemHand.Listener {
         for (Seat s : seats.values()) {
             boolean in = hand != null && s.index >= 0;
             boolean live = in && hand.street().ordinal() < HoldemHand.Street.RESULT.ordinal();
+            List<Integer> shown = in ? s.shown : List.of();
+            int category = !shown.isEmpty() && hand.score(s.index) >= 0 ? PokerHands.category(hand.score(s.index))
+                    : -1;
             lines.add(new HoldemView.Seat(s.player, s.name, s.spot, in ? hand.shownStack(s.index) : s.stack,
                     live ? hand.bet(s.index) : 0, in && hand.current() == s.index, in && hand.folded(s.index),
-                    live && hand.allIn(s.index), in && s.spot == buttonSpot, s.winner && in, s == me, s.action));
+                    live && hand.allIn(s.index), in && s.spot == buttonSpot, s.winner && in, s == me, s.action, shown,
+                    category));
         }
         List<Integer> board = new ArrayList<>();
         List<Long> boardAt = new ArrayList<>();

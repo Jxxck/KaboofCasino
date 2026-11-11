@@ -223,6 +223,7 @@ final class PokerGui {
         List<String> values = new ArrayList<>();
         List<JsonObject> dealer = new ArrayList<>();
         List<JsonObject> player = new ArrayList<>();
+        List<BufferedImage> pictures = new ArrayList<>();
         for (int category = 0; category <= 9; category++) {
             String name = lang(lang, "hand_" + category);
             List<String> lines = split(text, name, NAME_ROOM);
@@ -238,12 +239,14 @@ final class PokerGui {
             }
             String texture = "hand_" + category;
             PokerGuiItems.texture(tree, texture, img);
+            pictures.add(img);
             values.add(Integer.toString(category));
             dealer.add(handModel(tree, texture, "hand_dealer_" + category, DEALER_NAME_SLOT, PokerGuiArt.DEALER_X));
             player.add(handModel(tree, texture, "hand_player_" + category, PLAYER_NAME_SLOT, PokerGuiArt.PLAYER_X));
         }
         PokerGuiItems.item(tree, "hand_dealer", PokerGuiItems.select(0, values, dealer));
         PokerGuiItems.item(tree, "hand_player", PokerGuiItems.select(0, values, player));
+        HoldemGui.hands(tree, pictures);
     }
 
     private static JsonObject handModel(PackTree tree, String texture, String name, int slot, int boxX) {

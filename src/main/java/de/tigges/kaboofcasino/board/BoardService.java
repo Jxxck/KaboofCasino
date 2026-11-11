@@ -8,6 +8,7 @@ import de.tigges.kaboofcasino.machine.CasinoItem;
 import de.tigges.kaboofcasino.machine.Machine;
 import de.tigges.kaboofcasino.machine.Recipes;
 import de.tigges.kaboofcasino.storage.Database;
+import de.tigges.kaboofcasino.util.ChipText;
 import de.tigges.kaboofcasino.util.Keys;
 import de.tigges.kaboofcasino.util.Log;
 import java.time.Instant;
@@ -61,6 +62,9 @@ public final class BoardService implements Listener {
     private final AtomicLong versions = new AtomicLong();
     /** Players who hid themselves (PDC or mirror), known on MAIN at once; filled from the mirror at enable. */
     private final java.util.Set<UUID> hiddenNow = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private volatile de.tigges.kaboofcasino.discord.DiscordBridge discord;
+    /** The colour of the weekly winners' post. */
+    static final int WEEKLY_COLOUR = 0x9B59B6;
     private final Map<UUID, Long> lastToggle = new java.util.HashMap<>();
     private volatile BoardSnapshot snapshot;
     private long lastStart = Long.MIN_VALUE / 2;
@@ -189,14 +193,15 @@ public final class BoardService implements Listener {
         dirty.set(false);
         CasinoConfig.Leaderboard cfg = settings();
         Messages m = ctx.messages().get();
+        boolean post = ctx.config().get().discord().weekly() && discord != null;
         try {
             db.submit("leaderboard", c -> {
                 boolean done = false;
                 try {
                     snapshot = BoardQueries.snapshot(c, now, cfg.minStake(), STORED, versions.incrementAndGet());
                     done = true;
-                    if (cfg.weeklyLog()) {
-                        weekly(c, now, cfg.minStake(), m);
+                    if (cfg.weeklyLog() || post) {
+                        weekly(c, now, cfg.minStake(), m, cfg.weeklyLog(), post);
                     }
                 } finally {
                     if (!done) {
@@ -210,6 +215,16 @@ public final class BoardService implements Listener {
             computing.set(false);
             Log.get().warn("KaboofCasino leaderboard: computation not started ({})", e.toString());
         }
+    }
+
+    /** The bridge for the weekly winners on Discord ({@code discord.weekly}); null: none. Thread: MAIN. */
+    public void discord(de.tigges.kaboofcasino.discord.DiscordBridge bridge) {
+        this.discord = bridge;
+    }
+
+    /** True if the player hid himself from the leaderboard (any thread). */
+    public boolean hidden(UUID player) {
+        return hiddenNow.contains(player);
     }
 
     /** {@code list} without the players who hid themselves, at most {@link #TOP} places. Thread: MAIN. */
@@ -231,32 +246,78 @@ public final class BoardService implements Listener {
         return out;
     }
 
-    /** The previous week's winners into the server log, once (DB thread). */
-    private void weekly(java.sql.Connection c, long now, int minStake, Messages m) throws java.sql.SQLException {
+    /**
+     * The previous week's winners, once (DB thread): into the server log ({@code log}, everybody) and to Discord
+     * ({@code post}, without the players hidden from the leaderboard; sent from MAIN).
+     */
+    private void weekly(java.sql.Connection c, long now, int minStake, Messages m, boolean log, boolean post)
+            throws java.sql.SQLException {
         long thisWeek = BoardPeriod.weekStart(now);
         long lastWeek = BoardPeriod.weekStart(thisWeek - 1);
         if (!BoardQueries.anyRounds(c, lastWeek, thisWeek) || !BoardQueries.claimWeek(c, lastWeek, now)) {
             return;
         }
         List<String> parts = new ArrayList<>();
+        List<String> discordLines = new ArrayList<>();
         List<BoardQueries.Play> plays = BoardQueries.plays(c, lastWeek, thisWeek);
         Map<UUID, String> names = BoardQueries.names(c);
+        java.util.Set<UUID> hidden = BoardQueries.allHidden(c);
         for (BoardCategory cat : BoardCategory.values()) {
+            String category = plain(m.render(BoardView.categoryMsg(cat)));
             List<BoardEntry> top = BoardQueries.aggregate(plays, cat, lastWeek, minStake, 3, names);
-            if (top.isEmpty()) {
-                continue;
+            if (!top.isEmpty()) {
+                List<String> places = new ArrayList<>();
+                for (int i = 0; i < top.size(); i++) {
+                    places.add((i + 1) + ". " + top.get(i).name() + " " + BoardView.value(cat, top.get(i).value()));
+                }
+                parts.add(category + ": " + String.join(", ", places));
             }
-            List<String> places = new ArrayList<>();
-            for (int i = 0; i < top.size(); i++) {
-                places.add((i + 1) + ". " + top.get(i).name() + " " + BoardView.value(cat, top.get(i).value()));
+            List<BoardEntry> shown = visible(BoardQueries.aggregate(plays, cat, lastWeek, minStake,
+                    3 + hidden.size(), names), hidden, 3);
+            if (!shown.isEmpty()) {
+                discordLines.add(discordCategory(m, cat, category, shown));
             }
-            parts.add(plain(m.render(BoardView.categoryMsg(cat))) + ": " + String.join(", ", places));
         }
         DateTimeFormatter day = DateTimeFormatter.ofPattern("dd.MM.").withZone(BoardPeriod.ZONE);
         DateTimeFormatter year = DateTimeFormatter.ofPattern("dd.MM.yyyy").withZone(BoardPeriod.ZONE);
         String week = day.format(Instant.ofEpochMilli(lastWeek)) + "–" + year.format(Instant.ofEpochMilli(thisWeek - 1));
-        Log.get().info("KaboofCasino {}", plain(m.render(Msg.BOARD_WEEKLY, Messages.text("week", week),
-                Messages.text("lines", String.join(" | ", parts)))));
+        if (log) {
+            Log.get().info("KaboofCasino {}", plain(m.render(Msg.BOARD_WEEKLY, Messages.text("week", week),
+                    Messages.text("lines", String.join(" | ", parts)))));
+        }
+        de.tigges.kaboofcasino.discord.DiscordBridge bridge = discord;
+        if (post && bridge != null && !discordLines.isEmpty()) {
+            String title = m.raw(Msg.DISCORD_WEEKLY_TITLE).replace("<week>", week);
+            String text = String.join("\n\n", discordLines);
+            try {
+                Bukkit.getScheduler().runTask(ctx.plugin(), () -> {
+                    if (bridge.post(title, text, WEEKLY_COLOUR, null, null)) {
+                        Log.get().info("weekly casino winners {} posted to Discord", week);
+                    }
+                });
+            } catch (RuntimeException e) {
+                Log.get().warn("weekly casino winners {} not posted: {}", week, e.toString());
+            }
+        }
+    }
+
+    /** One category of the weekly post: its heading, then the places in one line. Pure. */
+    static String discordCategory(Messages m, BoardCategory cat, String category, List<BoardEntry> top) {
+        String[] medals = {"🥇", "🥈", "🥉"};
+        List<String> places = new ArrayList<>();
+        for (int i = 0; i < top.size() && i < medals.length; i++) {
+            long v = top.get(i).value();
+            String value = switch (cat) {
+                case MULTIPLIER -> BoardView.value(cat, v);
+                case ROUNDS -> v == 1 ? m.raw(Msg.DISCORD_WEEKLY_ROUND)
+                        : m.raw(Msg.DISCORD_WEEKLY_ROUNDS).replace("<count>", ChipText.number(v));
+                default -> ChipText.chips(v);
+            };
+            places.add(m.raw(Msg.DISCORD_WEEKLY_PLACE).replace("<medal>", medals[i])
+                    .replace("<player>", de.tigges.kaboofcasino.discord.DiscordBridge.md(top.get(i).name()))
+                    .replace("<value>", value));
+        }
+        return m.raw(Msg.DISCORD_WEEKLY_CATEGORY).replace("<category>", category) + "\n" + String.join(" · ", places);
     }
 
     static String plain(net.kyori.adventure.text.Component c) {

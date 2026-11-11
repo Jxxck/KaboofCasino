@@ -91,7 +91,12 @@ public final class ConfigLoader {
                 de.tigges.kaboofcasino.cashier.CashierSettings.read(y, warnings),
                 leaderboard(r, d.leaderboard()),
                 de.tigges.kaboofcasino.chipshop.ChipShopSettings.read(y, warnings),
-                new CasinoConfig.Jukebox(r.bool("jukebox.enabled", d.jukebox().enabled())));
+                new CasinoConfig.Jukebox(r.bool("jukebox.enabled", d.jukebox().enabled())),
+                new CasinoConfig.Discord(r.bool("discord.big-wins", d.discord().bigWins()),
+                        r.integer("discord.big-win-multiplier", d.discord().multiplier(), 2, 10_000),
+                        r.integer("discord.big-win-min-chips", d.discord().minChips(), 0, 10_000_000),
+                        r.integer("discord.big-win-cooldown-seconds", d.discord().cooldownSeconds(), 0, 86_400),
+                        r.bool("discord.weekly", d.discord().weekly())));
     }
 
     private static CasinoConfig.Leaderboard leaderboard(Reader r, CasinoConfig.Leaderboard d) {

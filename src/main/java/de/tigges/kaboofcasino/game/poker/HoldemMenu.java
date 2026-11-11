@@ -36,8 +36,10 @@ import org.bukkit.inventory.meta.SkullMeta;
  * {@code HoldemGui}):
  * <pre>
  *  row 0  slots 0 / 2 / 3 / 5 / 6  the board                     row 1  slots 16 / 17  his two cards
- *  slot 9 the pot, slot 18 what he has to call (the box left of the board), slot 26 his hand's name
- *  row 2  slots 19 / 20 / 24 / 25  smallest bet, less, more, all-in; slot 22 the size of the bet
+ *  slot 9 the pot, slot 18 what he has to call (both drawn in the box left of the board), slot 8 his hand's name
+ *  row 2  slots 19 / 20 / 24 / 25 smallest bet, less, more, all-in; slot 22 the size of the bet; slot 26 the rules
+ *         (a small ?); at the showdown instead the cards the others turned up, small above their stacks (19 / 22 /
+ *         25; the ? gives way to the third player's)
  *  row 3  slots 27 / 30 / 33       the players (heads; tooltip: stack, bet, last action), their stacks beside them
  *  row 4  slot 39 the timer bar, slot 40 the status line
  *  row 5  PASSEN or GEHEN (45..47), CHECKEN or MITGEHEN (48..50), SETZEN / ERHÖHEN / ALL-IN (51..53)
@@ -52,9 +54,14 @@ public final class HoldemMenu extends GameMenu {
     static final String[] BOARD_ITEMS = PokerRoundMenu.BOARD_ITEMS;
     static final int[] PLAYER = PokerRoundMenu.PLAYER;
     static final String[] PLAYER_ITEMS = PokerRoundMenu.PLAYER_ITEMS;
-    static final int PLAYER_NAME = PokerRoundMenu.PLAYER_NAME;
+    /** His hand's name: the poker round's picture, from slot 8 (slot 26 holds the rules button). */
+    static final int PLAYER_NAME = 8;
     static final int POT = 9;
     static final int CALL = 18;
+    static final int HELP = 26;
+    /** Per head the slot of the small cards that player turned up at the showdown (above his stack). */
+    static final int[] SHOW = {19, 22, 25};
+    static final String SUITS = "♠♥♦♣";
     static final int AMOUNT = 22;
     static final int AMOUNT_CHARS = 7;
     static final int NUMBER_CHARS = 7;
@@ -87,7 +94,8 @@ public final class HoldemMenu extends GameMenu {
         MIN("min", Msg.GUI_HOLDEM_MIN, Msg.GUI_HOLDEM_MIN_LORE),
         MINUS("minus", Msg.GUI_HOLDEM_MINUS, Msg.GUI_HOLDEM_SIZE_LORE),
         PLUS("plus", Msg.GUI_HOLDEM_PLUS, Msg.GUI_HOLDEM_SIZE_LORE),
-        MAX("max", Msg.GUI_HOLDEM_MAX, Msg.GUI_HOLDEM_MAX_LORE);
+        MAX("max", Msg.GUI_HOLDEM_MAX, Msg.GUI_HOLDEM_MAX_LORE),
+        HELP("help", Msg.GUI_HOLDEM_HELP, Msg.GUI_HOLDEM_HELP_LORE);
 
         final String model;
         final Msg name;
@@ -218,7 +226,7 @@ public final class HoldemMenu extends GameMenu {
             if (!mine.isEmpty()) {
                 List<Integer> all = new ArrayList<>(mine);
                 all.addAll(shownBoard);
-                out[PLAYER_NAME] = new Cell(MODEL + "hand_player", List.of(Integer.toString(PokerHands.category(
+                out[PLAYER_NAME] = new Cell(MODEL + "hd_hand", List.of(Integer.toString(PokerHands.category(
                         PokerHands.score(all)))), List.of(YELLOW, PokerRoundMenu.shadow(YELLOW)), List.of(), null,
                         false, 0, null);
             }
@@ -228,14 +236,25 @@ public final class HoldemMenu extends GameMenu {
             if (v.myTurn()) {
                 out[CALL] = Cell.number("hd_call", centred(digits(v.toCall(), NUMBER_CHARS), NUMBER_CHARS), WHITE);
             }
+            // the showdown: the others' turned-up cards take the place of the bet size controls
+            boolean showdown = v.seats().stream().anyMatch(s -> !s.me() && s.shown().size() == 2);
             for (int i = 0; i < v.seats().size() && i < HEADS.length; i++) {
                 HoldemView.Seat s = v.seats().get(i);
                 // the tooltip's facts are part of the cell, so a changed tooltip is sent again
                 out[HEADS[i]] = new Cell(null, List.of(), List.of(), List.of(), null, false, 0,
                         new Head(s.player(), s.name(), List.of(Integer.toString(s.stack()), Integer.toString(s.bet()),
-                                s.action(), Boolean.toString(s.dealer())), s.acting(), s.folded()));
+                                s.action(), Boolean.toString(s.dealer()), s.shown().toString(),
+                                Integer.toString(s.category())), s.acting(), s.folded()));
                 int colour = s.winner() ? GREEN : s.folded() ? GREY : s.acting() ? GOLD : WHITE;
                 out[STACKS[i]] = Cell.number("hd_stack_" + i, digits(s.stack(), STACK_CHARS), colour);
+                if (showdown && !s.me() && s.shown().size() == 2) {
+                    out[SHOW[i]] = new Cell(MODEL + "hd_show_" + i, List.of(Integer.toString(s.shown().get(0)),
+                            Integer.toString(s.shown().get(1))), List.of(), List.of(), null, false, 0, null);
+                }
+            }
+            // the rules, unless the third player's turned-up cards are where the ? is
+            if (out[SHOW[SHOW.length - 1]] == null) {
+                out[HELP] = Cell.button(Action.HELP, true, true, 0);
             }
             out[STATUS] = Cell.model("hd_status_" + v.status());
             if (v.myTurn() && v.ticksLeft() > 0 && turnTicks > 0) {
@@ -262,12 +281,14 @@ public final class HoldemMenu extends GameMenu {
                     out[slot] = Cell.button(actions[b], slot == BUTTON_ART[b], on[b], chips[b]);
                 }
             }
-            Action[] sizes = {Action.MIN, Action.MINUS, Action.PLUS, Action.MAX};
-            for (int i = 0; i < SIZE.length; i++) {
-                out[SIZE[i]] = Cell.button(sizes[i], true, v.canRaise(), size);
-            }
-            if (v.canRaise()) {
-                out[AMOUNT] = Cell.number("hd_amount", centred(digits(size, AMOUNT_CHARS), AMOUNT_CHARS), GOLD);
+            if (!showdown) {
+                Action[] sizes = {Action.MIN, Action.MINUS, Action.PLUS, Action.MAX};
+                for (int i = 0; i < SIZE.length; i++) {
+                    out[SIZE[i]] = Cell.button(sizes[i], true, v.canRaise(), size);
+                }
+                if (v.canRaise()) {
+                    out[AMOUNT] = Cell.number("hd_amount", centred(digits(size, AMOUNT_CHARS), AMOUNT_CHARS), GOLD);
+                }
             }
             return out;
         }
@@ -350,6 +371,11 @@ public final class HoldemMenu extends GameMenu {
             shown[slot] = c;
             if (c == null) {
                 set(slot, null);
+            } else if (c.action() == Action.HELP) {
+                set(slot, Button.of(icon(c), (p, click) -> {
+                    p.playSound(p, Sound.UI_BUTTON_CLICK, 0.2f, 1.4f);
+                    ctx.messages().get().send(p, Msg.POKER_HOLDEM_RULES);
+                }));
             } else if (c.action() != null && c.enabled()) {
                 Action a = c.action();
                 ItemStack icon = icon(c);
@@ -428,10 +454,8 @@ public final class HoldemMenu extends GameMenu {
         ItemStack stack;
         if (c.action() != null) {
             var chips = Messages.text("chips", ChipText.chips(c.chips()));
-            boolean size = c.action() == Action.MIN || c.action() == Action.MINUS || c.action() == Action.PLUS
-                    || c.action() == Action.MAX;
             // a size button without a bet to size says so (not "Einsatz jetzt: 0 Chips")
-            List<net.kyori.adventure.text.Component> lore = size && !c.enabled()
+            List<Component> lore = c.action().sizes() && !c.enabled()
                     ? m.lines(Msg.GUI_HOLDEM_SIZE_WAIT) : m.lines(c.action().lore, chips);
             stack = DisplayCopies.model(c.model(), m.render(c.action().name, chips), lore);
         } else {
@@ -451,6 +475,12 @@ public final class HoldemMenu extends GameMenu {
         return stack;
     }
 
+    /** "A♠", "10♥": a card as text (suit order of the card sheet: spades, hearts, diamonds, clubs). */
+    static String cardText(int card) {
+        return de.tigges.kaboofcasino.game.blackjack.BlackjackCards.rankName(card)
+                + SUITS.charAt(de.tigges.kaboofcasino.game.blackjack.BlackjackCards.suit(card));
+    }
+
     /** A player's head: name, stack, bet, last action; the player to act glints. */
     private ItemStack head(Head h) {
         HoldemView v = last;
@@ -465,6 +495,14 @@ public final class HoldemMenu extends GameMenu {
             }
             if (!seat.action().isEmpty()) {
                 lore.add(Component.text(seat.action(), NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
+            }
+            if (seat.shown().size() == 2) {
+                lore.add(m.render(Msg.GUI_HOLDEM_HEAD_CARDS, Messages.text("cards", cardText(seat.shown().get(0))
+                        + " " + cardText(seat.shown().get(1)))));
+                if (seat.category() >= 0) {
+                    lore.add(m.render(Msg.GUI_HOLDEM_HEAD_HAND, Messages.text("hand",
+                            PokerPanel.HANDS[Math.min(PokerPanel.HANDS.length - 1, seat.category())])));
+                }
             }
             if (seat.dealer()) {
                 lore.add(m.render(Msg.GUI_HOLDEM_HEAD_DEALER));
