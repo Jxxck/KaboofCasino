@@ -292,20 +292,24 @@ final class DecoDisplayPack {
         return out;
     }
 
-    /** A slab's display: the exact cover of its type ({@link DecoDisplayBake#cover}) with these textures. */
+    /**
+     * A slab's display: the exact cover of its type ({@link DecoDisplayBake#cover}) with these textures, its sides and
+     * bottom shaded like a block's ({@link DecoShade}).
+     */
     static void slabCover(PackTree tree, String name, String type, JsonObject slabTextures) {
         String template = "assets/kaboofcasino/models/deco/slab/template/" + type + ".json";
         if (!tree.has(template)) {
             JsonObject t = new JsonObject();
-            t.add("elements", DecoDisplayBake.cover(switch (type) {
+            t.add("elements", DecoShade.faces(DecoDisplayBake.cover(switch (type) {
                 case "bottom" -> DecoDisplayBake.slab(0, 8);
                 case "top" -> DecoDisplayBake.slab(8, 16);
                 case "double" -> DecoDisplayBake.slab(0, 16);
                 default -> throw new IllegalStateException("slab type " + type);
-            }));
+            })));
             tree.put(template, Json.bytes(t));
         }
         JsonObject textures = coverTextures(slabTextures);
+        DecoShade.textures(tree, textures, templateVariables(tree, template));
         JsonObject child = new JsonObject();
         child.addProperty("parent", PREFIX + "slab/template/" + type);
         child.add("textures", textures);
@@ -323,6 +327,11 @@ final class DecoDisplayPack {
             }
         }
         return textures;
+    }
+
+    /** The texture variables a template's faces name. */
+    private static java.util.Set<String> templateVariables(PackTree tree, String path) {
+        return DecoShade.variables(Json.parse(tree.get(path)).getAsJsonArray("elements"));
     }
 
     /** The baked stairs of every family (see the class comment). */
@@ -361,17 +370,21 @@ final class DecoDisplayPack {
         }
     }
 
-    /** One stair state's display: the turned exact cover (shared by every family) with these textures. */
+    /**
+     * One stair state's display: the turned exact cover (shared by every family) with these textures, its sides and
+     * bottom shaded like a block's ({@link DecoShade}).
+     */
     static void stairDisplay(PackTree tree, String name, String parent, int x, int y, JsonObject stairTextures) {
         String template = "template/" + parent.substring(parent.indexOf("block/") + 6) + "_x" + x + "_y" + y;
         String path = "assets/kaboofcasino/models/deco/stairs/" + template + ".json";
         if (!tree.has(path)) {
             JsonObject t = new JsonObject();
-            t.add("elements", DecoDisplayBake.cover(DecoDisplayBake.faceRoles(DecoDisplayBake.bakeUvLocked(
-                    DecoDisplayBake.template(parent), x, y))));
+            t.add("elements", DecoShade.faces(DecoDisplayBake.cover(DecoDisplayBake.faceRoles(
+                    DecoDisplayBake.bakeUvLocked(DecoDisplayBake.template(parent), x, y)))));
             tree.put(path, Json.bytes(t));
         }
         JsonObject textures = coverTextures(stairTextures);
+        DecoShade.textures(tree, textures, templateVariables(tree, path));
         JsonObject child = new JsonObject();
         child.addProperty("parent", PREFIX + "stairs/" + template);
         child.add("textures", textures);
@@ -439,11 +452,16 @@ final class DecoDisplayPack {
         tree.put("assets/casinodeco/items/" + id + ".json", Json.bytes(Json.itemDefinition("casinodeco:item/" + id)));
     }
 
-    /** A stair's placing item: the straight stair cover (with its frames) held and shown like a vanilla stair. */
+    /**
+     * A stair's placing item: the straight stair cover (with its frames) held and shown like a vanilla stair, with the
+     * plain textures (items are lit like items, not like blocks).
+     */
     private static void stairsItem(PackTree tree, String id, JsonObject textures) {
         JsonObject item = new JsonObject();
         item.addProperty("parent", PREFIX + "stairs/template/stairs_x0_y0");
-        item.add("textures", coverTextures(textures));
+        JsonObject plain = coverTextures(textures);
+        DecoShade.plain(plain);
+        item.add("textures", plain);
         JsonObject display = new JsonObject();
         display.add("gui", transform(30, 135, 0, 0, 0, 0.625));
         display.add("ground", transform(0, 0, 0, 3, 0, 0.25));

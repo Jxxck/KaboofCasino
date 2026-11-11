@@ -325,6 +325,71 @@ class DecoDisplayPackTest {
         return cw(cw(cw(d)));
     }
 
+    /**
+     * Every stair and slab cover (and the own stairs' placing items) resolves every texture its template names; faces
+     * that do not look up show the brightened copies of mod textures, up faces and vanilla textures the plain ones.
+     */
+    @Test
+    void coversAreShadedLikeBlocks() {
+        int checked = 0;
+        for (Map.Entry<String, byte[]> e : tree.files().entrySet()) {
+            String path = e.getKey();
+            boolean cover = (path.startsWith("assets/kaboofcasino/models/deco/stairs/")
+                    || path.startsWith("assets/kaboofcasino/models/deco/slab/")) && !path.contains("/template/");
+            boolean item = path.matches("assets/casinodeco/models/item/.+_stairs\\.json")
+                    && Json.parse(e.getValue()).has("parent")
+                    && Json.parse(e.getValue()).get("parent").getAsString().contains("stairs/template/");
+            if (!cover && !item) {
+                continue;
+            }
+            JsonObject model = Json.parse(e.getValue());
+            String parent = model.get("parent").getAsString().substring("kaboofcasino:".length());
+            JsonArray elements = Json.parse(tree.get("assets/kaboofcasino/models/" + parent + ".json"))
+                    .getAsJsonArray("elements");
+            JsonObject textures = model.getAsJsonObject("textures");
+            for (String variable : DecoShade.variables(elements)) {
+                String texture = resolve(textures, variable);
+                assertTrue(texture.startsWith("minecraft:") || tree.has(texturePath(texture)), path + " " + variable);
+                int cut = variable.lastIndexOf('_');
+                String side = cut < 0 ? null : variable.substring(cut + 1);
+                boolean shaded = side != null && DecoShade.SIDES.contains(side) && cover
+                        && !resolve(textures, variable.substring(0, cut)).startsWith("minecraft:");
+                assertEquals(shaded, texture.startsWith("kaboofcasino:block/shade/"), path + " " + variable);
+            }
+            checked++;
+        }
+        // 7 mod families (40 states, marble 4 variants) + 13 own ones, slabs, and 13 placing items
+        assertTrue(checked > 7 * 40 + 13 * 43, "only " + checked);
+        JsonObject black = Json.parse(tree.get("assets/kaboofcasino/models/deco/stairs/obsidian_marble_north_bottom_"
+                + "straight_2.json")).getAsJsonObject("textures");
+        assertEquals("casinodeco:block/obsidian_marble_v2", black.get("top").getAsString());
+        // north facing: the full back looks north, the profiles east and west (half and quarter = the side texture)
+        assertEquals("kaboofcasino:block/shade/casinodeco/obsidian_marble_v2_ns", black.get("side_ns").getAsString());
+        assertEquals("kaboofcasino:block/shade/casinodeco/obsidian_marble_v2_ew", black.get("half_ew").getAsString());
+        BufferedImage plain = Images.read(tree.get("assets/casinodeco/textures/block/obsidian_marble_v2.png"));
+        BufferedImage ew = Images.read(tree.get(texturePath(black.get("half_ew").getAsString())));
+        assertEquals(DecoShade.brighten(plain, DecoShade.factor("ew")).getRGB(5, 9), ew.getRGB(5, 9));
+        JsonObject classic = Json.parse(tree.get("assets/kaboofcasino/models/deco/slab/classic_dark_oak_cornice_slab.json"))
+                .getAsJsonObject("textures");
+        assertEquals("#bottom", classic.get("bottom_down").getAsString(), "vanilla planks stay plain");
+    }
+
+    private static String resolve(JsonObject textures, String variable) {
+        String value = "#" + variable;
+        for (int i = 0; i < 8 && value.startsWith("#"); i++) {
+            JsonElement next = textures.get(value.substring(1));
+            if (next == null) {
+                throw new AssertionError("undefined texture " + value + " in " + textures);
+            }
+            value = next.getAsString();
+        }
+        return value;
+    }
+
+    private static String texturePath(String id) {
+        return "assets/" + id.substring(0, id.indexOf(':')) + "/textures/" + id.substring(id.indexOf(':') + 1) + ".png";
+    }
+
     /** The marble stairs have four random variants per state, the rest one; textures follow the mod's models. */
     @Test
     void stairVariantsAndTextures() {
