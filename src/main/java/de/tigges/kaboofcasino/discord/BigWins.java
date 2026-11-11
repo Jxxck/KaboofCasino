@@ -10,6 +10,7 @@ import de.tigges.kaboofcasino.util.Log;
 import de.tigges.kaboofcasino.wager.Chips;
 import de.tigges.kaboofcasino.wager.ItemAmount;
 import de.tigges.kaboofcasino.wager.RoundRecord;
+import de.tigges.kaboofcasino.wager.SettleReason;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +23,8 @@ import org.bukkit.entity.Player;
  * times its stake and at least {@code big-win-min-chips} chips goes to the channel ("Bob gewinnt 1.500 Chips am
  * Spielautomaten!", 100× der Einsatz von 15 Chips). Refunds and Texas Hold'em seats (games between players) never
  * count; players hidden from the leaderboard never appear; per player one post per {@code big-win-cooldown-seconds}.
+ * A round settled by the join after a crash ({@code JOIN_RECOVERY}) is never posted: it may have been posted before
+ * the crash (the post left at once, the player file was older).
  * Each record counts alone (a three-slot wheel spin is three bets, as on the leaderboard's multiplier). Thread: MAIN.
  */
 public final class BigWins {
@@ -40,9 +43,10 @@ public final class BigWins {
     }
 
     /** A round was settled (the round log calls this on MAIN after recording it). */
-    public void settled(UUID player, RoundRecord r) {
+    public void settled(UUID player, RoundRecord r, SettleReason reason) {
         CasinoConfig.Discord cfg = ctx.config().get().discord();
-        if (!cfg.bigWins() || RoundLog.refund(r.detail()) || !Chips.VALUE.equals(r.stake().item())) {
+        if (!cfg.bigWins() || reason == SettleReason.JOIN_RECOVERY || RoundLog.refund(r.detail())
+                || !Chips.VALUE.equals(r.stake().item())) {
             return;
         }
         long stake = r.stake().count();

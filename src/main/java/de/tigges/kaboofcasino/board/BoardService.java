@@ -193,7 +193,8 @@ public final class BoardService implements Listener {
         dirty.set(false);
         CasinoConfig.Leaderboard cfg = settings();
         Messages m = ctx.messages().get();
-        boolean post = ctx.config().get().discord().weekly() && discord != null;
+        // the week is claimed once: only for a post that can go out now (else it waits, unless the log claims it)
+        boolean post = ctx.config().get().discord().weekly() && discord != null && discord.ready();
         try {
             db.submit("leaderboard", c -> {
                 boolean done = false;
@@ -293,6 +294,8 @@ public final class BoardService implements Listener {
                 Bukkit.getScheduler().runTask(ctx.plugin(), () -> {
                     if (bridge.post(title, text, WEEKLY_COLOUR, null, null)) {
                         Log.get().info("weekly casino winners {} posted to Discord", week);
+                    } else {
+                        Log.get().info("weekly casino winners {} not posted (KaboofDiscord refused it)", week);
                     }
                 });
             } catch (RuntimeException e) {

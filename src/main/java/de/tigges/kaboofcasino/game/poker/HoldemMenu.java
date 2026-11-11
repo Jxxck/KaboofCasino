@@ -299,6 +299,9 @@ public final class HoldemMenu extends GameMenu {
     private final View view = new View();
     private final Cell[] shown = new Cell[54];
     private HoldemView last;
+    /** The tick the rules were last sent to the chat from this menu. */
+    private int lastRules = Integer.MIN_VALUE / 2;
+    static final int RULES_GAP_TICKS = 60;
 
     public HoldemMenu(UUID viewer, PokerController controller, CasinoContext ctx) {
         super(viewer, title(ctx));
@@ -373,6 +376,12 @@ public final class HoldemMenu extends GameMenu {
                 set(slot, null);
             } else if (c.action() == Action.HELP) {
                 set(slot, Button.of(icon(c), (p, click) -> {
+                    // the rules are 7 lines: once every few seconds, not a chat flood from a held click
+                    int now = Bukkit.getCurrentTick();
+                    if (now - lastRules < RULES_GAP_TICKS) {
+                        return;
+                    }
+                    lastRules = now;
                     p.playSound(p, Sound.UI_BUTTON_CLICK, 0.2f, 1.4f);
                     ctx.messages().get().send(p, Msg.POKER_HOLDEM_RULES);
                 }));

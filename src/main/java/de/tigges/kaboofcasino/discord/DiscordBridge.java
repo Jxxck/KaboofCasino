@@ -58,6 +58,22 @@ public final class DiscordBridge {
         }
     }
 
+    /** True if a post can be handed over now: KaboofDiscord is there, enabled and has the API. Thread: MAIN. */
+    public boolean ready() {
+        Threads.requireMain();
+        Plugin p = Bukkit.getPluginManager().getPlugin(PLUGIN);
+        if (p == null || !p.isEnabled()) {
+            return false;
+        }
+        try {
+            p.getClass().getMethod("post", String.class, String.class, String.class, int.class, UUID.class,
+                    String.class);
+            return true;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
+    }
+
     /** {@code text} as plain Discord text: formatting characters escaped, so a name like {@code __Bob__} stays one. */
     public static String md(String text) {
         StringBuilder out = new StringBuilder(text.length() + 8);

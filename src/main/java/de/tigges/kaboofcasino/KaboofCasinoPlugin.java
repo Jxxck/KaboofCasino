@@ -164,7 +164,12 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         // Discord (Jack 2026-11-11): only through KaboofDiscord, if it is there
         de.tigges.kaboofcasino.discord.DiscordBridge discord = new de.tigges.kaboofcasino.discord.DiscordBridge();
         boards.discord(discord);
-        roundLog.onSettled(new de.tigges.kaboofcasino.discord.BigWins(ctx, discord, boards::hidden)::settled);
+        // hidden: the PDC flag of an online player as well (a restored DB may lack his mirror row until he joins)
+        de.tigges.kaboofcasino.board.BoardService b = boards;
+        roundLog.onSettled(new de.tigges.kaboofcasino.discord.BigWins(ctx, discord, id -> {
+            Player online = Bukkit.getPlayer(id);
+            return online != null ? b.hidden(online) : b.hidden(id);
+        })::settled);
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
             case FORTUNE_WHEEL -> new WheelController(machine, ctx);
