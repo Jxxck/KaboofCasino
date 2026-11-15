@@ -11,7 +11,7 @@
 #         places one copy per lane at +GATE_X (x -15..31) in one model, the display sinks it by 3.6 px x gate.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${1:-/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/src/fr/minevegas/casino/DuckDerbyGeometry.java}
+SRC=${1:?usage: convert-derby.sh <path to the decompiled fr/minevegas/casino/DuckDerbyGeometry.java>}
 OUT=$HERE/../../pack-src/meshes
 TEX=roulettecasino:block/casino_entity/duck_derby
 PY="python3 -I -B"

@@ -6,7 +6,7 @@
 # lamp in top-block coordinates -> y-32.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${1:-/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/src/fr/minevegas/casino/SlotMachineRenderGeometry.java}
+SRC=${1:?usage: convert-slot.sh <path to the decompiled fr/minevegas/casino/SlotMachineRenderGeometry.java>}
 OUT=$HERE/../../pack-src/meshes
 TEX=roulettecasino:block/casino_entity/slot_machine
 python3 "$HERE/mesh2json.py" "$SRC" Arm.DATA "$TEX" 8,8,8 "$OUT/slot_arm.json"

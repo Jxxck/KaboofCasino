@@ -7,11 +7,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -27,7 +25,6 @@ import net.kyori.adventure.text.TranslationArgument;
  */
 final class AdminFixtures {
 
-    private static final String FALLBACK = "/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/";
     private static Map<String, String> german;
 
     private AdminFixtures() {
@@ -54,21 +51,7 @@ final class AdminFixtures {
     }
 
     private static Path jar() {
-        try (InputStream in = Files.newInputStream(Path.of("gradle.properties"))) {
-            Properties p = new Properties();
-            p.load(in);
-            Path configured = Path.of(p.getProperty("casino.modJar"));
-            if (Files.isRegularFile(configured)) {
-                return configured;
-            }
-            Path fallback = Path.of(FALLBACK).resolve(configured.getFileName());
-            if (Files.isRegularFile(fallback)) {
-                return fallback;
-            }
-            throw new IllegalStateException("mod jar not found: " + configured.toAbsolutePath());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return de.tigges.kaboofcasino.TestModJar.path();
     }
 
     /** The text a German client without the key shows: fallbacks formatted, children appended. */

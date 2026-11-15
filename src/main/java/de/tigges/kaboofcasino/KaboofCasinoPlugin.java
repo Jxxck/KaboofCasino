@@ -227,7 +227,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         command.boards(boards);
         command.musicOptOut(musicOptOut);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
-                event.registrar().register("casino", "KaboofCasino (MineVegas Casino)", List.of(), command));
+                event.registrar().register("casino", "KaboofCasino: casino games, statistics, credits", List.of(),
+                        command));
 
         if (config.pack().enabled() && config.pack().onGamePort()) {
             gamePort = new GamePortPack(List.of(pack, musicPack), getSLF4JLogger());
@@ -243,8 +244,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
                 http = null;
             }
         }
-        Log.get().info("KaboofCasino pack {} ({} bytes), URL http://{}:{}{} ({}), enforce={}", pack.sha1(),
-                pack.size(), config.pack().urlHost(), config.pack().publicPort(), pack.path(), config.pack().serve(),
+        Log.get().info("KaboofCasino pack {} ({} bytes), URL {} ({}), enforce={}", pack.sha1(), pack.size(),
+                de.tigges.kaboofcasino.pack.PackUrl.describe(config.pack(), pack), config.pack().serve(),
                 config.pack().enforce());
         Log.get().info("KaboofCasino music pack {} ({} bytes), offered: {}", musicPack.sha1(), musicPack.size(),
                 config.pack().enabled() && config.music().enabled());

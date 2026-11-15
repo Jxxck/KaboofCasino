@@ -89,8 +89,9 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      * @param enabled        send the pack at all
      * @param enforce        kill switch: true = disconnect players who decline or fail; false = offer only
      * @param serve          {@code minecraft-port}: HTTP on the game port (sniffer); {@code http-port}: own HttpServer
-     * @param urlHost        host in the URL sent to clients (Jack's public address)
-     * @param urlPort        public port in the URL in {@code minecraft-port} mode (the game port)
+     * @param urlHost        host in the URL sent to clients: {@code auto} (the address each client connected to,
+     *                       {@code PackUrl}) or the server's public host name or IP
+     * @param urlPort        public port in the URL in {@code minecraft-port} mode with a fixed host (the game port)
      * @param port           TCP port of the embedded HTTP server ({@code http-port} mode; also its URL port)
      * @param bind           bind address of the HTTP server
      * @param timeoutSeconds how long the configuration phase waits for the client's answer
@@ -249,7 +250,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             "minecraft:netherite_ingot", "minecraft:netherite_block");
 
     public static final CasinoConfig DEFAULTS = new CasinoConfig(
-            new Pack(true, false, Pack.MINECRAFT_PORT, "5.9.137.26", 25565, 25580, "0.0.0.0", 300),
+            new Pack(true, false, Pack.MINECRAFT_PORT, "auto", 25565, 25580, "0.0.0.0", 300),
             new Bets(2000, Bets.PER_SLOT),
             new Rounds(8),
             new Owed(20),

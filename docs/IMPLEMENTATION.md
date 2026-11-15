@@ -1,31 +1,49 @@
-# KaboofCasino – Implementation notes (step 1: foundation + slot machine; step 2: fortune wheel + Plinko; step 3: roulette; step 4: seats, deco, music; step 5: blackjack; step 6: poker; step 7: duck derby; step 8: croupier, guide, TVs, dealer station; part 2 (`PLAN-2.md`) step 9: chips, cashier, chip stakes)
+# KaboofCasino – Implementation notes
 
-Binding sources: `Casino-work/PLAN.md` (decisions), `research/games.md` (rules), `research/render.md` (look, pack,
-GUI, delivery), `research/server.md` (item safety, permadeath, protection, storage). This file describes what steps 1
-to 6 built, how the next games plug in, and the pitfalls found on the way.
+The maintainer's working notes, in the order the plugin grew: step 1 foundation + slot machine; step 2 fortune wheel +
+Plinko; step 3 roulette; step 4 seats, deco, music; step 5 blackjack; step 6 poker; step 7 duck derby; step 8
+croupier, guide, TVs, dealer station; then part 2 with chips, the cashier, the leaderboard, the Chip-Shop, outfits,
+multiplayer tables, Texas Hold'em and the jukebox. They describe what was built, how the next games plug in, and the
+pitfalls found on the way. Version numbers below 0.19.0 are versions that only ever ran on the author's own server
+(a permadeath SMP, which is why item safety and "permadeath" come up so often); "live" means that server.
 
-Licence: MineVegas Casino is MIT with an attribution condition. Every public description must link
-https://www.curseforge.com/minecraft/mc-mods/minevegas-casino (it is in `pack.mcmeta`, `credits/CREDITS.md` in the
-pack, `/casino`, `/casino credits`, `plugin.yml` and the README). The mod's licence text is `LICENSE-MineVegas.txt`
-at the repository root and at the root of the plugin jar, and `credits/LICENSE.txt` in the pack.
+References such as `PLAN.md`, `PLAN-2.md`, `games.md`, `render.md` and `server.md` (here and in code comments) point
+to design notes and an analysis of the mod that are not part of this repository: `PLAN` = the numbered design
+decisions, `games.md` = the mod's rules, `render.md` = look, pack, GUI and pack delivery, `server.md` = item safety,
+protection and storage. What matters of them is repeated in this file.
+
+Licence: the plugin is MIT (`LICENSE`). MineVegas Casino, which it ports, is MIT with an attribution condition: every
+public description must link https://www.curseforge.com/minecraft/mc-mods/minevegas-casino (it is in the README,
+`plugin.yml`, `pack.mcmeta`, `credits/CREDITS.md` in the pack, `/casino` and `/casino credits`). The mod's licence text
+is `LICENSE-MineVegas.txt` at the repository root and at the root of the plugin jar, and `credits/LICENSE.txt` in the
+packs. `NOTICE.md` lists what comes from where.
 
 ## 1. Build
 
 ```bash
-cd /root/Jack_DONT_TOUCH/plugins-src/KaboofCasino
+./gradlew build
+```
+
+On a machine that also runs a server, keep the build small (this is what the author uses):
+
+```bash
 systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice -n 15 \
   ./gradlew --no-daemon --max-workers=2 --offline build
 ```
 
-- Gradle 9.8.2 (wrapper), Kotlin DSL, Shadow 9.6.1, JUnit 5.14.4, Java 25. Everything is in the offline cache.
-- `-Xlint:all` with `-processing`, `-serial` (as PostMarkt) and `-classfile`: JOML (the `Transformation` types of
-  paper-api) is a Java 1.2 class file with type annotations and javac flags every use of it. 0 warnings otherwise.
+- Gradle 9.8.2 (wrapper), Kotlin DSL, Shadow 9.6.1, JUnit 5.14.4, Java 25 (Gradle fetches a JDK 25 toolchain if none
+  is installed). `--offline` works once everything is in Gradle's cache and the mod jar is in `libs/`.
+- `fetchModJar` downloads the MineVegas Casino jar named in `gradle.properties` (`casino.modJarUrl`) into
+  `casino.modJar` (`libs/`, ignored by git) and checks `casino.modJarSha1`. A jar that is already there with the
+  right SHA-1 is used as it is; another SHA-1 fails the build.
+- `-Xlint:all` with `-processing`, `-serial` and `-classfile`: JOML (the `Transformation` types of paper-api) is a
+  Java 1.2 class file with type annotations and javac flags every use of it. 0 warnings otherwise.
 - The game-port pack delivery needs `io.papermc.paper.network.ChannelInitializeListener(Holder)`, which is only in the
-  server jar, and netty. `paperNetworkApi` extracts `io/papermc/paper/network/**` from the server jar named by
-  `casino.paperServerJar` into `build/server-api/paper-network-api.jar` (compileOnly); netty
-  (`casino.nettyVersion`, 4.2.16.Final as in Paper 26.3-205) comes from `casino.serverLibraries`
-  (compileOnly, and for the EmbeddedChannel tests). Nothing of either is shaded or committed. After a Paper update,
-  check the netty version in `server/libraries/io/netty`.
+  server jar, and netty. The two classes are compile-only stand-ins in `src/paperStubs` (signatures only, never
+  packaged); netty (`casino.nettyVersion`, 4.2.16.Final as in Paper 26.3-205) comes from Maven Central, compile only
+  and for the EmbeddedChannel tests. After a Paper update, check the netty version in the server's
+  `libraries/io/netty` and run the build once with `-Pcasino.paperServerJar=<server>/versions/26.3/paper-26.3.jar`:
+  `PaperStubsTest` then compares the stand-ins with the real classes.
 - Outputs: `build/libs/KaboofCasino-<version>.jar` (deployable, Hikari shaded to `de.tigges.kaboofcasino.libs.hikari`,
   sqlite-jdbc from the server classpath), `build/pack/KaboofCasino-pack.zip` + `.sha1` + `gui-layout.json`.
 - `buildPack` (JavaExec of the `:pack-tool` subproject) runs before `processResources`; the zip, its SHA-1 and the GUI
@@ -90,8 +108,11 @@ players after `onDisable` (server.md F8).
 ### Pack delivery
 
 `pack.serve: minecraft-port` (default): the pack is served over the Minecraft port itself, so no extra port forward
-is needed (TCP 25565 reaches the server, 25580 is not forwarded). The URL is
-`http://<pack.url-host>:<pack.url-port>/pack/<sha1>.zip` (url-port = the public game port, 25565).
+is needed. The URL is `http://<host>:<port>/pack/<sha1>.zip` (`PackUrl`): with `pack.url-host: auto` (default) host
+and port are the ones the client's own handshake names (its virtual host), so the download takes the way the game
+connection took; with a fixed `pack.url-host` the port is `pack.url-port` (the public game port, 25565). `auto` gives
+no URL for a handshake that names no plain host or address (a proxy that rewrites it): the pack counts as failed for
+that client and a warning asks for a fixed host.
 
 - `GamePortPack.install` registers a Paper `ChannelInitializeListener` (key `kaboofcasino:pack`); it adds
   `PackSniffer` as the **first** handler of every new connection's pipeline (handler name `kaboofcasino_pack`).
@@ -126,7 +147,8 @@ is needed (TCP 25565 reaches the server, 25580 is not forwarded). The URL is
   login that follows the download within the throttle time would not be refused either: the download is not a
   handshake.
 
-`pack.serve: http-port`: the JDK `HttpServer` on `pack.bind:pack.port` (25580) as before; the URL uses `pack.port`. Same pools and deadlines; 16 handler threads (one per slot + 4); a
+`pack.serve: http-port`: the JDK `HttpServer` on `pack.bind:pack.port` (25580); the URL uses `pack.port` (with
+`auto` the handshake's host and `pack.port`). Same pools and deadlines; 16 handler threads (one per slot + 4); a
 watchdog thread closes downloads that break the rules (also a write blocked on a non-reading client); slices of
 64 KiB (one big write made the JDK copy the body into a buffer twice its size).
 The forward has to exist for that mode.
@@ -1712,7 +1734,7 @@ client; refuses the live ports). Smoke test on the default PostMarkt test instan
 (`PostMarkt/testing/ptest.sh`, README there) with the pack-aware bot of this repo:
 
 ```bash
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing
+T=../PostMarkt/testing      # the author's test harness (not public), or $PTEST_DIR
 $T/ptest.sh uninstall LodServerSupport DHSupport PostMarkt   # clean instance (done 2026-11-06)
 $T/ptest.sh install build/libs/KaboofCasino-0.4.0.jar
 # plugins/KaboofCasino/config.yml on the instance: url-host 127.0.0.1, url-port 25572 (serve minecraft-port)
@@ -1748,8 +1770,8 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
 
 ## 12. Before going live
 
-- Default `pack.serve: minecraft-port`: no port forward needed; the URL is `http://5.9.137.26:25565/pack/<sha1>.zip`.
-  Check it from outside (check-host.net HTTP check or `curl -I` from another network) before `pack.enforce: true`.
+- Default `pack.serve: minecraft-port`: no port forward needed; the URL is
+  `http://<public address>:25565/pack/<sha1>.zip`. Check it from outside (check-host.net HTTP check or `curl -I` from another network) before `pack.enforce: true`.
   Until then players without the pack are only refused at the machines. (`http-port` would need TCP 25580
   forwarded.)
 - ProtocolLib is installed on live: the combination was tested on the test instance.

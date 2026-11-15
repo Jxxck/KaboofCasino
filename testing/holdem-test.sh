@@ -3,7 +3,7 @@
 # casinobots Alice and Bob online (Carl for "three"). "setup" shortens the waits in the instance config.
 # Steps: setup | showdown | showcards | fold | allin | quit | leave | runout | solo | three
 # Every step but solo ends with everybody standing up and checks that the chips of all bots together are unchanged.
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh; B=$T/out/bots
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}; P=$T/ptest.sh; B=$T/out/bots
 INST=$($P status | sed -n 's/^instance: \([^ ]*\).*/\1/p'); L=$INST/logs/latest.log
 S=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 q() { $P rcon "$@" >/dev/null; }

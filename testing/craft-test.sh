@@ -2,7 +2,7 @@
 # craft-test.sh: on the running default test instance with bot Alice online (survival, near 0 -57 0): a casino item
 # (paper underneath) must not work as paper in vanilla recipes, the reel recipe must work with plain paper only.
 set -u
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}
 cd "$T"
 b() { ./ptest.sh b Alice "$@"; sleep 0.25; }
 result() { tail -n +"$1" out/bots/Alice.log | grep -E 'SLOT id=[0-9]+ slot=0 ' | tail -1 | sed -E 's/.*slot=0 //' | cut -c1-90; }

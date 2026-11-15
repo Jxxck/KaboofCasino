@@ -3,7 +3,7 @@
 # render research: -Dpackmode=accept|decline|fail|ignore) against PostMarkt's resolved MCProtocolLib classpath.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-CP=$(cat /root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing/bot/build/cp.txt)
+CP=$(cat "${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../PostMarkt/testing" && pwd)}/bot/build/cp.txt")
 JDK=/usr/lib/jvm/temurin-25-jdk-amd64
 rm -rf "$HERE/build/classes" && mkdir -p "$HERE/build/classes"
 systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice -n 15 \

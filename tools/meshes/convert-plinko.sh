@@ -13,7 +13,7 @@
 #   direction); the mod passes (0,1,0) only as a lighting normal.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${1:-/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/src/fr/minevegas/casino/PlinkoRenderGeometry.java}
+SRC=${1:?usage: convert-plinko.sh <path to the decompiled fr/minevegas/casino/PlinkoRenderGeometry.java>}
 OUT=$HERE/../../pack-src/meshes
 TEX=roulettecasino:block/casino_entity/plinko
 PY="python3 -I -B"

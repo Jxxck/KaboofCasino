@@ -8,7 +8,7 @@ can be ruled out (or the positions listed) before the deco goes live.
 
 Usage (python only as `python3 -I -B`; wrap long runs in the usual systemd-run scope, MemoryMax=2G):
 
-    python3 -I -B tools/census/mushroom_census.py --world /root/Jack_DONT_TOUCH/server/world \\
+    python3 -I -B tools/census/mushroom_census.py --world /path/to/server/world \\
         --chosen tools/census/chosen-states.txt --out census.json [--workers 4]
 
   --world    the world folder; every <world>/dimensions/<ns>/<dim>/region/*.mca is read
@@ -28,7 +28,7 @@ proven by the zlib/gzip checksum). External chunks (.mcc, compression type | 128
 When: on a running server the 5-minute autosave rewrites the region files of loaded chunks (spawn area, players), so
 run it right after an autosave (newest .mca mtime) - a scan takes about 30 s - and check that no .mca changed during
 the scan. A file whose mtime or size changes while it is being read is read again (up to 3 times, listed under
-"reread_files"). Results of 2026-11-07: results-2026-11-07T0201Z.json.
+"reread_files").
 
 Palette formats: 26.x writes a block-state palette entry as a bare string for the block's default state and as
 {id, properties} otherwise (inside a heterogeneous list every element is wrapped as {"": value}); older chunks use

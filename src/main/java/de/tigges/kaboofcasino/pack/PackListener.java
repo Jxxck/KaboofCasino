@@ -71,11 +71,6 @@ public final class PackListener implements Listener {
         this.sessions = sessions;
     }
 
-    URI uri(PackFile file) {
-        CasinoConfig.Pack p = config.get().pack();
-        return URI.create("http://" + p.urlHost() + ":" + p.publicPort() + file.path());
-    }
-
     @EventHandler
     public void onConfigure(AsyncPlayerConnectionConfigureEvent event) {
         configure(event.getConnection());
@@ -90,9 +85,24 @@ public final class PackListener implements Listener {
         }
         UUID id = connection.getProfile().getId();
         String name = connection.getProfile().getName();
+        // one snapshot of the settings for both packs: the address the client connected to (PackUrl), or the fixed one
+        URI address = PackUrl.of(p, connection.getVirtualHost(), pack);
+        if (address == null) {
+            // url-host: auto and a handshake that names no usable address: like a failed download
+            Log.get().warn("Resource pack for {}: no download address, the client connected to '{}'. Set pack.url-host"
+                    + " to this server's public address (needed behind a proxy).", name,
+                    PackUrl.printable(connection.getVirtualHost()));
+            if (id != null) {
+                sessions.put(id, ResourcePackStatus.FAILED_DOWNLOAD);
+            }
+            if (p.enforce() && connection.isConnected()) {
+                connection.disconnect(messages.get().render(Msg.PACK_KICK));
+            }
+            return;
+        }
         CompletableFuture<ResourcePackStatus> done = new CompletableFuture<>();
         ResourcePackRequest request = ResourcePackRequest.resourcePackRequest()
-                .packs(ResourcePackInfo.resourcePackInfo(PackFile.PACK_ID, uri(pack), pack.sha1()))
+                .packs(ResourcePackInfo.resourcePackInfo(PackFile.PACK_ID, address, pack.sha1()))
                 .required(p.enforce())
                 .replace(false)
                 .prompt(messages.get().render(Msg.PACK_PROMPT))
@@ -136,7 +146,8 @@ public final class PackListener implements Listener {
     private void offerMusic(PlayerConfigurationConnection connection, UUID id, String name, CasinoConfig.Pack p) {
         CompletableFuture<ResourcePackStatus> done = new CompletableFuture<>();
         ResourcePackRequest request = ResourcePackRequest.resourcePackRequest()
-                .packs(ResourcePackInfo.resourcePackInfo(music.id(), uri(music), music.sha1()))
+                .packs(ResourcePackInfo.resourcePackInfo(music.id(),
+                        PackUrl.of(p, connection.getVirtualHost(), music), music.sha1()))
                 .required(false)
                 .replace(false)
                 .prompt(messages.get().render(Msg.PACK_MUSIC_PROMPT))

@@ -7,12 +7,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -30,7 +28,6 @@ import net.kyori.adventure.text.format.TextDecoration;
  */
 final class GuideFixtures {
 
-    private static final String FALLBACK = "/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/";
     private static GuideBook book;
     private static RecipePictures pictures;
     private static Map<String, String> german;
@@ -94,21 +91,7 @@ final class GuideFixtures {
 
     /** {@code casino.modJar} of gradle.properties, else the same file in the research checkout. */
     private static Path modJar() {
-        try (InputStream in = Files.newInputStream(Path.of("gradle.properties"))) {
-            Properties p = new Properties();
-            p.load(in);
-            Path configured = Path.of(p.getProperty("casino.modJar"));
-            if (Files.isRegularFile(configured)) {
-                return configured;
-            }
-            Path fallback = Path.of(FALLBACK).resolve(configured.getFileName());
-            if (Files.isRegularFile(fallback)) {
-                return fallback;
-            }
-            throw new IllegalStateException("mod jar not found: " + configured.toAbsolutePath() + " or " + fallback);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return de.tigges.kaboofcasino.TestModJar.path();
     }
 
     /**

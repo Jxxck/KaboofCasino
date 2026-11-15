@@ -1,6 +1,11 @@
 build/
 .gradle/
 *.class
+# the MineVegas Casino jar the build downloads (see gradle.properties)
+/libs/
 /testing/out/
 /testing/bot/build/
 __pycache__/
+.idea/
+*.iml
+.vscode/

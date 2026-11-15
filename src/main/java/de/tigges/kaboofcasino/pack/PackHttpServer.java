@@ -18,8 +18,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Serves the packs on {@code GET|HEAD /pack/<sha1>.zip} (render.md 8.5): a JDK {@code HttpServer} on its own daemon
  * threads (never MAIN), the zips from memory (the casino pack and the optional music pack, each under its own hash).
- * Everything else is 404/405 without a body. All players arrive from 10.44.0.20 (the tunnel), so the log lines name
- * the client's {@code X-Minecraft-Username} header instead of the IP.
+ * Everything else is 404/405 without a body. Behind a tunnel or NAT every player can arrive from the same
+ * address, so the log lines name the client's {@code X-Minecraft-Username} header instead of the IP.
  *
  * <p>Same rules as the game port ({@link DownloadPolicy}): every pack has its own slot pool (503 when full; HEAD needs
  * no slot), the body is written in 64 KiB slices (the JDK stream copies each write into a buffer of twice its size,

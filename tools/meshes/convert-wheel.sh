@@ -8,7 +8,7 @@
 # (hinge = model centre, the display rotates about it; model z - 8 = wheel-local z, i.e. 12.5625..14.0625).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${1:-/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/src/fr/minevegas/casino/FortuneWheelRenderGeometry.java}
+SRC=${1:?usage: convert-wheel.sh <path to the decompiled fr/minevegas/casino/FortuneWheelRenderGeometry.java>}
 OUT=$HERE/../../pack-src/meshes
 TEX=roulettecasino:block/casino_entity/fortune_wheel
 python3 -I "$HERE/mesh2json.py" "$SRC" Pennant.DATA "$TEX" 8,8,8 "$OUT/wheel_pennant.json"

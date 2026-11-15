@@ -1,36 +1,37 @@
+import java.io.IOException
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+import java.time.Duration
+import java.util.HexFormat
+
 plugins {
     java
     id("com.gradleup.shadow") version "9.6.1"
 }
 
 group = "de.tigges"
-version = "0.18.1"
+version = "0.19.0"
 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
-// Exactly what the live server ships in server/libraries (META-INF/libraries.list of paper-26.3-205.jar)
+// The version Paper 26.3 loads itself (META-INF/libraries.list of the server jar): provided at runtime, never shaded.
 val sqliteJdbc = "org.xerial:sqlite-jdbc:3.49.1.0"
 
-// Paper's channel listener API lives only in the server jar: extract io/papermc/paper/network/** into build/server-api
-// and compile against that (never shipped). Netty comes from the server's libraries (same version as at runtime).
-val paperServerJar = layout.projectDirectory.file(providers.gradleProperty("casino.paperServerJar"))
-val serverLibraries = providers.gradleProperty("casino.serverLibraries")
-val nettyVersion = providers.gradleProperty("casino.nettyVersion")
-val paperNetworkApi = tasks.register<Jar>("paperNetworkApi") {
-    description = "Extracts Paper's io.papermc.paper.network classes from the server jar (compile only)."
-    from(zipTree(paperServerJar)) {
-        include("io/papermc/paper/network/**")
-    }
-    archiveFileName = "paper-network-api.jar"
-    destinationDirectory = layout.buildDirectory.dir("server-api")
-}
-fun netty(module: String): String =
-    serverLibraries.get() + "/io/netty/netty-" + module + "/" + nettyVersion.get() + "/netty-" + module + "-" +
-        nettyVersion.get() + ".jar"
-val nettyJars = files(netty("buffer"), netty("common"), netty("transport"), netty("resolver"))
+// The game-port pack delivery (pack.serve: minecraft-port) uses netty and two classes that exist only in the Paper
+// server jar (io.papermc.paper.network.ChannelInitializeListener and its Holder). Netty comes from Maven Central in the
+// version Paper 26.3 ships; the two classes are compile-only stand-ins in src/paperStubs (signatures only). Neither is
+// packaged: at runtime the server provides both.
+val nettyVersion = providers.gradleProperty("casino.nettyVersion").get()
+val paperApi = "io.papermc.paper:paper-api:26.3.build.205-stable"
+val paperStubs: SourceSet = sourceSets.create("paperStubs")
 
 /** The pack tool (subproject) and its runtime dependencies, resolved for the buildPack task. */
 val packTool: Configuration = configurations.create("packTool") {
@@ -39,9 +40,9 @@ val packTool: Configuration = configurations.create("packTool") {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.3.build.205-stable")
+    compileOnly(paperApi)
     // Tests use API value types (Component, Material keys, YamlConfiguration), never a running server.
-    testImplementation("io.papermc.paper:paper-api:26.3.build.205-stable")
+    testImplementation(paperApi)
 
     // Shaded + relocated. Its only compile dependency is slf4j-api, which Paper itself ships -> kept OUT of the jar.
     implementation("com.zaxxer:HikariCP:7.1.0")
@@ -58,9 +59,12 @@ dependencies {
     packTool(project(":pack-tool"))
 
     // provided by the server at runtime
-    compileOnly(files(paperNetworkApi))
-    compileOnly(nettyJars)
-    testImplementation(nettyJars)
+    "paperStubsCompileOnly"(paperApi)
+    "paperStubsCompileOnly"("io.netty:netty-transport:$nettyVersion")
+    compileOnly(paperStubs.output)
+    compileOnly("io.netty:netty-transport:$nettyVersion")
+    testImplementation(paperStubs.output)
+    testImplementation("io.netty:netty-transport:$nettyVersion")
 }
 
 java {
@@ -78,12 +82,98 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 // ---- resource pack -------------------------------------------------------------------------------------------------
-// The pack is built deterministically from the MineVegas jar (read as a zip, never executed) plus pack-src/, then
-// embedded into the plugin jar under pack/. Same inputs -> same bytes -> same SHA-1, so clients keep their cached copy.
-// The same task writes the optional music pack (KaboofCasino-music.zip + .sha1, the mod's six lounge tracks, ~22 MB)
-// next to it; it is embedded the same way (pack/KaboofCasino-music.zip) and offered as a second, non-required pack.
-val modJar = layout.projectDirectory.file(providers.gradleProperty("casino.modJar"))
+// The pack is built deterministically from the MineVegas Casino jar (read as a zip, never executed) plus pack-src/,
+// then embedded into the plugin jar under pack/. Same inputs -> same bytes -> same SHA-1, so clients keep their cached
+// copy. The same task writes the optional music pack (KaboofCasino-music.zip + .sha1, the mod's six lounge tracks,
+// ~22 MB) next to it; it is embedded the same way (pack/KaboofCasino-music.zip) and offered as a second, non-required
+// pack.
+//
+// The mod jar is not in the repository: fetchModJar downloads it once (casino.modJarUrl) into casino.modJar and
+// checks its SHA-1. A jar that is already there with the right SHA-1 is used as it is, so the build also works
+// offline after dropping the file into libs/ by hand.
 val modJarSha1 = providers.gradleProperty("casino.modJarSha1")
+
+abstract class FetchModJar : DefaultTask() {
+    @get:Input
+    abstract val url: Property<String>
+
+    @get:Input
+    abstract val sha1: Property<String>
+
+    @get:Internal
+    abstract val offline: Property<Boolean>
+
+    @get:OutputFile
+    abstract val target: RegularFileProperty
+
+    @TaskAction
+    fun fetch() {
+        val file = target.get().asFile
+        if (file.isFile && sha1Of(file) == sha1.get().lowercase()) {
+            return
+        }
+        val manual = "Download MineVegas Casino 1.1.0 (Fabric, Minecraft 26.3) from " +
+            "https://www.curseforge.com/minecraft/mc-mods/minevegas-casino and save it as " + file
+        if (file.isFile) {
+            throw GradleException("$file has SHA-1 ${sha1Of(file)}, expected ${sha1.get()}. Delete it, or: $manual")
+        }
+        if (offline.get()) {
+            throw GradleException("$file is missing and Gradle runs offline. $manual")
+        }
+        file.parentFile.mkdirs()
+        val part = File(file.parentFile, file.name + ".part")
+        try {
+            val client = HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NORMAL)
+                .connectTimeout(Duration.ofSeconds(20))
+                .build()
+            val request = HttpRequest.newBuilder(URI.create(url.get()))
+                .timeout(Duration.ofMinutes(10))
+                .header("User-Agent", "KaboofCasino-build")
+                .GET()
+                .build()
+            val response = client.send(request, HttpResponse.BodyHandlers.ofFile(part.toPath()))
+            if (response.statusCode() != 200) {
+                throw GradleException("${url.get()} answered HTTP ${response.statusCode()}. $manual")
+            }
+            val actual = sha1Of(part)
+            if (actual != sha1.get().lowercase()) {
+                throw GradleException("${url.get()} delivered SHA-1 $actual, expected ${sha1.get()}. $manual")
+            }
+            Files.move(part.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            logger.lifecycle("Downloaded {} ({} bytes)", file.name, file.length())
+        } catch (e: IOException) {
+            throw GradleException("Cannot download ${url.get()}: $e. $manual", e)
+        } finally {
+            part.delete()
+        }
+    }
+
+    private fun sha1Of(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-1")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(1 shl 16)
+            while (true) {
+                val n = input.read(buffer)
+                if (n < 0) {
+                    break
+                }
+                digest.update(buffer, 0, n)
+            }
+        }
+        return HexFormat.of().formatHex(digest.digest())
+    }
+}
+
+val fetchModJar = tasks.register<FetchModJar>("fetchModJar") {
+    group = "build"
+    description = "Downloads the MineVegas Casino jar the resource pack is built from (SHA-1 checked)."
+    url = providers.gradleProperty("casino.modJarUrl")
+    sha1 = modJarSha1
+    offline = gradle.startParameter.isOffline
+    target = layout.projectDirectory.file(providers.gradleProperty("casino.modJar"))
+}
+val modJar = fetchModJar.flatMap { it.target }
 val packSrc = layout.projectDirectory.dir("pack-src")
 val packOut = layout.buildDirectory.dir("pack")
 
@@ -115,7 +205,11 @@ val buildPack = tasks.register<JavaExec>("buildPack") {
 }
 
 tasks.processResources {
+    // the licences travel with the jar: the plugin's own, the mod's (required by it) and the notices
+    from(layout.projectDirectory.file("LICENSE"))
     from(layout.projectDirectory.file("LICENSE-MineVegas.txt"))
+    from(layout.projectDirectory.file("NOTICE.md"))
+    from(layout.projectDirectory.file("licenses/Apache-2.0.txt")) { into("META-INF/licenses") }
     // the jukebox catalog: the pack tool builds the sound events from the same file
     from(layout.projectDirectory.file("pack-src/jukebox/tracks.json")) { into("jukebox") }
     val props = mapOf("version" to project.version.toString())
@@ -146,9 +240,24 @@ tasks.assemble {
     dependsOn(tasks.shadowJar)
 }
 
+// Optional: a Paper server jar (-Pcasino.paperServerJar=.../versions/26.3/paper-26.3.jar, as a started server
+// unpacks it) lets PaperStubsTest compare src/paperStubs with the real classes. Read only.
+val paperServerJar = providers.gradleProperty("casino.paperServerJar")
+
 tasks.test {
     useJUnitPlatform()
     jvmArgs("--enable-native-access=ALL-UNNAMED")
+    // fixtures read the mod's own files (lang, blockstates, guide) straight from the jar
+    inputs.file(modJar).withPathSensitivity(PathSensitivity.NONE).withPropertyName("modJar")
+    inputs.property("paperServerJar", paperServerJar.orElse(""))
+    val jarForTests = modJar
+    val serverJar = paperServerJar
+    jvmArgumentProviders.add(CommandLineArgumentProvider {
+        listOf(
+            "-Dkaboofcasino.modJar=" + jarForTests.get().asFile.absolutePath,
+            "-Dkaboofcasino.paperServerJar=" + serverJar.getOrElse(""),
+        )
+    })
     val testTmp = layout.buildDirectory.dir("tmp/test-tmp")
     jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-Djava.io.tmpdir=" + testTmp.get().asFile.absolutePath) })
     doFirst { testTmp.get().asFile.mkdirs() }

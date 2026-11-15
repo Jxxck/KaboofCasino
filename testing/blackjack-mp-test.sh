@@ -1,7 +1,7 @@
 #!/bin/bash
 # blackjack-mp-test.sh <step>: the shared blackjack table (default test instance, casinobots Alice and Bob online).
 # Steps: shared | hit | double | quit | timeout | solo | late
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}; P=$T/ptest.sh
 L=$($P status | sed -n 's/^instance: \([^ ]*\).*/\1/p')/logs/latest.log
 S=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 q() { $P rcon "$@" >/dev/null; }

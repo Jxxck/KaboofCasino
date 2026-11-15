@@ -5,7 +5,7 @@
 # and input file as "ptest.sh bot start", so "ptest.sh b|bx|bot stop" work with it. Waits for "LOGIN ok".
 set -u
 name=${1:?name}; mode=${2:-accept}; music=${3:-$mode}
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 OUT=$T/out; mkdir -p $OUT/bots
 [ -f "$HERE/bot/build/classes/QuestBot.class" ] || "$HERE/bot/build.sh"

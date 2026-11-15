@@ -46,9 +46,14 @@ class PackListenerTest {
 
     /** DEFAULTS with another pack/music section (by reflection, so new config sections do not break this test). */
     private static CasinoConfig config(boolean enforce, boolean musicOn) throws Exception {
+        return config(enforce, musicOn, "example.org");
+    }
+
+    /** @param urlHost {@code pack.url-host}: a fixed host, or {@code auto} */
+    private static CasinoConfig config(boolean enforce, boolean musicOn, String urlHost) throws Exception {
         CasinoConfig d = CasinoConfig.DEFAULTS;
         CasinoConfig.Pack p = d.pack();
-        CasinoConfig.Pack pack = new CasinoConfig.Pack(true, enforce, p.serve(), "example.org", 25565, p.port(),
+        CasinoConfig.Pack pack = new CasinoConfig.Pack(true, enforce, p.serve(), urlHost, 25565, p.port(),
                 p.bind(), 5);
         RecordComponent[] parts = CasinoConfig.class.getRecordComponents();
         Object[] args = new Object[parts.length];
@@ -73,6 +78,8 @@ class PackListenerTest {
         final List<UUID> popped = new ArrayList<>();
         boolean connected = true;
         boolean disconnected;
+        /** The address of the client's handshake; null = unknown. */
+        java.net.InetSocketAddress virtualHost;
 
         Client answer(ResourcePackStatus... statuses) {
             script.add(statuses.length == 0 ? List.of() : List.of(statuses));
@@ -109,6 +116,7 @@ class PackListenerTest {
                         case "getAudience" -> this;
                         case "getProfile" -> profile;
                         case "isConnected" -> connected;
+                        case "getVirtualHost" -> virtualHost;
                         case "disconnect" -> {
                             disconnected = true;
                             connected = false;
@@ -158,6 +166,47 @@ class PackListenerTest {
         assertTrue(s.hasMusic(PLAYER));
         assertFalse(c.disconnected);
         assertTrue(c.popped.isEmpty());
+    }
+
+    @Test
+    void autoSendsTheAddressTheClientConnectedTo() throws Exception {
+        Client c = new Client().answer(LOADED).answer(LOADED);
+        c.virtualHost = java.net.InetSocketAddress.createUnresolved("mc.example.net", 25570);
+        PackSessions s = run(config(true, true, "auto"), c);
+        assertEquals("http://mc.example.net:25570" + pack.path(), c.requests.get(0).packs().getFirst().uri().toString());
+        assertEquals("http://mc.example.net:25570" + music.path(),
+                c.requests.get(1).packs().getFirst().uri().toString());
+        assertTrue(s.hasPack(PLAYER));
+        assertFalse(c.disconnected);
+    }
+
+    @Test
+    void aFixedHostIsSentWhateverTheClientConnectedTo() throws Exception {
+        Client c = new Client().answer(LOADED).answer(LOADED);
+        c.virtualHost = java.net.InetSocketAddress.createUnresolved("mc.example.net", 25570);
+        run(config(true, true), c);
+        assertEquals("http://example.org:25565" + pack.path(), c.requests.get(0).packs().getFirst().uri().toString());
+    }
+
+    @Test
+    void autoWithoutAUsableAddressCountsAsAFailedDownload() throws Exception {
+        for (java.net.InetSocketAddress host : new java.net.InetSocketAddress[] {null,
+            java.net.InetSocketAddress.createUnresolved("host///203.0.113.7///1///sig", 25565)}) {
+            Client enforced = new Client();
+            enforced.virtualHost = host;
+            PackSessions s = run(config(true, true, "auto"), enforced);
+            assertTrue(enforced.requests.isEmpty(), "nothing is sent without an address");
+            assertTrue(enforced.disconnected, "enforce: no pack, no entry");
+            assertFalse(s.hasPack(PLAYER));
+
+            Client soft = new Client();
+            soft.virtualHost = host;
+            PackSessions t = run(config(false, true, "auto"), soft);
+            assertTrue(soft.requests.isEmpty());
+            assertFalse(soft.disconnected, "without enforce nobody is disconnected");
+            assertFalse(t.hasPack(PLAYER));
+            assertEquals(ResourcePackStatus.FAILED_DOWNLOAD, t.status(PLAYER), "the join hint follows");
+        }
     }
 
     @Test

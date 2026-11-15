@@ -4,7 +4,7 @@
 # croupier when Alice right-clicks the counter it stands on (click A|B); the restock timing is
 # testing/croupier-restock-test.sh.
 set -u
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}
 P=$T/ptest.sh
 BL=$T/out/bots/Alice.log
 say() { $P rcon "$@"; }

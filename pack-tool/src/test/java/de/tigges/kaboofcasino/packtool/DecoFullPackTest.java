@@ -238,8 +238,9 @@ class DecoFullPackTest {
     /** The kept vanilla parts are the 26.3 client's own (checked when the client jar is on this machine). */
     @Test
     void vanillaPartsMatchTheClientJar() throws IOException {
-        Path client = Path.of(System.getProperty("kaboofcasino.clientJar",
-                "/root/Jack_DONT_TOUCH/plugins-src/PostMarkt-work/scratchpad/research/gui-input/dl-client/client-26.3.jar"));
+        String given = System.getProperty("kaboofcasino.clientJar", "");
+        assumeTrue(!given.isEmpty(), "no client jar given (-Pcasino.clientJar=...)");
+        Path client = Path.of(given);
         assumeTrue(Files.isRegularFile(client), "no client jar at " + client);
         try (ZipFile zip = new ZipFile(client.toFile())) {
             for (String block : DecoFullStates.BLOCKS) {

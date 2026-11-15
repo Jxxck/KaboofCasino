@@ -1,7 +1,7 @@
 #!/bin/bash
 # jukebox-test.sh <step>: the casino jukebox on the default test instance (casinobots Alice, Bob online), placed at
 # 50 -57 20 facing the player. Steps: place | play | listen | controls | away | break
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}; P=$T/ptest.sh
 INST=$($P status | sed -n 's/^instance: \([^ ]*\).*/\1/p'); L=$INST/logs/latest.log
 B=$T/out/bots
 q() { $P rcon "$@" >/dev/null; }

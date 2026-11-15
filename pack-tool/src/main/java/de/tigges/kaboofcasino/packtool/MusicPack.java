@@ -137,7 +137,7 @@ final class MusicPack {
         return """
                 # KaboofCasino music pack
 
-                Optional second resource pack of the KaboofCasino plugin (Kaboof SMP). It contains the lounge music
+                Optional second resource pack of the Paper plugin KaboofCasino by %s. It contains the lounge music
                 that the Minecraft mod **MineVegas Casino** 1.1.0 by byMehd plays near switched-on casino speakers:
 
                 %s
@@ -155,6 +155,6 @@ final class MusicPack {
                 Details per track (ISRC, original file): MUSIC-CREDITS.md and assets/casinosound/music-credits.json
                 (both from the mod). The mod's own licence (MIT with the condition to link the page above):
                 LICENSE.txt.
-                """.formatted(Credits.MOD_URL, list, CC_BY);
+                """.formatted(Credits.AUTHOR, Credits.MOD_URL, list, CC_BY);
     }
 }

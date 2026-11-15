@@ -1,7 +1,7 @@
 # KaboofCasino – alle Texte (MiniMessage). Texte der Spiele stammen aus de_de.json des Mods.
 prefix: "<gold>[Casino]</gold> "
 
-# Kasse (Schritt 9): Erze in Chips wechseln, Kleingeld, Prämien. Texte im Menü-Titel (brand, head-*, help-*,
+# Kasse: Erze in Chips wechseln, Kleingeld, Prämien. Texte im Menü-Titel (brand, head-*, help-*,
 # label-*) sind schlichter Text ohne Farben; help-* hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
 # Chip-Beträge (<value>, <owed>, <price>) kommen fertig mit "Chip"/"Chips" ("1 Chip", "1.250 Chips").
 cashier:
@@ -53,7 +53,7 @@ cashier:
   idle-closed: "<gray>Menü geschlossen: zu lange nichts getan. Die Kasse ist wieder frei."
   tray-full: "<yellow>Höchstens 18 Sorten auf einmal."
 
-# Bestenliste (Schritt 10): Tafeln (Wand 2x2 bis 6x4, Säule 1x3) und /casino top. Gezählt werden nur Runden mit Chips.
+# Bestenliste: Tafeln (Wand 2x2 bis 6x4, Säule 1x3) und /casino top. Gezählt werden nur Runden mit Chips.
 # Eine Runde = ein Spiel (ein Dreh mit allen Feldern, ein Entenrennen mit allen Enten, eine Blackjack-Hand).
 # Gewinn = Auszahlung minus Einsatz einer Runde; Multiplikator = Auszahlung / Einsatz (ab leaderboard.min-stake).
 board:
@@ -172,7 +172,7 @@ discord:
   game-derby: "beim Entenrennen"
   game-other: "im Casino"
 
-# Chip-Shop (Schritt 11): Casino-Deko, Möbel und Maschinen für Chips. Texte im Menü-Titel (brand, category.*, help,
+# Chip-Shop: Casino-Deko, Möbel und Maschinen für Chips. Texte im Menü-Titel (brand, category.*, help,
 # label-*) sind schlichter Text ohne Farben; help hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
 # Chip-Beträge (<price>) kommen fertig mit "Chip"/"Chips".
 chipshop:
@@ -394,7 +394,7 @@ bet:
   not-allowed: "<red><item> ist kein Einsatz."
   not-enough: "<red>Du hast nicht genug <item>."
 
-# Einsätze in Chips (PLAN-2 C2): die Einsatzfelder aller Spiele nehmen Chips aus dem Inventar
+# Einsätze in Chips: die Einsatzfelder aller Spiele nehmen Chips aus dem Inventar
 chips:
   only: "<red>Hier wird mit Chips gespielt. Erze tauschst du an der Kasse in Chips."
   max: "<yellow>Höchsteinsatz: <max> je Feld."
@@ -491,7 +491,7 @@ pack:
   music-prompt: "<gold>KaboofCasino</gold>: freiwillige Lounge-Musik an Casino-Lautsprechern (ca. 22 MB) – Musik: Kevin MacLeod (incompetech.com), CC BY 4.0"
 
 command:
-  info: "<gold>KaboofCasino</gold> <gray>– Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino top · /casino abholen · /casino credits"
+  info: "<gold>KaboofCasino</gold> <gray>von Jxxck – Paper-Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino top · /casino abholen · /casino credits"
   usage: "<gray>/casino [stats|top|bestenliste|abholen|credits|musik] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
   give-done: "<green><player> hat <item> bekommen."
   give-unknown: "<red>Unbekannte Maschine: <name>. Möglich: <list>"
@@ -500,7 +500,7 @@ command:
   stats-header: "<gold>Deine Casino-Statistik</gold> <gray>(<rounds> Runden)"
   stats-line: "<gray>• <yellow><item></yellow>: gesetzt <staked>, gewonnen <won>"
   stats-empty: "<gray>Du hast noch nicht gespielt."
-  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Spiele, Modelle, Texturen, GUI-Grafiken, Sounds und Texte: <yellow>MineVegas Casino</yellow> 1.1.0 von byMehd, MIT-Lizenz mit Hinweispflicht:\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>Lounge-Musik an den Lautsprechern (freiwilliges Musikpaket): <yellow>Airport Lounge, Backbay Lounge, Jazz Brunch, George Street Shuffle, Cool Vibes, Bossa Antigua</yellow> – Kevin MacLeod (<click:open_url:'https://incompetech.com'>incompetech.com</click>), Lizenz CC BY 4.0:\n<aqua><click:open_url:'https://creativecommons.org/licenses/by/4.0/'><u>https://creativecommons.org/licenses/by/4.0/</u></click>\n<gray>Geändert von MineVegas Casino: MP3 in Ogg Vorbis umgewandelt, Lautheit auf -20 LUFS angeglichen; Komposition unverändert. Keine Billigung durch den Komponisten.\n<gray>Plugin für Kaboof SMP; GUI-Schrift aus der Minecraft-Standardschrift.\n<gray>Lounge-Musik abschalten (ab dem nächsten Login kein Musikpaket mehr): <yellow>/casino musik aus</yellow>, wieder an: <yellow>/casino musik an</yellow>"
+  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Plugin für Paper, Chips, Kasse, Chip-Shop, Bestenlisten, Outfits, Jukebox, Mehrspieler-Tische und Texas Hold'em: <yellow>Jxxck</yellow> (MIT-Lizenz)\n<gray>Spiele, Modelle, Texturen, GUI-Grafiken, Sounds und Texte: <yellow>MineVegas Casino</yellow> 1.1.0 von byMehd, MIT-Lizenz mit Hinweispflicht:\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>Lounge-Musik an den Lautsprechern (freiwilliges Musikpaket): <yellow>Airport Lounge, Backbay Lounge, Jazz Brunch, George Street Shuffle, Cool Vibes, Bossa Antigua</yellow> – Kevin MacLeod (<click:open_url:'https://incompetech.com'>incompetech.com</click>), Lizenz CC BY 4.0:\n<aqua><click:open_url:'https://creativecommons.org/licenses/by/4.0/'><u>https://creativecommons.org/licenses/by/4.0/</u></click>\n<gray>Geändert von MineVegas Casino: MP3 in Ogg Vorbis umgewandelt, Lautheit auf -20 LUFS angeglichen; Komposition unverändert. Keine Billigung durch den Komponisten.\n<gray>GUI-Schrift aus der Minecraft-Standardschrift. Kein offizielles Minecraft-Produkt.\n<gray>Lounge-Musik abschalten (ab dem nächsten Login kein Musikpaket mehr): <yellow>/casino musik aus</yellow>, wieder an: <yellow>/casino musik an</yellow>"
   # /casino musik aus|an (plugin texts): the music pack offer at the next login
   music-off: "<gray>Lounge-Musik ist <yellow>aus</yellow>: Ab dem nächsten Login wird dir kein Musikpaket mehr angeboten."
   music-on: "<gray>Lounge-Musik ist <yellow>an</yellow>: Ab dem nächsten Login wird dir das Musikpaket wieder angeboten."

@@ -2,7 +2,7 @@
 # recipebook-test.sh <step>: clicks in the native recipe book with chips FIRST in the inventory (default test instance,
 # casinobot Alice online; "scan" discovers every recipe first). Prints the grid after the click and what came out.
 # Steps: scan | reel | reelmax | machine | deco | shop | vanilla
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh; A=$T/out/bots/Alice.log
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}; P=$T/ptest.sh; A=$T/out/bots/Alice.log
 q() { $P rcon "$@" >/dev/null; }; b() { $P b Alice "$@"; sleep 0.35; }
 # the book's entry of a text: the exact one (Composite display), not its undiscovered twin
 idof() { b recipes "$1"; sleep 0.4; grep -a "RECIPE id=.* match=$1 " "$A" | grep -aE "result=.*$1" | grep -a "$2" | tail -1 | sed -E 's/.*RECIPE id=([0-9]+).*/\1/'; }

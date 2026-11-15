@@ -26,7 +26,8 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Xlint:-processing", "-Xlint:-serial"))
 }
 
-// The tests build the real pack from the pinned mod jar (read as a zip only) twice and compare the bytes.
+// The tests build the real pack from the pinned mod jar (read as a zip only) twice and compare the bytes. The root
+// project's fetchModJar task puts the jar there.
 val modJar = rootProject.layout.projectDirectory.file(providers.gradleProperty("casino.modJar"))
 val modJarSha1 = providers.gradleProperty("casino.modJarSha1")
 val packSrc = rootProject.layout.projectDirectory.dir("pack-src")
@@ -35,6 +36,7 @@ val packSrc = rootProject.layout.projectDirectory.dir("pack-src")
 val clientJar = providers.gradleProperty("casino.clientJar")
 
 tasks.test {
+    dependsOn(":fetchModJar")
     useJUnitPlatform()
     maxHeapSize = "1g"
     inputs.file(modJar).withPathSensitivity(PathSensitivity.NONE)

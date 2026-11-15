@@ -1,7 +1,7 @@
 #!/bin/bash
 # chips-test.sh <step>: the seven games with chips (step 9) on the default test instance (machines of the test world).
 # Bots Alice (and Bob for the derby group) online, survival.
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}; P=$T/ptest.sh
 L=$($P status | sed -n 's/^instance: \([^ ]*\).*/\1/p')/logs/latest.log
 S=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # pk.sh and dk.sh
 q() { $P rcon "$@" >/dev/null; }

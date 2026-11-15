@@ -14,7 +14,7 @@
 #   ball:  mesh origin = ball centre (the renderer rotates it about its origin) -> model 8,8,8.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${1:-/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/src/fr/minevegas/casino/RouletteRenderGeometry.java}
+SRC=${1:?usage: convert-roulette.sh <path to the decompiled fr/minevegas/casino/RouletteRenderGeometry.java>}
 OUT=$HERE/../../pack-src/meshes
 TEX=roulettecasino:block/casino_entity/roulette_wheel
 PY="python3 -I -B"

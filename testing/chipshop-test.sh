@@ -1,7 +1,7 @@
 #!/bin/bash
 # chipshop-test.sh <step>: the Chip-Shop (step 11) on the default test instance, bot Alice online.
 # Steps: place | buy | stack | machines | poor | full | double | confirm | overcap | craft
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh; A=$T/out/bots/Alice.log
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}; P=$T/ptest.sh; A=$T/out/bots/Alice.log
 L=$($P status | sed -n 's/^instance: \([^ ]*\).*/\1/p')/logs/latest.log
 q() { $P rcon "$@" >/dev/null; }
 b() { $P b Alice "$@"; sleep 0.4; }

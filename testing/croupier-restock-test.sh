@@ -1,7 +1,7 @@
 #!/bin/bash
 # croupier-restock-test.sh: vanilla restock timing for a croupier standing at 137 -57 66 (counter 138 -57 66, made
 # with croupier-test.sh wait); bot Alice online, gamerule advance_time false (the test instance), about 6 minutes.
-T=/root/Jack_DONT_TOUCH/plugins-src/PostMarkt/testing; P=$T/ptest.sh; BL=$T/out/bots/Alice.log
+T=${PTEST_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../PostMarkt/testing" && pwd)}; P=$T/ptest.sh; BL=$T/out/bots/Alice.log
 L=$($P status | sed -n 's/^instance: \([^ ]*\).*/\1/p')/logs/latest.log
 q() { $P rcon "$@" >/dev/null; }
 b() { $P b Alice "$@"; sleep 0.35; }

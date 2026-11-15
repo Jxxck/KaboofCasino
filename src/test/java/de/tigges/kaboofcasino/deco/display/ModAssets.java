@@ -7,22 +7,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /**
- * The pinned MineVegas jar (read as a zip, as the pack tool does): {@code casino.modJar} of gradle.properties relative
- * to the project, else the same file name next to the research checkout. Tests compare the plugin's pure tables with
- * the mod's own blockstates and models.
+ * The pinned MineVegas jar (read as a zip, as the pack tool does; {@link de.tigges.kaboofcasino.TestModJar}). Tests
+ * compare the plugin's pure tables with the mod's own blockstates and models.
  */
 final class ModAssets {
 
-    private static final String FALLBACK = "/root/Jack_DONT_TOUCH/plugins-src/Casino-work/mod/";
     private static Map<String, byte[]> files;
 
     private ModAssets() {
@@ -51,21 +47,7 @@ final class ModAssets {
     }
 
     private static Path locate() {
-        try (InputStream in = Files.newInputStream(Path.of("gradle.properties"))) {
-            Properties p = new Properties();
-            p.load(in);
-            Path configured = Path.of(p.getProperty("casino.modJar"));
-            if (Files.isRegularFile(configured)) {
-                return configured;
-            }
-            Path fallback = Path.of(FALLBACK).resolve(configured.getFileName());
-            if (Files.isRegularFile(fallback)) {
-                return fallback;
-            }
-            throw new IllegalStateException("mod jar not found: " + configured.toAbsolutePath() + " or " + fallback);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return de.tigges.kaboofcasino.TestModJar.path();
     }
 
     static JsonObject json(String path) {
