@@ -4,11 +4,20 @@ A casino for Paper servers that needs no client mod: slot machines, a fortune wh
 poker and a duck derby, built in the world as real machines with animated 3D models and their own screens. Players
 only accept the server resource pack; the plugin serves it itself.
 
+<p align="center">
+  <img src="docs/media/overview.webp" alt="A furnished casino hall with poker, blackjack, roulette, the duck derby and the slot machines" width="100%">
+</p>
+
 **KaboofCasino is a Paper port of the mod
 [MineVegas Casino](https://www.curseforge.com/minecraft/mc-mods/minevegas-casino) by byMehd.** The games, their
 models, textures, sounds and texts come from MineVegas Casino. On Fabric or NeoForge, use the original mod.
 
 **[See everything that is in it →](docs/FEATURES.md)**
+
+<p align="center">
+  <img src="docs/media/roulette-multiplayer-spin.webp" alt="Three players at one roulette table while the ball rolls" width="49%">
+  <img src="docs/media/slot-machine-spin.webp" alt="A slot machine spin that ends in a win" width="49%">
+</p>
 
 ## Download
 

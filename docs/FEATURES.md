@@ -8,7 +8,12 @@ the people who run the casino. The games, their look and their rules come from t
 Players need no mod. They accept the server's resource pack and see real machines in the world, with moving parts,
 sounds and their own screens.
 
-<!-- media: overview.png — a furnished casino hall with several machines in view -->
+The pictures and clips were taken on a Paper server running this plugin. The players in them use a shader pack, which
+is where the lighting comes from; the machines, screens and furniture look the same without one.
+
+<p align="center">
+  <img src="media/overview.webp" alt="A furnished casino hall with poker, blackjack, roulette, the duck derby and the slot machines" width="100%">
+</p>
 
 ## The games at a glance
 
@@ -30,25 +35,33 @@ A three-block-tall machine with three spinning reels and a lever. Stake your chi
 one after another. Eight combinations pay, from ×2 up to the ×100 jackpot for three sevens; lamps and a floating
 panel above the machine show the result to everyone nearby.
 
-<!-- media: slot-machine.png — the machine in the world -->
-<!-- media: slot-machine.webp — a spin with a win, about 6 s -->
-<!-- media: gui-slot.png — the screen with a stake set -->
+<p align="center">
+  <img src="media/slot-machine.webp" alt="Four slot machines in a row under a casino sign" width="72%">
+</p>
+<p align="center">
+  <img src="media/slot-machine-spin.webp" alt="A spin: the reels stop one after another and the machine pays" width="58%">
+  <img src="media/gui-slot.webp" alt="The slot machine screen with one stake field and the payout table" width="38%">
+</p>
 
 ## Fortune wheel
 
 A wheel three blocks wide that turns in the world. Each spin takes up to three separate bets; the segment under the
 pointer pays between ×0.25 and ×5, or nothing.
 
-<!-- media: fortune-wheel.webp — a spin, about 8 s -->
-<!-- media: gui-wheel.png -->
+<p align="center">
+  <img src="media/fortune-wheel.webp" alt="The fortune wheel turns and stops on a winning segment" width="58%">
+  <img src="media/gui-wheel.webp" alt="The fortune wheel screen with three stake fields and the payout table" width="38%">
+</p>
 
 ## Plinko
 
 Up to three balls fall through the pegs of a three-block board, each with its own stake, and land in pockets worth
 ×0.25 to ×8.
 
-<!-- media: plinko.webp — three balls dropping, about 8 s -->
-<!-- media: gui-plinko.png -->
+<p align="center">
+  <img src="media/plinko.webp" alt="A ball falls through the pegs of the Plinko board" width="58%">
+  <img src="media/gui-plinko.webp" alt="The Plinko screen with one stake field per ball" width="38%">
+</p>
 
 ## Roulette
 
@@ -57,9 +70,14 @@ A 2×2 table with a turning rotor and a rolling ball. Bet on red, black or green
 **New: several players at one table.** As soon as somebody else stands at the table, a 15-second betting window
 opens. Up to eight players bet, then one spin decides for all of them. Alone, you spin at once.
 
-<!-- media: roulette.webp — the ball rolling and landing, about 8 s -->
-<!-- media: gui-roulette.png -->
-<!-- media: roulette-multiplayer.png — several players around the table during the countdown -->
+<p align="center">
+  <img src="media/roulette.webp" alt="The ball rolls around the rotor and lands on red" width="58%">
+  <img src="media/gui-roulette.webp" alt="The roulette screen with a bet on black" width="38%">
+</p>
+<p align="center">
+  <img src="media/roulette-multiplayer-spin.webp" alt="Three players at one table: the panel lists their bets while the ball rolls" width="49%">
+  <img src="media/roulette-multiplayer.webp" alt="Two players at the roulette table; the panel above it counts down the betting window" width="49%">
+</p>
 
 ## Blackjack
 
@@ -69,27 +87,37 @@ stands on 17, you can hit, stand or double, and a blackjack pays 3:2.
 **New: up to five players at one table.** With others nearby, the dealer waits 15 seconds for everyone's bets and
 then plays one round against all seats, each player deciding in turn.
 
-<!-- media: blackjack.webp — a hand being dealt and played, about 10 s -->
-<!-- media: gui-blackjack-bet.png -->
-<!-- media: gui-blackjack-turn.png -->
-<!-- media: blackjack-multiplayer.png -->
+<p align="center">
+  <img src="media/blackjack.webp" alt="The dealer plays his hand, busts and pays the table" width="58%">
+  <img src="media/gui-blackjack-turn.webp" alt="The blackjack screen during a hand, with HIT, STAND and DOUBLE" width="38%">
+</p>
+<p align="center">
+  <img src="media/gui-blackjack-bet.webp" alt="The blackjack betting screen" width="38%">
+  <img src="media/blackjack-multiplayer.webp" alt="A round for three players: the panel above the table lists every seat, stake and hand" width="58%">
+</p>
 
 ## Poker
 
 **Against the dealer (Casino Hold'em).** You place an ante and get two cards; after the flop you call for twice the
 ante or fold. The dealer needs a pair of fours to play. A winning ante pays from 1:1 up to 100:1 for a royal flush.
 
-<!-- media: gui-poker-bet.png -->
-<!-- media: gui-poker-decision.png -->
+<p align="center">
+  <img src="media/gui-poker-bet.webp" alt="The poker screen before the deal, with the ante payouts" width="38%">
+  <img src="media/gui-poker-decision.webp" alt="After the flop: call or fold" width="38%">
+</p>
 
 **New: Texas Hold'em between players.** When two or three players sit down at the table, they play No-Limit Texas
 Hold'em against each other with the chips they bought in with, and the croupier only deals. Blinds, checks, bets,
 raises, all-ins and side pots work as at a real table; the showdown turns the others' cards face up. A short
 explanation of the rules is one click away. Buy-in, blinds and thinking time are settings.
 
-<!-- media: holdem.webp — a hand between two players, about 12 s -->
-<!-- media: gui-holdem-turn.png -->
-<!-- media: gui-holdem-showdown.png -->
+<p align="center">
+  <img src="media/holdem.webp" alt="A Texas Hold'em hand ends: the cards are turned over and the panel names the winner" width="58%">
+  <img src="media/gui-holdem-turn.webp" alt="The Texas Hold'em screen on your turn, with FOLD, CALL and RAISE" width="38%">
+</p>
+<p align="center">
+  <img src="media/holdem-showdown.webp" alt="Showdown at the poker table: every hand lies face up and the panel shows who won with what" width="72%">
+</p>
 
 ## Duck derby
 
@@ -99,9 +127,13 @@ place returns the stake.
 Race alone, or start a group race: other players get ten seconds to bet on their own ducks, up to 64 of them, and
 a panel above the pool shows who bet on which duck.
 
-<!-- media: duck-derby.webp — a race from start to finish, about 10 s -->
-<!-- media: gui-derby.png -->
-<!-- media: duck-derby-group.png — the panel with several bettors -->
+<p align="center">
+  <img src="media/duck-derby.webp" alt="Four rubber ducks race down the pool" width="58%">
+  <img src="media/gui-derby.webp" alt="The duck derby screen: pick a duck, then race alone or start a group race" width="38%">
+</p>
+<p align="center">
+  <img src="media/duck-derby-group.webp" alt="A group race: the panel above the pool lists three players and their bets" width="72%">
+</p>
 
 ## New: chips and the cashier
 
@@ -115,10 +147,13 @@ The cashier is a counter with three tabs:
 - **Change** chips into other denominations.
 - **Prizes**: a shop where the admin offers any items for chips, with an optional limit per player and day.
 
-<!-- media: cashier.png — the cashier in the world -->
-<!-- media: gui-cashier-exchange.png -->
-<!-- media: gui-cashier-prizes.png -->
-<!-- media: chips.png — the six chips in an inventory -->
+<p align="center">
+  <img src="media/cashier.webp" alt="The cashier counter" width="58%">
+  <img src="media/gui-cashier-exchange.webp" alt="The cashier screen: diamonds on the Ores tab are worth 512 chips" width="38%">
+</p>
+<p align="center">
+  <img src="media/gui-cashier-change.webp" alt="The Change tab; its Value row shows the six chips: 1000, 500, 100, 25, 5 and 1" width="38%">
+</p>
 
 ## New: Chip Shop
 
@@ -126,8 +161,10 @@ A second counter that sells the whole casino for chips: floors and walls, furnit
 signs, tech, machines and outfits, sorted into seven tabs. Prices follow each item's recipe and can be set per item,
 with daily limits if wanted.
 
-<!-- media: chip-shop.png -->
-<!-- media: gui-chip-shop.png -->
+<p align="center">
+  <img src="media/chip-shop.webp" alt="The Chip Shop counter" width="58%">
+  <img src="media/gui-chip-shop.webp" alt="The Chip Shop screen on the Machines tab" width="38%">
+</p>
 
 ## New: leaderboards
 
@@ -137,8 +174,10 @@ the seven games), for this week or for all time. A board turns its pages by itse
 
 `/casino top` shows the same lists in chat, and `/casino leaderboard off` hides a player from all of them.
 
-<!-- media: leaderboard-wall.png — a large wall board -->
-<!-- media: leaderboard-column.png -->
+<p align="center">
+  <img src="media/leaderboard-wall.webp" alt="A large leaderboard on the wall showing the biggest wins" width="49%">
+  <img src="media/leaderboard-column.webp" alt="The free-standing leaderboard column" width="49%">
+</p>
 
 ## New: jukebox
 
@@ -146,15 +185,19 @@ A two-block jukebox with 98 tracks in nine genres: every music disc and the game
 player's client, plus the casino's lounge music. Anyone nearby picks the track, the mode (in order, shuffle, repeat)
 and the range of 16, 32 or 48 blocks.
 
-<!-- media: jukebox.png -->
-<!-- media: gui-jukebox.png -->
+<p align="center">
+  <img src="media/jukebox.webp" alt="The jukebox between two speakers" width="58%">
+  <img src="media/gui-jukebox.webp" alt="The jukebox screen with genres, tracks and the playing title" width="38%">
+</p>
 
 ## New: casino outfits
 
 Seven outfits of four pieces each, worn like armour: tuxedo with top hat, croupier, ruby, sapphire, ivory dinner
 jacket, high roller and evening gown. They are crafted from wool or bought in the Chip Shop.
 
-<!-- media: outfits.png — players wearing different outfits -->
+<p align="center">
+  <img src="media/outfits.webp" alt="Three players in a tuxedo with top hat, the high roller suit and the evening gown" width="72%">
+</p>
 
 ## Decoration
 
@@ -164,8 +207,10 @@ rope posts, TVs in three sizes, and speakers that play lounge music.
 
 **New:** stairs and slabs for all thirteen dark oak wall blocks, and casino signs in 2×2 and 4×4.
 
-<!-- media: decoration.png — a furnished corner: bar, sofas, chandelier -->
-<!-- media: decoration-stairs.png — the new stairs and slabs -->
+<p align="center">
+  <img src="media/decoration.webp" alt="A bar with stools, a cash register, a serving tray and a bottle shelf" width="49%">
+  <img src="media/decoration-stairs.webp" alt="A booth built from the new stairs and slabs, with sofas, a table and wall sconces" width="49%">
+</p>
 
 ## Croupier and guide book
 
@@ -174,8 +219,10 @@ earns the Croupier Badge that the blackjack and poker table recipes ask for.
 
 The Casino Guide is a book that explains the casino and shows every recipe as a crafting grid.
 
-<!-- media: croupier.png -->
-<!-- media: gui-guide.png — a recipe page of the guide -->
+<p align="center">
+  <img src="media/croupier.webp" alt="The croupier behind his counter" width="58%">
+  <img src="media/gui-guide.webp" alt="A recipe page of the Casino Guide" width="36%">
+</p>
 
 ## For the people who run the server
 
