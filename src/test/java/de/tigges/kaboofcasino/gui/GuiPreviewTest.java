@@ -132,9 +132,9 @@ class GuiPreviewTest {
             t.artAt("slot_reel_" + k + "_" + 0, "slot_reel_" + k);
         }
         TextColor cream = TextColor.color(0xF3E7BF);
-        t.text("slot_headline", "Spielautomat", cream);
-        t.text("slot_payouts", "Gewinne", cream);
-        t.text("slot_bet", "EINSATZ", cream);
+        t.text("slot_headline", de.tigges.kaboofcasino.TestTexts.get("gui.slot.title"), cream);
+        t.text("slot_payouts", de.tigges.kaboofcasino.TestTexts.get("gui.slot.payouts"), cream);
+        t.text("slot_bet", de.tigges.kaboofcasino.TestTexts.get("gui.slot.bet"), cream);
         int[] mult = {100, 30, 15, 10, 6, 4, 3, 2};
         for (int row = 0; row < 8; row++) {
             t.text("slot_multiplier_" + row, "×" + mult[row], row == 0 ? TextColor.color(0xFFD770) : cream);
@@ -188,12 +188,13 @@ class GuiPreviewTest {
         TextColor cream = TextColor.color(0xF3E7BF);
         TextColor gold = TextColor.color(0xFFD770);
         t.text("roulette_headline", "ROULETTE", cream);
-        t.text("roulette_payouts", "Gewinne", cream);
-        String[] names = {"ROT", "SCHWARZ", "GRÜN"};
+        t.text("roulette_payouts", de.tigges.kaboofcasino.TestTexts.get("gui.slot.payouts"), cream);
+        String[] names = {de.tigges.kaboofcasino.TestTexts.get("gui.roulette.red"), de.tigges.kaboofcasino.TestTexts.get("gui.roulette.black"),
+                de.tigges.kaboofcasino.TestTexts.get("gui.roulette.green")};
         for (int c = 0; c < 3; c++) {
             t.text("roulette_colour_" + c, names[c], cream);
         }
-        String[] rows = {"GRÜN", "ROT", "SCHWARZ"};
+        String[] rows = {names[2], names[0], names[1]};
         String[] odds = {"×36", "×2", "×2"};
         for (int r = 0; r < 3; r++) {
             t.text("roulette_payout_label_" + r, rows[r], cream);
@@ -226,9 +227,9 @@ class GuiPreviewTest {
         }
         t.artAt("wheel_disc_9", "wheel_disc");
         TextColor cream = TextColor.color(0xF3E7BF);
-        t.text("wheel_headline", "Glücksrad", cream);
-        t.text("wheel_payouts", "Gewinne", cream);
-        t.text("wheel_bet", "EINSATZ", cream);
+        t.text("wheel_headline", de.tigges.kaboofcasino.TestTexts.get("gui.wheel.title"), cream);
+        t.text("wheel_payouts", de.tigges.kaboofcasino.TestTexts.get("gui.slot.payouts"), cream);
+        t.text("wheel_bet", de.tigges.kaboofcasino.TestTexts.get("gui.wheel.bet"), cream);
         int[] quarters = {20, 8, 6, 4, 3, 2, 1, 0};
         for (int row = 0; row < quarters.length; row++) {
             t.text("wheel_multiplier_" + row, de.tigges.kaboofcasino.game.PanelText.multiplier(quarters[row]),
@@ -253,11 +254,11 @@ class GuiPreviewTest {
             }
         }
         TextColor cream = TextColor.color(0xF3E7BF);
-        t.text("plinko_headline", "Casino-Plinko", cream);
-        t.text("plinko_payouts", "Gewinne", cream);
-        t.text("plinko_bets", "EINSÄTZE", cream);
+        t.text("plinko_headline", de.tigges.kaboofcasino.TestTexts.get("gui.plinko.title"), cream);
+        t.text("plinko_payouts", de.tigges.kaboofcasino.TestTexts.get("gui.slot.payouts"), cream);
+        t.text("plinko_bets", de.tigges.kaboofcasino.TestTexts.get("gui.plinko.bets"), cream);
         for (int i = 0; i < 3; i++) {
-            t.text("plinko_ball_" + i, "1 Kugel", cream);
+            t.text("plinko_ball_" + i, de.tigges.kaboofcasino.TestTexts.get("gui.plinko.ball"), cream);
         }
         int[] quarters = {32, 12, 8, 2, 1};
         for (int row = 0; row < quarters.length; row++) {

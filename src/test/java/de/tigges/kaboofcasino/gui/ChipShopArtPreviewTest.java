@@ -90,24 +90,25 @@ class ChipShopArtPreviewTest {
     static final TextColor BRAND = TextColor.color(0xEACD83);
     static final TextColor CREAM = TextColor.color(0xF3E7BF);
     static final TextColor MUTED = TextColor.color(0xB5C5A6);
-    static final String[] CATEGORIES = {"Böden und Wände", "Möbel", "Bar & Tische", "Licht & Schilder",
-        "Technik", "Maschinen", "Outfits"};
-    /** The shipped {@code chipshop.help} (each line at most 88 px like the cashier's: the receipt's text room is 90 px). */
-    static final String HELP = "Wähle einen\nArtikel, dann\nKAUFEN.\nUmschalt-Klick:\nein Stapel.";
+    /** The shipped tab names and {@code chipshop.help} (each line at most 88 px: the receipt's text room is 90 px). */
+    static String category(int tab) {
+        String[] keys = {"floors", "furniture", "bar", "lights", "tech", "machines", "outfits"};
+        return de.tigges.kaboofcasino.TestTexts.get("chipshop.category." + keys[tab]);
+    }
 
     private Component title(int tab) {
         TitleBuilder t = new TitleBuilder(layout);
         t.art("chipshop_bg_0");
         t.art("chipshop_bg_1");
         t.art("chipshop_overlay_" + tab);
-        t.text("chipshop_brand", "CHIP-SHOP", BRAND, true, true);
-        t.text("chipshop_head", CATEGORIES[tab], CREAM, false, true);
-        String[] help = HELP.split("\n", -1);
+        t.text("chipshop_brand", de.tigges.kaboofcasino.TestTexts.get("chipshop.brand"), BRAND, true, true);
+        t.text("chipshop_head", category(tab), CREAM, false, true);
+        String[] help = de.tigges.kaboofcasino.TestTexts.get("chipshop.help").split("\n", -1);
         for (int i = 0; i < help.length; i++) {
             t.text("chipshop_help_" + i, help[i], MUTED, false, false);
         }
-        t.text("chipshop_label_a", "Deine Chips:", CREAM, false, true);
-        t.text("chipshop_label_b", "Preis:", CREAM, false, true);
+        t.text("chipshop_label_a", de.tigges.kaboofcasino.TestTexts.get("chipshop.label-balance"), CREAM, false, true);
+        t.text("chipshop_label_b", de.tigges.kaboofcasino.TestTexts.get("chipshop.label-price"), CREAM, false, true);
         return t.build();
     }
 
