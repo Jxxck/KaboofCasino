@@ -27,12 +27,12 @@ class MessagesTest {
 
     @Tag("german")
     @Test
-    void theLicenceLinkIsInInfoAndCredits() throws Exception {
+    void infoNamesTheAuthorAndTheCreditsNameTheMod() throws Exception {
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new InputStreamReader(
                 MessagesTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile()), StandardCharsets.UTF_8));
-        String url = "https://www.curseforge.com/minecraft/mc-mods/minevegas-casino";
-        assertTrue(yaml.getString("command.info").contains(url));
-        assertTrue(yaml.getString("command.credits").contains(url));
+        assertTrue(yaml.getString("command.info").contains("Jxxck"));
+        assertFalse(yaml.getString("command.info").contains("MineVegas"));
+        assertTrue(yaml.getString("command.credits").contains("MineVegas Casino</yellow> von byMehd"));
         // texts of the mod's de_de.json
         assertTrue(yaml.getString("slot.no-bet").contains("Setze einen Einsatz, bevor du den Hebel ziehst."));
         assertTrue(yaml.getString("gui.slot.title").equals("Spielautomat"));

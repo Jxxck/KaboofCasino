@@ -2,6 +2,17 @@
 
 Every release of KaboofCasino, newest first. The version is the one `/version KaboofCasino` shows.
 
+## [0.20.1] - 2026-11-16
+
+- **The plugin's author is named in the game.** `/casino info`, the resource pack prompt, the cover of the Casino
+  Guide and the tooltip of the machine items now say KaboofCasino by Jxxck. MineVegas Casino, the mod the plugin is
+  based on, is credited on the guide's cover and under `/casino credits`; its licence and the full credits stay in
+  the jar and inside the packs.
+- **Existing servers get the new texts by themselves**: a text that is still an earlier default is replaced, a text
+  you rewrote stays as it is.
+- The pack descriptions say "KaboofCasino by Jxxck", so players download the packs once more after the update.
+- [docs/FEATURES.md](docs/FEATURES.md) now shows every game and addition in pictures and short clips.
+
 ## [0.20.0] - 2026-11-16
 
 - **English is the default language.** `language: en` or `language: de` in `config.yml` sets the texts

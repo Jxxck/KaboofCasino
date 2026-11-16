@@ -5,9 +5,10 @@ import com.google.gson.JsonObject;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Who made what: the plugin's author, and the attribution required by the mod's licence (MIT with the condition to
- * link the CurseForge page visibly) in the pack description, {@code credits/CREDITS.md}, and the mod's own licence
- * texts under {@code credits/}.
+ * Who made what: the plugin's author in the pack description (what a player sees in the pack list), and inside the
+ * pack {@code credits/CREDITS.md} with the mod the assets come from and the mod's own licence text under
+ * {@code credits/}. The licence's attribution condition (a visible link to the CurseForge page) is about the public
+ * description on every platform the plugin is published on; the README carries it.
  */
 final class Credits {
 
@@ -23,8 +24,7 @@ final class Credits {
         title.addProperty("text", "KaboofCasino");
         title.addProperty("color", "gold");
         JsonObject rest = new JsonObject();
-        rest.addProperty("text", PackLang.text(" by " + AUTHOR + " - graphics and sounds: MineVegas Casino by byMehd (MIT), ",
-                " von " + AUTHOR + " - Grafiken und Sounds: MineVegas Casino von byMehd (MIT), ") + MOD_URL);
+        rest.addProperty("text", PackLang.text(" by " + AUTHOR, " von " + AUTHOR));
         rest.addProperty("color", "gray");
         JsonArray extra = new JsonArray();
         extra.add(rest);

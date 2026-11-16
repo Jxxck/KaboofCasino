@@ -438,8 +438,8 @@ guide:
   any-kind: " (beliebige Sorte)"
   # hover text of a link to another page: <page>
   goto: "<gray>Zur Seite <page>"
-  # licence line on the cover
-  credits: "<gray>Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>"
+  # author line on the cover
+  credits: "<gold>KaboofCasino</gold> <gray>von <yellow>Jxxck</yellow>\n<dark_gray>Auf Grundlage der Mod MineVegas Casino von byMehd"
   danger-close: "<red>Gefahr – Handbuch zu."
   # plugin notes under the mod's texts where this server works differently (spread 3: text 043; spreads 33/34)
   note-counter: "<gray><i>Hier: Stell einen arbeitslosen Dorfbewohner auf die Theke (Leine ab) und klick die Theke an."
@@ -463,13 +463,13 @@ croupier:
   out-of-reach: "Komm näher an die Theke."
 
 pack:
-  prompt: "<gold>KaboofCasino</gold>: Grafiken und Sounds von <yellow>MineVegas Casino</yellow> (MIT), curseforge.com/minecraft/mc-mods/minevegas-casino"
+  prompt: "<gold>KaboofCasino</gold> <gray>von Jxxck: Dieses Paket zeigt die Maschinen, Fenster und Möbel des Casinos."
   kick: "<red>Das Casino-Ressourcenpaket ist auf diesem Server Pflicht.</red>\n<gray>Verbinde dich neu und nimm es an (Serverliste: Server-Ressourcenpakete aktivieren)."
   declined: "<gray>Ohne das Ressourcenpaket siehst du das Casino nicht. Beim nächsten Login kannst du es annehmen."
   music-prompt: "<gold>KaboofCasino</gold>: freiwillige Lounge-Musik an Casino-Lautsprechern (ca. 22 MB) – Musik: Kevin MacLeod (incompetech.com), CC BY 4.0"
 
 command:
-  info: "<gold>KaboofCasino</gold> <gray>von Jxxck – Paper-Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino top · /casino abholen · /casino credits"
+  info: "<gold>KaboofCasino</gold> <gray>von <yellow>Jxxck</yellow> – ein Casino für Paper-Server:\n<aqua><click:open_url:'https://github.com/Jxxck/KaboofCasino'><u>github.com/Jxxck/KaboofCasino</u></click>\n<gray>/casino stats · /casino top · /casino abholen · /casino credits"
   usage: "<gray>/casino [stats|top|bestenliste|abholen|credits|musik] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
   give-done: "<green><player> hat <item> bekommen."
   give-unknown: "<red>Unbekannte Maschine: <name>. Möglich: <list>"
@@ -478,7 +478,7 @@ command:
   stats-header: "<gold>Deine Casino-Statistik</gold> <gray>(<rounds> Runden)"
   stats-line: "<gray>• <yellow><item></yellow>: gesetzt <staked>, gewonnen <won>"
   stats-empty: "<gray>Du hast noch nicht gespielt."
-  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Plugin für Paper, Chips, Kasse, Chip-Shop, Bestenlisten, Outfits, Jukebox, Mehrspieler-Tische und Texas Hold'em: <yellow>Jxxck</yellow> (MIT-Lizenz)\n<gray>Spiele, Modelle, Texturen, GUI-Grafiken, Sounds und Texte: <yellow>MineVegas Casino</yellow> 1.1.0 von byMehd, MIT-Lizenz mit Hinweispflicht:\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>Lounge-Musik an den Lautsprechern (freiwilliges Musikpaket): <yellow>Airport Lounge, Backbay Lounge, Jazz Brunch, George Street Shuffle, Cool Vibes, Bossa Antigua</yellow> – Kevin MacLeod (<click:open_url:'https://incompetech.com'>incompetech.com</click>), Lizenz CC BY 4.0:\n<aqua><click:open_url:'https://creativecommons.org/licenses/by/4.0/'><u>https://creativecommons.org/licenses/by/4.0/</u></click>\n<gray>Geändert von MineVegas Casino: MP3 in Ogg Vorbis umgewandelt, Lautheit auf -20 LUFS angeglichen; Komposition unverändert. Keine Billigung durch den Komponisten.\n<gray>GUI-Schrift aus der Minecraft-Standardschrift. Kein offizielles Minecraft-Produkt.\n<gray>Lounge-Musik abschalten (ab dem nächsten Login kein Musikpaket mehr): <yellow>/casino musik aus</yellow>, wieder an: <yellow>/casino musik an</yellow>"
+  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Plugin von <yellow>Jxxck</yellow> (MIT-Lizenz): das Casino für Paper-Server, mit Chips, Kasse, Chip-Shop, Bestenlisten, Outfits, Jukebox, Mehrspieler-Tischen und Texas Hold'em\n<aqua><click:open_url:'https://github.com/Jxxck/KaboofCasino'><u>github.com/Jxxck/KaboofCasino</u></click>\n<gray>Auf Grundlage der Mod <yellow>MineVegas Casino</yellow> von byMehd (MIT-Lizenz): deren Spiele, Modelle, Texturen und Sounds\n<gray>Lounge-Musik an den Lautsprechern (freiwilliges Musikpaket): <yellow>Airport Lounge, Backbay Lounge, Jazz Brunch, George Street Shuffle, Cool Vibes, Bossa Antigua</yellow> – Kevin MacLeod (<click:open_url:'https://incompetech.com'>incompetech.com</click>), Lizenz CC BY 4.0:\n<aqua><click:open_url:'https://creativecommons.org/licenses/by/4.0/'><u>https://creativecommons.org/licenses/by/4.0/</u></click>\n<gray>Änderungen an den Aufnahmen: MP3 in Ogg Vorbis umgewandelt, Lautheit auf -20 LUFS angeglichen; Komposition unverändert. Keine Billigung durch den Komponisten.\n<gray>GUI-Schrift aus der Minecraft-Standardschrift. Kein offizielles Minecraft-Produkt.\n<gray>Lounge-Musik abschalten (ab dem nächsten Login kein Musikpaket mehr): <yellow>/casino musik aus</yellow>, wieder an: <yellow>/casino musik an</yellow>"
   # /casino musik aus|an (plugin texts): the music pack offer at the next login
   music-off: "<gray>Lounge-Musik ist <yellow>aus</yellow>: Ab dem nächsten Login wird dir kein Musikpaket mehr angeboten."
   music-on: "<gray>Lounge-Musik ist <yellow>an</yellow>: Ab dem nächsten Login wird dir das Musikpaket wieder angeboten."
@@ -641,7 +641,7 @@ gui:
 
 item:
   slot-machine: "Spielautomat"
-  slot-machine-lore: "<gray>MineVegas Casino"
+  slot-machine-lore: "<gray>KaboofCasino"
   slot-machine-reel: "Spielautomaten-Walze"
   slot-machine-mechanism: "Spielautomaten-Mechanismus"
   fortune-wheel: "Glücksrad"

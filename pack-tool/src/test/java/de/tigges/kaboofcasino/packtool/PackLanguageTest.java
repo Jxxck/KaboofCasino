@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -106,12 +107,17 @@ class PackLanguageTest {
     }
 
     @Test
-    void theDescriptionCreditsTheModInBothLanguages() {
+    void theDescriptionNamesTheAuthorInBothLanguagesAndTheModIsCreditedInsideThePack() {
         String enMeta = new String(en.get("pack.mcmeta"), StandardCharsets.UTF_8);
         String deMeta = new String(de.get("pack.mcmeta"), StandardCharsets.UTF_8);
-        assertTrue(enMeta.contains(Credits.MOD_URL) && enMeta.contains("graphics and sounds") && enMeta.contains("byMehd"));
-        assertTrue(deMeta.contains(Credits.MOD_URL) && deMeta.contains("Grafiken und Sounds"));
+        assertTrue(enMeta.contains(" by " + Credits.AUTHOR) && !enMeta.contains("MineVegas"), enMeta);
+        assertTrue(deMeta.contains(" von " + Credits.AUTHOR) && !deMeta.contains("MineVegas"), deMeta);
         assertFalse(enMeta.matches("(?s).*[äöüß].*"));
+        for (Map<String, byte[]> pack : List.of(en, de)) {
+            String credits = new String(pack.get("credits/CREDITS.md"), StandardCharsets.UTF_8);
+            assertTrue(credits.contains(Credits.MOD_URL) && credits.contains("byMehd"));
+            assertTrue(new String(pack.get("credits/LICENSE.txt"), StandardCharsets.UTF_8).contains("byMehd"));
+        }
     }
 
     @Test

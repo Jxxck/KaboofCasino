@@ -115,7 +115,7 @@ final class MusicPack {
         title.addProperty("color", "gold");
         JsonObject rest = new JsonObject();
         rest.addProperty("text", " - lounge music: " + String.join(", ", artists)
-                + " (incompetech.com), CC BY 4.0, " + CC_BY + " - from MineVegas Casino by byMehd, " + Credits.MOD_URL);
+                + " (incompetech.com), CC BY 4.0, " + CC_BY);
         rest.addProperty("color", "gray");
         JsonArray extra = new JsonArray();
         extra.add(rest);

@@ -1,10 +1,15 @@
 package de.tigges.kaboofcasino.config;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.EnumMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -39,6 +44,18 @@ public final class Messages {
         {"chipshop.category.technik", "chipshop.category.tech"},
         {"chipshop.category.maschinen", "chipshop.category.machines"},
     };
+    /**
+     * The author and credit texts were reworded in 0.20.1. A live file still holds the wording it was created with, so
+     * a text that is one of the earlier defaults (German or English, any version) gives way to the new default, while a
+     * text an admin wrote himself stays. Earlier defaults are listed by {@link #fingerprint}.
+     */
+    static final Map<String, Set<String>> REWORDED = Map.of(
+            "guide.credits", Set.of("4317a60c4f618ee1", "868dc38aa0bfd1d8"),
+            "pack.prompt", Set.of("21bbb3c8511f676c", "c49c22e288c72856"),
+            "command.info", Set.of("8ba211828b71830b", "d9bb31e2809334ad", "da665035846ba0a0", "e85389d15711d8aa"),
+            "command.credits", Set.of("37ab9ada07fb7604", "7bc280e06401eb6c", "9ece1010fa2b0d20", "c5ce719adc4d07fd",
+                    "eb1395295887b589"),
+            "item.slot-machine-lore", Set.of("c26c6a04e1b2860d"));
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
     private final Map<Msg, String> templates;
@@ -58,14 +75,33 @@ public final class Messages {
         return new Loaded(of(merged.yaml()), merged.warnings(), merged.added());
     }
 
-    /** A messages file of a version up to 0.19.0: renamed keys keep their texts, the Discord texts go. */
+    /**
+     * A messages file of an older version: renamed keys keep their texts, the Discord texts go, and the reworded
+     * author and credit texts ({@link #REWORDED}) are dropped so that the merge puts the new defaults in their place.
+     */
     static int migrate(YamlConfiguration live) {
         int n = 0;
         for (String[] r : RENAMES) {
             n += YamlFiles.rename(live, r[0], r[1]);
         }
         n += YamlFiles.remove(live, "discord");
+        for (Map.Entry<String, Set<String>> e : REWORDED.entrySet()) {
+            String text = live.getString(e.getKey());
+            if (text != null && e.getValue().contains(fingerprint(text))) {
+                live.set(e.getKey(), null); // not counted: the merge counts the default it adds here
+            }
+        }
         return n;
+    }
+
+    /** The first 16 hex digits of a text's SHA-256 (UTF-8). */
+    static String fingerprint(String text) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash, 0, 8);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     static Messages of(YamlConfiguration yaml) {

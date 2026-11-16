@@ -93,7 +93,6 @@ class MusicPackTest {
         String meta = new String(entries.get("pack.mcmeta"), StandardCharsets.UTF_8);
         assertTrue(meta.contains("Kevin MacLeod"), meta);
         assertTrue(meta.contains("CC BY 4.0") && meta.contains(MusicPack.CC_BY), meta);
-        assertTrue(meta.contains(Credits.MOD_URL), meta);
         assertTrue(meta.contains("\"min_format\":97") && meta.contains("\"max_format\":97"), meta);
         String credits = new String(entries.get("credits/CREDITS.md"), StandardCharsets.UTF_8);
         for (String title : List.of("Airport Lounge", "Backbay Lounge", "Jazz Brunch", "George Street Shuffle",

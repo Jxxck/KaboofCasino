@@ -83,6 +83,22 @@ restart, because the pack and the item names are loaded once).
   for its players; the Chip-Shop tabs' German config keys and the German message keys are renamed with their values;
   the `discord:` sections are removed (the posts through the author's own Discord plugin are gone).
 
+## Credits in the game (0.20.1)
+
+What a player reads names the plugin and its author: `/casino info`, the pack prompt (`pack.prompt`), the cover of the
+Casino Guide (`guide.credits`), the tooltip of the machine items (`item.slot-machine-lore`) and the description of the
+packs in the client's pack list (`Credits.add`, `MusicPack.mcmeta`). MineVegas Casino is named in two places in the
+game, the guide's cover and `/casino credits`; the music's CC BY credit stays in `/casino credits`, the music prompt
+and the music pack's description. The licence texts and full credits are files: `LICENSE-MineVegas.txt` and `NOTICE.md`
+in the jar, `credits/` in every pack. The mod's licence asks for a visible link to its CurseForge page in the public
+description on every platform the plugin is published on; that is the README's (and any download page's) job, not the
+game's.
+
+A live `messages_*.yml` keeps the wording it was created with, so `Messages.migrate` drops each of these five texts
+when it is still an earlier default (`Messages.REWORDED`: the first 16 hex digits of the SHA-256 of every default
+these keys ever had, German and English) and the merge writes the new default. A text an admin changed has another
+fingerprint and stays. When one of these defaults changes again, add the fingerprint of the wording it replaces.
+
 ## 2. Architecture
 
 | Package | Content |

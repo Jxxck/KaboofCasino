@@ -40,7 +40,6 @@ class LanguageTest {
     private static final Set<String> FORMAT_TAGS = Set.of("gold", "gray", "dark_gray", "white", "yellow", "red", "green",
             "aqua", "b", "i", "u");
     private static final Pattern TAG = Pattern.compile("<([a-z_]+)>");
-    private static final String MOD_URL = "https://www.curseforge.com/minecraft/mc-mods/minevegas-casino";
 
     private Language before;
     private ZoneId zoneBefore;
@@ -122,12 +121,16 @@ class LanguageTest {
     }
 
     @Test
-    void theEnglishCreditsNameEverythingTheLicencesAskFor() {
+    void theEnglishTextsNameTheAuthorAndTheCreditsEverythingTheLicencesAskFor() {
         YamlConfiguration en = yaml(Language.EN.messagesFile());
-        assertTrue(en.getString("command.info").contains(MOD_URL));
-        assertTrue(en.getString("guide.credits").contains(MOD_URL));
+        // since 0.20.1 the game names the plugin's author; the mod is credited on the guide's cover and in the credits
+        String info = en.getString("command.info");
+        assertTrue(info.contains("Jxxck") && info.contains("github.com/Jxxck/KaboofCasino") && !info.contains("MineVegas"));
+        String cover = en.getString("guide.credits");
+        assertTrue(cover.contains("Jxxck") && cover.contains("MineVegas Casino by byMehd"));
+        assertEquals("<gray>KaboofCasino", en.getString("item.slot-machine-lore"));
         String credits = en.getString("command.credits");
-        assertTrue(credits.contains(MOD_URL) && credits.contains("byMehd") && credits.contains("Jxxck"));
+        assertTrue(credits.contains("MineVegas Casino") && credits.contains("byMehd") && credits.contains("Jxxck"));
         for (String title : new String[] {"Airport Lounge", "Backbay Lounge", "Jazz Brunch", "George Street Shuffle",
             "Cool Vibes", "Bossa Antigua"}) {
             assertTrue(credits.contains(title), title);
@@ -137,7 +140,7 @@ class LanguageTest {
         assertTrue(credits.contains("Ogg Vorbis") && credits.contains("-20 LUFS"), "the changes are stated");
         String prompt = en.getString("pack.music-prompt");
         assertTrue(prompt.contains("Kevin MacLeod") && prompt.contains("CC BY 4.0"));
-        assertTrue(en.getString("pack.prompt").contains("MineVegas Casino"));
+        assertTrue(en.getString("pack.prompt").contains("Jxxck") && !en.getString("pack.prompt").contains("MineVegas"));
         // the mod's own English wording where the plugin shows the mod's texts
         assertEquals("<yellow>Place a bet before pulling the lever.", en.getString("slot.no-bet"));
         assertEquals("Slot Machine", en.getString("gui.slot.title"));
@@ -336,5 +339,43 @@ class LanguageTest {
         assertEquals(0, Messages.load(file, () -> getClass().getClassLoader().getResourceAsStream("messages_de.yml"))
                 .added());
         assertEquals(once, Files.readString(file));
+    }
+
+    @Test
+    void theRewordedCreditTextsReplaceEarlierDefaultsButNotAnAdminsOwnText(@TempDir Path dir) throws IOException {
+        Path file = copy(dir, "legacy/0.19.0/messages_de.yml", "messages_de.yml");
+        String text = Files.readString(file);
+        assertTrue(text.contains("slot-machine-lore: \"<gray>MineVegas Casino\""));
+        Files.writeString(file, text.replace("slot-machine-lore: \"<gray>MineVegas Casino\"",
+                "slot-machine-lore: \"<gray>Casino am Hafen\""));
+        YamlConfiguration jar = yaml("messages_de.yml");
+        Messages.Loaded loaded = Messages.load(file, () -> getClass().getClassLoader()
+                .getResourceAsStream("messages_de.yml"));
+        assertEquals(java.util.List.of(), loaded.warnings());
+        for (Msg m : new Msg[] {Msg.GUIDE_CREDITS, Msg.PACK_PROMPT, Msg.COMMAND_INFO, Msg.COMMAND_CREDITS}) {
+            assertEquals(jar.getString(m.key()), loaded.messages().raw(m), m.key());
+            assertTrue(loaded.messages().raw(m).contains("Jxxck"), m.key());
+        }
+        assertFalse(loaded.messages().raw(Msg.COMMAND_INFO).contains("MineVegas"));
+        assertEquals("<gray>Casino am Hafen", loaded.messages().raw(Msg.ITEM_SLOT_MACHINE_LORE));
+        YamlConfiguration written = YamlConfiguration.loadConfiguration(file.toFile());
+        assertEquals(jar.getString("command.credits"), written.getString("command.credits"));
+        // the new defaults are no "earlier defaults": the next start leaves the file alone
+        String once = Files.readString(file);
+        assertEquals(0, Messages.load(file, () -> getClass().getClassLoader().getResourceAsStream("messages_de.yml"))
+                .added());
+        assertEquals(once, Files.readString(file));
+    }
+
+    @Test
+    void theDefaultsOfTheLastVersionAreKnownAsEarlierDefaultsAndTheCurrentOnesAreNot() {
+        YamlConfiguration old = yaml("legacy/0.19.0/messages_de.yml");
+        for (Language l : Language.values()) {
+            YamlConfiguration jar = yaml(l.messagesFile());
+            Messages.REWORDED.forEach((key, earlier) -> {
+                assertFalse(earlier.contains(Messages.fingerprint(jar.getString(key))), l + " " + key);
+                assertTrue(earlier.contains(Messages.fingerprint(old.getString(key))), key);
+            });
+        }
     }
 }

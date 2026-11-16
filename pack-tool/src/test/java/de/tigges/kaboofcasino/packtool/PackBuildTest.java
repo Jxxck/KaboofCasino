@@ -67,7 +67,7 @@ class PackBuildTest {
     @Test
     void attributionIsInMetaAndCredits() {
         String meta = new String(entries.get("pack.mcmeta"), StandardCharsets.UTF_8);
-        assertTrue(meta.contains(Credits.MOD_URL), meta);
+        assertTrue(meta.contains("KaboofCasino") && meta.contains(Credits.AUTHOR), meta);
         assertTrue(meta.contains("\"min_format\":97"), meta);
         String credits = new String(entries.get("credits/CREDITS.md"), StandardCharsets.UTF_8);
         assertTrue(credits.contains(Credits.MOD_URL));
