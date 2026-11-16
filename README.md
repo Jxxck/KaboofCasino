@@ -8,6 +8,11 @@ only accept the server resource pack; the plugin serves it itself.
 [MineVegas Casino](https://www.curseforge.com/minecraft/mc-mods/minevegas-casino) by byMehd.** The games, their
 models, textures, sounds and texts come from MineVegas Casino. On Fabric or NeoForge, use the original mod.
 
+## Download
+
+The plugin jar is on the [releases page](https://github.com/Jxxck/KaboofCasino/releases). [CHANGELOG.md](CHANGELOG.md)
+says what each version changed.
+
 ## What is in it
 
 From MineVegas Casino:
@@ -43,7 +48,8 @@ winnings that do not fit into the inventory are kept and handed over later (`/ca
 
 ## Installation
 
-1. Put `KaboofCasino-<version>.jar` into `plugins/`.
+1. Put `KaboofCasino-<version>.jar` from the [releases page](https://github.com/Jxxck/KaboofCasino/releases) into
+   `plugins/`.
 2. Set `disable-mushroom-block-updates: true` in `config/paper-global.yml` and restart the server.
 3. Join and accept the resource pack. `/casino give slot_machine` gives you the first machine;
    `/casino give` with an unknown name lists everything there is. `/casino give casino_guide` is the guide book.
@@ -125,6 +131,14 @@ JDK 25 if it is not installed.
 
 `docs/IMPLEMENTATION.md` describes the architecture. `testing/` holds the author's bot tests, which need a test
 harness that is not part of this repository.
+
+## Bugs and contributions
+
+Report bugs in the [issue tracker](https://github.com/Jxxck/KaboofCasino/issues) with the plugin version, the Paper
+version and the lines of the server log around the problem. If an item was lost or duplicated, say so: those reports
+come first.
+
+Pull requests are welcome. `./gradlew build` has to pass; it runs the unit tests and builds both resource packs.
 
 ## Credits and licence
 

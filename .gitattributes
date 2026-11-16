@@ -1,0 +1,5 @@
+# The resource pack is built from these files byte for byte: the same line endings everywhere keep its hash the same.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jar binary

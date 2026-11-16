@@ -1787,7 +1787,7 @@ $T/ptest.sh rcon "save-all flush"; python3 -I testing/datsum.py Alice           
   jar once nobody is seated (a clean stop settles the seats).
 - 0.15.0 (multiplayer poker against the croupier, replaced by 0.16.0): `poker.countdown-seconds` and seven messages.
 - 0.14.1 (shop): jar swap only.
-- Download limits (step 4 fix, raised by the orchestrator): the casino pack has 16 slots and a 300 s cap with a 16 KiB/s
+- Download limits (step 4 fix, raised later): the casino pack has 16 slots and a 300 s cap with a 16 KiB/s
   minimum, so a 4.7 MB download needs about 16 KiB/s on average (slower clients fail it, and with enforce are kicked; a
   17th simultaneous first download of a new pack version gets 503); the music pack's 180 s needs about 124 KiB/s
   (optional). Check with `python3 -I testing/pack-slowreader-test.py 25572
