@@ -10,6 +10,7 @@ import de.tigges.kaboofcasino.wager.ItemAmount;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The exchange value at the configured rates, the change into a target denomination, the German digits. */
@@ -72,6 +73,7 @@ class CashierMathTest {
         assertFalse(CashierMath.same(Chips.Selection.of(Map.of(5, 2L)), CashierMath.change(10, 1)));
     }
 
+    @Tag("german")
     @Test
     void valuesInGermanDigits() {
         assertEquals("0", CashierMath.format(0));

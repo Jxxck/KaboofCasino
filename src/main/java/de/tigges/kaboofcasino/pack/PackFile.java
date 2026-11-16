@@ -1,5 +1,6 @@
 package de.tigges.kaboofcasino.pack;
 
+import de.tigges.kaboofcasino.config.Language;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -11,14 +12,14 @@ import java.util.UUID;
 
 /**
  * A resource pack embedded in the plugin jar (built by the {@code buildPack} Gradle task): the required casino pack
- * ({@code pack/KaboofCasino-pack.zip} + {@code .sha1}) and the optional music pack
+ * ({@code pack/<language>/KaboofCasino-pack.zip} + {@code .sha1}) and the optional music pack
  * ({@code pack/KaboofCasino-music.zip} + {@code .sha1}, render.md 6). Re-hashed at load; a mismatch with the build's
  * SHA-1 refuses to start (a broken jar would send clients a hash they reject). Served from memory.
  */
 public final class PackFile {
 
-    public static final String ZIP = "pack/KaboofCasino-pack.zip";
-    public static final String SHA1 = "pack/KaboofCasino-pack.zip.sha1";
+    /** The casino pack's file name; the plugin jar has one per language ({@link Language#packResource}). */
+    public static final String ZIP = "KaboofCasino-pack.zip";
     /** Fixed pack id, so clients keep one cache slot (render.md 8.4). */
     public static final UUID PACK_ID = UUID.nameUUIDFromBytes("kaboofcasino-pack".getBytes(StandardCharsets.UTF_8));
 
@@ -39,9 +40,15 @@ public final class PackFile {
         this.name = name;
     }
 
-    /** The required casino pack. */
+    /** The required casino pack in the casino's language. */
     public static PackFile load(ClassLoader resources) {
-        return load(resources, ZIP, SHA1, PACK_ID, "casino");
+        return load(resources, Language.current());
+    }
+
+    /** The casino pack of one language. */
+    public static PackFile load(ClassLoader resources, Language language) {
+        String zip = language.packResource(ZIP);
+        return load(resources, zip, zip + ".sha1", PACK_ID, "casino");
     }
 
     /** The optional music pack. */

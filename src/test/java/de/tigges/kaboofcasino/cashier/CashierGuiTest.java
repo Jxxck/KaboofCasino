@@ -42,9 +42,9 @@ class CashierGuiTest {
 
     @BeforeAll
     static void load() {
-        layout = GuiLayout.load(CashierGuiTest.class.getClassLoader().getResourceAsStream("pack/gui-layout.json"));
+        layout = GuiLayout.load(CashierGuiTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new InputStreamReader(
-                CashierGuiTest.class.getClassLoader().getResourceAsStream("messages_de.yml"), StandardCharsets.UTF_8));
+                CashierGuiTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile()), StandardCharsets.UTF_8));
         raw = m -> yaml.getString(m.key());
     }
 

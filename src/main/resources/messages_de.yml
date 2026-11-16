@@ -79,21 +79,21 @@ board:
   loading: "<gray>Wird berechnet …"
   pinned: "<yellow>Diese Tafel ist fest eingestellt."
   category:
-    gewinn: "Größter Gewinn"
-    multiplikator: "Höchster Multiplikator"
-    netto: "Netto-Gewinn"
-    einsatz: "Gesetzte Chips"
-    runden: "Meiste Runden"
-    spielautomat: "Spielautomat: größter Gewinn"
-    gluecksrad: "Glücksrad: größter Gewinn"
+    win: "Größter Gewinn"
+    multiplier: "Höchster Multiplikator"
+    net: "Netto-Gewinn"
+    staked: "Gesetzte Chips"
+    rounds: "Meiste Runden"
+    slots: "Spielautomat: größter Gewinn"
+    wheel: "Glücksrad: größter Gewinn"
     plinko: "Plinko: größter Gewinn"
     roulette: "Roulette: größter Gewinn"
     blackjack: "Blackjack: größter Gewinn"
     poker: "Poker: größter Gewinn"
-    entenrennen: "Entenrennen: größter Gewinn"
+    derby: "Entenrennen: größter Gewinn"
   period:
-    woche: "Diese Woche"
-    gesamt: "Gesamt"
+    week: "Diese Woche"
+    total: "Gesamt"
   hidden: "<gray>Du erscheinst nicht mehr in der Bestenliste. Mit <white>/casino bestenliste an</white> wieder."
   shown: "<green>Du erscheinst wieder in der Bestenliste."
   hide-wait: "<gray>Einen Moment, bitte. Versuche es gleich noch einmal."
@@ -150,28 +150,6 @@ jukebox:
   cooldown: "<gray>Einen Moment – die Musik wurde gerade erst gewechselt."
   no-settings: "<gray>Die Jukebox hat keine Einstellungen. Ohne Croupier-Hand öffnet ein Rechtsklick ihr Menü."
 
-discord:
-  # Posts im Discord-Kanal über KaboofDiscord: schlichter Text, keine Farben; im Text geht Discord-Formatierung
-  # (**fett**), der Titel steht neben dem Kopf des Spielers und kann keine Formatierung. <player> = Name,
-  # <chips> = Gewinn ("1.500 Chips"), <stake> = Einsatz, <multiplier> = "100" oder "52,5", <game> = game-* unten.
-  big-win-title: "<player> gewinnt <chips> <game>!"
-  big-win-text: "🎰 **<multiplier>×** der Einsatz von <stake>"
-  # Wochensieger: <week> = "03.11.–09.11.2026"; je Kategorie eine Überschrift und die Plätze (<medal> = 🥇🥈🥉,
-  # <value> = "1.500 Chips", "×12,5" oder weekly-rounds / weekly-round)
-  weekly-title: "🏆 Casino-Bestenliste der Woche <week>"
-  weekly-category: "**<category>**"
-  weekly-place: "<medal> <player> – <value>"
-  weekly-rounds: "<count> Runden"
-  weekly-round: "1 Runde"
-  game-slot-machine: "am Spielautomaten"
-  game-fortune-wheel: "am Glücksrad"
-  game-plinko: "beim Plinko"
-  game-roulette: "beim Roulette"
-  game-blackjack: "beim Blackjack"
-  game-poker: "beim Poker"
-  game-derby: "beim Entenrennen"
-  game-other: "im Casino"
-
 # Chip-Shop: Casino-Deko, Möbel und Maschinen für Chips. Texte im Menü-Titel (brand, category.*, help,
 # label-*) sind schlichter Text ohne Farben; help hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
 # Chip-Beträge (<price>) kommen fertig mit "Chip"/"Chips".
@@ -181,12 +159,12 @@ chipshop:
   in-use: "<yellow><name> kauft gerade am Chip-Shop."
   brand: "CHIP-SHOP"
   category:
-    boeden: "Böden und Wände"
-    moebel: "Möbel"
+    floors: "Böden und Wände"
+    furniture: "Möbel"
     bar: "Bar & Tische"
-    licht: "Licht & Schilder"
-    technik: "Technik"
-    maschinen: "Maschinen"
+    lights: "Licht & Schilder"
+    tech: "Technik"
+    machines: "Maschinen"
     outfits: "Outfits"
   tab-lore: "<gray>Klicke hier, um die Kategorie zu zeigen."
   help: "Wähle einen\nArtikel, dann\nKAUFEN.\nUmschalt-Klick:\nein Stapel."

@@ -306,7 +306,7 @@ final class DerbyGuiArt {
     /** The duck's name on its banner (centre x + 21, y + 26, room 40), bright or muted ({@code veiled}, no shadow). */
     static void name(Canvas g, TextGlyphs text, int lane, int x, int y, boolean muted) {
         int colour = muted ? veiled(NAME_COLOR[lane]) : NAME_COLOR[lane];
-        fitted(g, text, DerbyGui.DUCKS[lane], x + 21, y + 26, 40, colour, NAME_SHADOW[lane] && !muted, 0);
+        fitted(g, text, DerbyGui.duck(lane), x + 21, y + 26, 40, colour, NAME_SHADOW[lane] && !muted, 0);
     }
 
     // ---- the background ----------------------------------------------------------------------------------------------

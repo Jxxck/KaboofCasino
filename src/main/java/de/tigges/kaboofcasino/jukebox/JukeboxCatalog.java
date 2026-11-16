@@ -25,8 +25,13 @@ import net.kyori.adventure.key.Key;
  */
 public final class JukeboxCatalog {
 
-    /** One genre: id, German name, the item its tab shows. */
-    public record Genre(String id, String name, String icon) {
+    /** One genre: id, German and English name, the item its tab shows. */
+    public record Genre(String id, String german, String english, String icon) {
+
+        /** The name in the casino's language. */
+        public String name() {
+            return de.tigges.kaboofcasino.config.Language.text(english, german);
+        }
     }
 
     /** One track: its sound, length, the genre, the title and the disc its list entry shows. */
@@ -75,7 +80,9 @@ public final class JukeboxCatalog {
         List<Genre> genres = new ArrayList<>();
         for (JsonElement e : root.getAsJsonArray("genres")) {
             JsonObject g = e.getAsJsonObject();
-            genres.add(new Genre(g.get("id").getAsString(), g.get("name").getAsString(), g.get("icon").getAsString()));
+            genres.add(new Genre(g.get("id").getAsString(), g.get("name").getAsString(),
+                    g.has("name_en") ? g.get("name_en").getAsString() : g.get("name").getAsString(),
+                    g.get("icon").getAsString()));
         }
         List<Track> tracks = new ArrayList<>();
         for (JsonElement e : root.getAsJsonArray("tracks")) {

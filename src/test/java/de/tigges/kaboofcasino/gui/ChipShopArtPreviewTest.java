@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
  * the brand, a category head, help lines and the two labels at the {@code chipshop_*} anchors, sample German texts),
  * the slot items through the pack's item definitions and models (the cashier's page buttons, KAUFEN and number
  * displays, the chip shop's quantity toggle), vanilla items as marked squares with their count (smaller ones in the
- * tabs). Writes {@code build/reports/gui/chipshop-*.png} and asserts that the art and the receipt are on screen at all
+ * tabs). Writes {@code build/reports/gui/<language>/chipshop-*.png} and asserts that the art and the receipt are on screen at all
  * three sizes, no picture is clipped and no two overlap, the numbers line up like the cashier's and the selected tab
  * shows its gold ring. Needs no plugin code beyond {@link TitleBuilder}, {@link GuiLayout} and {@link CashierView}.
  */
@@ -75,14 +75,14 @@ class ChipShopArtPreviewTest {
 
     @BeforeEach
     void load() throws IOException {
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("pack/KaboofCasino-pack.zip");
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("KaboofCasino-pack.zip"));
              ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry e;
             while ((e = zip.getNextEntry()) != null) {
                 pack.put(e.getName(), zip.readAllBytes());
             }
         }
-        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream("pack/gui-layout.json"));
+        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
     }
 
     // ---- the title (what the plugin's menu composes) ----------------------------------------------------------------
@@ -155,12 +155,12 @@ class ChipShopArtPreviewTest {
 
     @Test
     void theJukeboxMenuFitsTheCommonScreens(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws IOException {
-        java.nio.file.Path file = dir.resolve("messages_de.yml");
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("messages_de.yml")) {
+        java.nio.file.Path file = dir.resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile());
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())) {
             java.nio.file.Files.write(file, in.readAllBytes());
         }
         de.tigges.kaboofcasino.config.Messages m = de.tigges.kaboofcasino.config.Messages.load(file,
-                () -> getClass().getClassLoader().getResourceAsStream("messages_de.yml")).messages();
+                () -> getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())).messages();
         var catalog = de.tigges.kaboofcasino.jukebox.JukeboxCatalog.load(getClass().getClassLoader());
         for (String line : m.raw(de.tigges.kaboofcasino.config.Msg.JUKEBOX_HELP).split("\n")) {
             assertTrue(layout.width(line) <= 88, "help line too wide: " + line);
@@ -225,7 +225,7 @@ class ChipShopArtPreviewTest {
         int gold = 0xFF000000 | -1654161; // the mod's gold line (DerbyUiArt), drawn white-tinted as it is
         for (int tab = 0; tab < 7; tab++) {
             render("chipshop-ring", title(tab), 480, 270, IMPORTANT, Map.of());
-            BufferedImage screen = ImageIO.read(Path.of("build/reports/gui/chipshop-ring-preview-480x270.png")
+            BufferedImage screen = ImageIO.read(Path.of("build/reports/gui/" + de.tigges.kaboofcasino.config.Language.current().code() + "/chipshop-ring-preview-480x270.png")
                     .toFile());
             for (int t = 0; t < 7; t++) {
                 // the pixel row above the tab's middle: the selected tab's ring, felt over the others
@@ -539,7 +539,7 @@ class ChipShopArtPreviewTest {
                 }
             }
         }
-        Path out = Path.of("build/reports/gui/" + name + "-preview-" + width + "x" + height + ".png");
+        Path out = Path.of("build/reports/gui/" + de.tigges.kaboofcasino.config.Language.current().code() + "/" + name + "-preview-" + width + "x" + height + ".png");
         Files.createDirectories(out.getParent());
         ImageIO.write(screen, "png", out.toFile());
         String where = name + " " + width + "x" + height + ": ";

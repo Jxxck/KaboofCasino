@@ -510,7 +510,7 @@ public final class HoldemMenu extends GameMenu {
                         + " " + cardText(seat.shown().get(1)))));
                 if (seat.category() >= 0) {
                     lore.add(m.render(Msg.GUI_HOLDEM_HEAD_HAND, Messages.text("hand",
-                            PokerPanel.HANDS[Math.min(PokerPanel.HANDS.length - 1, seat.category())])));
+                            PokerPanel.hand(seat.category()))));
                 }
             }
             if (seat.dealer()) {

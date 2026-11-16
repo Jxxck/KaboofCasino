@@ -193,4 +193,23 @@ class DerbyPackKeysTest {
         assertEquals(28, DerbyPanel.width("WEISS"));
         assertEquals(42, DerbyPanel.width("SCHWARZ"));
     }
+
+    @Test
+    void theEnglishPanelWordsAreTheModsToo() {
+        java.util.Map<String, String> en = de.tigges.kaboofcasino.TestModJar.lang("en_us");
+        for (int lane = 0; lane < 4; lane++) {
+            assertEquals(en.get(DerbyPanel.NAME_KEYS[lane]), DerbyPanel.NAMES_EN[lane]);
+        }
+        assertEquals(en.get(DerbyPanel.PAYOUT_KEY), DerbyPanel.PAYOUT_EN);
+        assertEquals(en.get(DerbyPanel.SECOND_KEY), DerbyPanel.SECOND_EN);
+        assertEquals(en.get(DerbyPanel.COUNTDOWN_KEY), DerbyPanel.COUNTDOWN_EN);
+        assertEquals(en.get(DerbyPanel.RACING_KEY), DerbyPanel.RACING_EN);
+        assertEquals(en.get(DerbyPanel.MORE_KEY), DerbyPanel.MORE_EN);
+        assertEquals(en.get("gui.roulettecasino.derby.people"), DerbyPanel.PEOPLE_EN);
+        assertEquals(en.get("gui.roulettecasino.derby.person"), DerbyPanel.PERSON_EN);
+        // the longest English name still fits the 54 px header box it is centred on
+        for (int lane = 0; lane < 4; lane++) {
+            assertTrue(DerbyPanel.width(DerbyPanel.NAMES_EN[lane]) <= 54, DerbyPanel.NAMES_EN[lane]);
+        }
+    }
 }

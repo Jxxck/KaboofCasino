@@ -18,13 +18,19 @@ import java.util.List;
  *  row 4  36-39 SOLO / CLAIM (art in 37), 40 HELP, 41-44 GROUP / CONFIRM / WITHDRAW (art in 42)
  *  row 5  45-52 the member heads (vanilla player heads), 53 the pager
  * </pre>
- * All texts are the mod's German ones from {@code de_de.json}.
+ * All texts are the mod's, from its lang file of the pack's language ({@link PackLang}).
  */
 final class DerbyGui {
 
     static final String PREFIX = "derby";
-    /** {@code gui.roulettecasino.derby.duck_0..3}, checked against de_de.json. */
+    /** {@code gui.roulettecasino.derby.duck_0..3}, checked against the mod's de_de.json and en_us.json. */
     static final String[] DUCKS = {"GELB", "ROT", "WEISS", "SCHWARZ"};
+    static final String[] DUCKS_EN = {"YELLOW", "RED", "WHITE", "BLACK"};
+
+    /** A duck's name in the pack's language. */
+    static String duck(int lane) {
+        return PackLang.text(DUCKS_EN[lane], DUCKS[lane]);
+    }
 
     // ---- slots (DerbyBetMenu uses the same) ------------------------------------------------------------------------
     static final int[] LANE_SLOTS = {0, 3, 5, 8};
@@ -81,16 +87,16 @@ final class DerbyGui {
     static String lang(JsonObject lang, String key) {
         String full = "gui.roulettecasino.derby." + key;
         if (!lang.has(full)) {
-            throw new IllegalStateException("de_de.json lacks " + full);
+            throw new IllegalStateException("the mod's " + PackLang.current().modCode() + ".json lacks " + full);
         }
         return lang.get(full).getAsString();
     }
 
     static void add(ModJar jar, PackTree tree, GuiFont font, TextGlyphs text) {
-        JsonObject lang = Json.parse(jar.bytes("assets/roulettecasino/lang/de_de.json"));
+        JsonObject lang = Json.parse(jar.bytes(PackLang.current().modLangPath("roulettecasino")));
         for (int lane = 0; lane < 4; lane++) {
-            if (!lang(lang, "duck_" + lane).equals(DUCKS[lane])) {
-                throw new IllegalStateException("duck_" + lane + " is not " + DUCKS[lane]);
+            if (!lang(lang, "duck_" + lane).equals(duck(lane))) {
+                throw new IllegalStateException("duck_" + lane + " is not " + duck(lane));
             }
         }
         BufferedImage bg = DerbyGuiArt.background(Images.read(
@@ -195,7 +201,7 @@ final class DerbyGui {
             throw new IllegalStateException("picked does not end with %s: " + picked);
         }
         for (int lane = 0; lane < 4; lane++) {
-            add.accept("picked_" + lane, hint(text, picked.substring(0, picked.length() - 2), DUCKS[lane],
+            add.accept("picked_" + lane, hint(text, picked.substring(0, picked.length() - 2), duck(lane),
                     DerbyGuiArt.CREAM, 0xFF000000 | DerbyGuiArt.HINT_COLOR[lane]));
         }
         add.accept("confirmed", hint(text, lang(lang, "confirmed"), null, DerbyGuiArt.CREAM, 0));
@@ -380,7 +386,7 @@ final class DerbyGui {
             throw new IllegalStateException("the help text runs into the back button (" + y + " > " + by + ")");
         }
         DerbyGuiArt.button(g, bx, by, 80, 18, true, false);
-        DerbyGuiArt.fitted(g, text, "Zurück", w / 2, by + 5, 70, DerbyGuiArt.CREAM, false, 0);
+        DerbyGuiArt.fitted(g, text, PackLang.text("Back", "Zurück"), w / 2, by + 5, 70, DerbyGuiArt.CREAM, false, 0);
         return img;
     }
 

@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "de.tigges"
-version = "0.19.0"
+version = "0.20.0"
 
 repositories {
     mavenCentral()
@@ -179,8 +179,8 @@ val packOut = layout.buildDirectory.dir("pack")
 
 val buildPack = tasks.register<JavaExec>("buildPack") {
     group = "build"
-    description = "Builds the KaboofCasino resource pack and the optional music pack into build/pack (zips, .sha1, " +
-        "gui-layout.json)."
+    description = "Builds the KaboofCasino resource packs (one per language, build/pack/en and build/pack/de: zip, " +
+        ".sha1, gui-layout.json, guide files) and the optional music pack into build/pack."
     classpath = packTool
     mainClass = "de.tigges.kaboofcasino.packtool.PackTool"
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -244,18 +244,22 @@ tasks.assemble {
 // unpacks it) lets PaperStubsTest compare src/paperStubs with the real classes. Read only.
 val paperServerJar = providers.gradleProperty("casino.paperServerJar")
 
-tasks.test {
-    useJUnitPlatform()
+/** What both test tasks share; {@code language} is the casino language the tests run in. */
+fun Test.casinoTests(language: Provider<String>) {
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     // fixtures read the mod's own files (lang, blockstates, guide) straight from the jar
     inputs.file(modJar).withPathSensitivity(PathSensitivity.NONE).withPropertyName("modJar")
     inputs.property("paperServerJar", paperServerJar.orElse(""))
+    inputs.property("language", language)
     val jarForTests = modJar
     val serverJar = paperServerJar
     jvmArgumentProviders.add(CommandLineArgumentProvider {
         listOf(
             "-Dkaboofcasino.modJar=" + jarForTests.get().asFile.absolutePath,
             "-Dkaboofcasino.paperServerJar=" + serverJar.getOrElse(""),
+            "-Dkaboofcasino.language=" + language.get(),
+            // weeks and days are calculated in a fixed zone, whatever machine the tests run on
+            "-Dkaboofcasino.time-zone=Europe/Berlin",
         )
     })
     val testTmp = layout.buildDirectory.dir("tmp/test-tmp")
@@ -266,4 +270,32 @@ tasks.test {
         showStandardStreams = true
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
+}
+
+// The whole suite runs in German: most tests compare with the mod's German texts and the German pack, as they did
+// while the plugin was German only. -Pcasino.testLanguage=en runs it in English instead (the tests tagged "german"
+// then fail by design).
+tasks.test {
+    useJUnitPlatform()
+    casinoTests(providers.gradleProperty("casino.testLanguage").orElse("de"))
+}
+
+// The same tests against the English texts and the English pack: every menu, title and preview is laid out again with
+// the English wording. Left out are the tests that assert German wording (tag "german") and the long simulations and
+// geometry sweeps, which do not depend on the language.
+val testEnglish = tasks.register<Test>("testEnglish") {
+    group = "verification"
+    description = "Runs the tests against the English texts and the English resource pack."
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform {
+        excludeTags("german")
+    }
+    exclude("**/*RtpSimulationTest*", "**/*GeometryTest*", "**/DuckDerbyRaceTest*")
+    casinoTests(providers.provider { "en" })
+    shouldRunAfter(tasks.test)
+}
+
+tasks.check {
+    dependsOn(testEnglish)
 }

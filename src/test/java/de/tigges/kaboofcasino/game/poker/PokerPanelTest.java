@@ -15,6 +15,7 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The spectator panel's lines as {@code PokerTableRenderer.extractPanel}/{@code panel} derive them. */
@@ -61,6 +62,7 @@ class PokerPanelTest {
         assertEquals(TextColor.color(0x88CF86), line(text, "gui.roulettecasino.poker.result_1").color());
     }
 
+    @Tag("german")
     @Test
     void aFoldShowsNoDealerHand() {
         PokerTableState v = hand(PokerGeometryTest.Play.FOLD, 30, PokerGeometryTest.PUSH);
@@ -90,6 +92,7 @@ class PokerPanelTest {
         assertFalse(PokerPanel.visible(CONTENT, v));
     }
 
+    @Tag("german")
     @Test
     void linesAppearInTheModsOrderAndColours() {
         Component early = PokerPanel.render(CONTENT, new PokerPanel.Hands(-1, -1, false, 0));

@@ -20,6 +20,7 @@ import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.object.PlayerHeadObjectContents;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The floating panel's content and lines as {@code DuckDerbyRenderer.extractPanel}/{@code panel}/{@code sharedPanel}
@@ -223,6 +224,7 @@ class DerbyPanelTest {
 
     // ---- line geometry -------------------------------------------------------------------------------------------------
 
+    @Tag("german")
     @Test
     void headerLineIsTheEdgeWideWithTheNameCentredOnTheBox() {
         for (int lane = 0; lane < 4; lane++) {

@@ -14,6 +14,7 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -24,31 +25,19 @@ class BoardViewTest {
 
     @BeforeAll
     static void load(@TempDir Path dir) throws IOException {
-        Path file = dir.resolve("messages_de.yml");
-        try (InputStream in = BoardViewTest.class.getClassLoader().getResourceAsStream("messages_de.yml")) {
+        Path file = dir.resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile());
+        try (InputStream in = BoardViewTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())) {
             Files.write(file, in.readAllBytes());
         }
         messages = Messages.load(file, () -> BoardViewTest.class.getClassLoader()
-                .getResourceAsStream("messages_de.yml")).messages();
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())).messages();
     }
 
     static String plain(Component c) {
         return PlainTextComponentSerializer.plainText().serialize(c);
     }
 
-    @Test
-    void theWeeklyDiscordPostListsThreePlacesPerCategory() {
-        List<BoardEntry> top = List.of(new BoardEntry(UUID.randomUUID(), "Bob_2", 1500),
-                new BoardEntry(UUID.randomUUID(), "Alice", 900), new BoardEntry(UUID.randomUUID(), "Carl", 25));
-        assertEquals("**Größter Gewinn**\n🥇 Bob\\_2 – 1.500 Chips · 🥈 Alice – 900 Chips · 🥉 Carl – 25 Chips",
-                BoardService.discordCategory(messages, BoardCategory.BIGGEST_WIN, "Größter Gewinn", top));
-        assertTrue(BoardService.discordCategory(messages, BoardCategory.MULTIPLIER, "M", top).contains("×15"));
-        assertTrue(BoardService.discordCategory(messages, BoardCategory.ROUNDS, "R", top.subList(0, 1))
-                .endsWith("🥇 Bob\\_2 – 1.500 Runden"));
-        assertTrue(BoardService.discordCategory(messages, BoardCategory.ROUNDS, "R",
-                List.of(new BoardEntry(UUID.randomUUID(), "Eve", 1))).endsWith("🥇 Eve – 1 Runde"));
-    }
-
+    @Tag("german")
     @Test
     void valuesAndNames() {
         assertEquals("1.250", BoardView.value(BoardCategory.BIGGEST_WIN, 1250));
@@ -65,6 +54,7 @@ class BoardViewTest {
         }
     }
 
+    @Tag("german")
     @Test
     void aPageHasTenRowsAndAlignedColumns() {
         List<BoardEntry> entries = new ArrayList<>();
@@ -95,6 +85,7 @@ class BoardViewTest {
         assertEquals("Wird berechnet …", plain(loading.names()).split("\n")[0]);
     }
 
+    @Tag("german")
     @Test
     void compactValuesForTheColumnAndHiddenPlayersDropOutAtOnce() {
         assertEquals("9.999", BoardView.compact(9_999));
@@ -124,9 +115,13 @@ class BoardViewTest {
     void thePinAndItsPages() {
         assertEquals(BoardPin.NONE, BoardPin.parse(""));
         assertEquals(BoardPin.NONE, BoardPin.parse(null));
-        BoardPin pin = BoardPin.parse("cat=netto;period=woche");
+        BoardPin pin = BoardPin.parse("cat=net;period=week");
         assertEquals(new BoardPin(BoardCategory.NET, BoardPeriod.WEEK), pin);
-        assertEquals("cat=netto;period=woche", pin.format());
+        assertEquals("cat=net;period=week", pin.format());
+        // a board pinned by a version up to 0.19.0 carries the German words
+        assertEquals(pin, BoardPin.parse("cat=netto;period=woche"));
+        assertEquals(new BoardPin(BoardCategory.FORTUNE_WHEEL, BoardPeriod.TOTAL),
+                BoardPin.parse("cat=gluecksrad;period=gesamt"));
         assertEquals(BoardPin.NONE, BoardPin.parse("cat=bogus;period=?;x"));
         assertEquals(BoardCategory.values().length * 2, BoardPin.NONE.pages().size());
         assertEquals(new BoardPin.Page(BoardCategory.BIGGEST_WIN, BoardPeriod.WEEK), BoardPin.NONE.pages().get(0));

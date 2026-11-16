@@ -27,7 +27,7 @@ Added by this plugin:
 
 - **Chips** as real items (1, 5, 25, 100, 500, 1000) and a **cashier** that exchanges ores for chips. Games take
   chips only.
-- A **Chip-Shop** that sells the decoration, machines and outfits for chips, and a prize shop at the cashier.
+- A **Chip Shop** that sells the decoration, machines and outfits for chips, and a prize shop at the cashier.
 - **Leaderboards** as wall boards and columns, plus `/casino top`.
 - **Multiplayer tables**: several players at one roulette or blackjack table, and No-Limit **Texas Hold'em** between
   the players at the poker table.
@@ -35,7 +35,7 @@ Added by this plugin:
 
 Stakes and winnings are items in the player's inventory. There is no virtual currency and no economy plugin is
 needed. An open round is never lost: after a logout or a server crash it is settled when the player is back, and
-winnings that do not fit into the inventory are kept and handed over later (`/casino abholen`).
+winnings that do not fit into the inventory are kept and handed over later (`/casino collect`).
 
 ## Requirements
 
@@ -56,8 +56,8 @@ winnings that do not fit into the inventory are kept and handed over later (`/ca
 4. Ask a player from outside your network to join. When they see the casino, set `pack.enforce: true` in
    `plugins/KaboofCasino/config.yml` so that nobody plays without the pack.
 
-Players get machines and decoration by crafting (the guide book shows the recipes) or from the Chip-Shop. A casino
-starts with a cashier and a Chip-Shop from an admin: `/casino give cashier` and `/casino give chip_shop`.
+Players get machines and decoration by crafting (the guide book shows the recipes) or from the Chip Shop. A casino
+starts with a cashier and a Chip Shop from an admin: `/casino give cashier` and `/casino give chip_shop`.
 
 A world that already contains mushroom blocks with unusual states (placed with commands or by old versions of the
 game) could show some of them as casino blocks. `tools/census/mushroom_census.py` counts those states in a world
@@ -80,10 +80,10 @@ Leave `resource-pack=` empty in `server.properties`.
 | --- | --- | --- |
 | `/casino` | About the plugin, your open rounds and winnings waiting for you | `kaboofcasino.use` |
 | `/casino stats` | Your own statistics | `kaboofcasino.use` |
-| `/casino top [category] [woche\|gesamt]` | Top 10 of this week or of all time | `kaboofcasino.use` |
-| `/casino bestenliste aus\|an` | Hide yourself from the leaderboards, or show yourself again | `kaboofcasino.use` |
-| `/casino abholen` | Collect winnings that did not fit into your inventory | `kaboofcasino.use` |
-| `/casino musik aus\|an` | Turn the lounge music and jukeboxes off or on for yourself | `kaboofcasino.use` |
+| `/casino top [category] [week\|total]` | Top 10 of this week or of all time | `kaboofcasino.use` |
+| `/casino leaderboard off\|on` | Hide yourself from the leaderboards, or show yourself again | `kaboofcasino.use` |
+| `/casino collect` | Collect winnings that did not fit into your inventory | `kaboofcasino.use` |
+| `/casino music off\|on` | Turn the lounge music and jukeboxes off or on for yourself | `kaboofcasino.use` |
 | `/casino credits` | Credits and licences | `kaboofcasino.use` |
 | `/casino give <item> [player] [amount]` | Give a machine or any casino item | `kaboofcasino.admin` |
 | `/casino remove` | Remove the machine you are looking at | `kaboofcasino.admin` |
@@ -95,24 +95,30 @@ win chance and to edit the shops.
 
 ## Configuration
 
-`plugins/KaboofCasino/config.yml` holds the stake limits, the win chance or card bias of every game, the exchange
-rates of the cashier, the prices of the Chip-Shop, the safety rules (no casino screen during a fight or next to a
-monster) and the pack delivery. `messages_de.yml` holds every text. Both files are commented, and the plugin adds new
-settings to them when it is updated.
+`plugins/KaboofCasino/config.yml` holds the language and time zone, the stake limits, the win chance or card bias of
+every game, the exchange rates of the cashier, the prices of the Chip Shop, the safety rules (no casino screen during
+a fight or next to a monster) and the pack delivery. `messages_en.yml` holds every text. Both files are commented, and
+the plugin adds new settings to them when it is updated.
 
 The games ship with the mod's odds. A win chance in `config.yml` overrides them per game.
 
 ## Language
 
-The plugin is German: chat messages, item names, the guide book and the labels drawn into the screens. The chat
-texts can be changed in `messages_de.yml`; the labels inside the screens are part of the resource pack. An English
-version does not exist yet.
+The casino is English or German: `language: en` (the default) or `language: de` in `config.yml`, applied at the next
+server restart. The setting covers the chat messages (`messages_en.yml` or `messages_de.yml`, both can be edited),
+the names of the plugin's own items, the number format, and the lettering on buttons and signs, which is part of the
+resource pack: the plugin carries one pack per language.
+
+Item names and texts that come from MineVegas Casino follow each player's own Minecraft language where the mod has a
+translation (twelve languages), whatever the server's setting.
+
+The commands work in both languages (`/casino collect` and `/casino abholen`); tab completion suggests the words of
+the server's language.
 
 ## Good to know
 
-- Weekly leaderboards and daily shop limits use the time zone Europe/Berlin.
-- The `discord` section of `config.yml` posts big wins through KaboofDiscord, a separate plugin that is not published.
-  Without it nothing is posted.
+- The leaderboard's weeks start on Monday 00:00 and the shops' daily limits reset at midnight, in the server's time
+  zone or the one set as `time-zone` in `config.yml`.
 - A machine belongs to the player who placed it. By default only the owner and admins can break it
   (`machines.break`).
 

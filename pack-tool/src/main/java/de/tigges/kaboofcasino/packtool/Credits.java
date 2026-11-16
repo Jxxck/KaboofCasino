@@ -23,8 +23,8 @@ final class Credits {
         title.addProperty("text", "KaboofCasino");
         title.addProperty("color", "gold");
         JsonObject rest = new JsonObject();
-        rest.addProperty("text", " von " + AUTHOR + " - Grafiken und Sounds: MineVegas Casino von byMehd (MIT), "
-                + MOD_URL);
+        rest.addProperty("text", PackLang.text(" by " + AUTHOR + " - graphics and sounds: MineVegas Casino by byMehd (MIT), ",
+                " von " + AUTHOR + " - Grafiken und Sounds: MineVegas Casino von byMehd (MIT), ") + MOD_URL);
         rest.addProperty("color", "gray");
         JsonArray extra = new JsonArray();
         extra.add(rest);

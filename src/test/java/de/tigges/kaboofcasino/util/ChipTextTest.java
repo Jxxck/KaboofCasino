@@ -2,11 +2,13 @@ package de.tigges.kaboofcasino.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The one number format: dot grouping everywhere, "1 Chip" in the singular. */
 class ChipTextTest {
 
+    @Tag("german")
     @Test
     void numbersGroupWithDots() {
         assertEquals("0", ChipText.number(0));
@@ -21,6 +23,7 @@ class ChipTextTest {
         assertEquals("2.048", de.tigges.kaboofcasino.cashier.CashierMath.format(2048));
     }
 
+    @Tag("german")
     @Test
     void chipAmountsHaveTheRightNoun() {
         assertEquals("1 Chip", ChipText.chips(1));

@@ -24,7 +24,7 @@ class TitleBuilderTest {
 
     @BeforeAll
     static void load() {
-        layout = GuiLayout.load(TitleBuilderTest.class.getClassLoader().getResourceAsStream("pack/gui-layout.json"));
+        layout = GuiLayout.load(TitleBuilderTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
     }
 
     /** One drawn run: font, start x, text. */

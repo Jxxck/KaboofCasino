@@ -28,6 +28,12 @@ final class CashierGui {
     static final String PREFIX = "cashier";
     static final String[] TABS = {"exchange", "change", "shop"};
     static final String[] TAB_LABELS = {"Wechseln", "Kleingeld", "Preise"};
+    static final String[] TAB_LABELS_EN = {"Ores", "Change", "Prizes"};
+
+    /** A tab's label in the pack's language. */
+    static String tabLabel(int tab) {
+        return PackLang.text(TAB_LABELS_EN[tab], TAB_LABELS[tab]);
+    }
     static final String TEXTURE_DIR = "assets/kaboofcasino/textures/item/gui/cashier/";
     static final String TEXTURE_ID = "kaboofcasino:item/gui/cashier/";
     static final String MODEL_DIR = "assets/kaboofcasino/models/gui/cashier/";
@@ -212,8 +218,9 @@ final class CashierGui {
     static List<String[]> labels(int tab) {
         return switch (tab) {
             case 0 -> List.<String[]>of(new String[] {"Chips:", "3"});
-            case 1 -> List.of(new String[] {"Auswahl", "1"}, new String[] {"Nennwert", "2"},
-                    new String[] {"Ergebnis", "3"});
+            case 1 -> List.of(new String[] {PackLang.text("Chosen", "Auswahl"), "1"},
+                    new String[] {PackLang.text("Value", "Nennwert"), "2"},
+                    new String[] {PackLang.text("Result", "Ergebnis"), "3"});
             default -> List.of();
         };
     }
@@ -229,7 +236,7 @@ final class CashierGui {
             if (active) {
                 g.fill(x + 2, OVERLAY_Y + TAB_H - 3, x + TAB_W - 2, OVERLAY_Y + TAB_H - 2, DerbyGuiArt.GOLD_LINE);
             }
-            String label = TAB_LABELS[t];
+            String label = tabLabel(t);
             if (text.width(label) > TAB_W - 8) {
                 throw new IllegalStateException("'" + label + "' does not fit a tab");
             }
@@ -284,9 +291,9 @@ final class CashierGui {
     static void buttons(PackTree tree, TextGlyphs text) {
         for (boolean on : new boolean[] {true, false}) {
             String state = on ? "_on" : "_off";
-            picture(tree, "exchange" + state, DerbyGui.button(text, "WECHSELN", COMMIT_W, COMMIT_H, on), COMMIT_ART,
+            picture(tree, "exchange" + state, DerbyGui.button(text, PackLang.text("EXCHANGE", "WECHSELN"), COMMIT_W, COMMIT_H, on), COMMIT_ART,
                     COMMIT_X, COMMIT_Y);
-            picture(tree, "buy" + state, DerbyGui.button(text, "KAUFEN", COMMIT_W, COMMIT_H, on), COMMIT_ART,
+            picture(tree, "buy" + state, DerbyGui.button(text, PackLang.text("BUY", "KAUFEN"), COMMIT_W, COMMIT_H, on), COMMIT_ART,
                     COMMIT_X, COMMIT_Y);
         }
         picture(tree, "clear", DerbyGui.button(text, "×", 18, 18, true), CLEAR_SLOT,
@@ -311,7 +318,7 @@ final class CashierGui {
             texture(tree, "digit_" + d, img);
         }
         BufferedImage dot = Images.blank(2, NUM_H);
-        BlackjackGuiText.draw(dot, text, DOT, 0, 0, DerbyGuiArt.CREAM, false, true);
+        BlackjackGuiText.draw(dot, text, PackLang.text(",", DOT), 0, 0, DerbyGuiArt.CREAM, false, true);
         texture(tree, "dot", dot);
         int width = NUM_RIGHT - numLeft();
         texture(tree, "spacer", Images.blank(width, NUM_H)); // one texel per pixel like every picture

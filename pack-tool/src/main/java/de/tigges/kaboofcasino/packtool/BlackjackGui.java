@@ -19,7 +19,7 @@ import java.util.List;
  *   <li>totals ({@code badge_<n>}, slot 17 for the dealer at window (198, 2), slot 35 for the player at (198, 38)):
  *       the mod's 23x11 badge, bold total in yellow, red above 21;</li>
  *   <li>status and result lines ({@code status_<1..5>}, {@code result_<1..8>}, slot 40): centred on window x 88, cap
- *       top 93, German texts from the mod's de_de.json in the mod's colours and weights;</li>
+ *       top 93, texts from the mod's lang file of the pack's language in the mod's colours and weights;</li>
  *   <li>the timer bar ({@code bar}, slot 39): {@code range_dispatch} on custom model data float 0 = filled pixels
  *       (1..136) at window (20, 102), colour = custom model data colour 0;</li>
  *   <li>"x2" ({@code doubled}, slot 34) right-aligned at window x 220 on the stake row; the result labels
@@ -102,7 +102,7 @@ final class BlackjackGui {
         for (GuiFont.Anchor a : anchors()) {
             font.anchor(a);
         }
-        JsonObject lang = Json.parse(jar.bytes("assets/roulettecasino/lang/de_de.json"));
+        JsonObject lang = Json.parse(jar.bytes(PackLang.current().modLangPath("roulettecasino")));
         SlotMachineGui.button(tree, text, "blackjack/deal_on", lang(lang, "deal"), true, 14, 4.5, 11.5);
         SlotMachineGui.button(tree, text, "blackjack/deal_off", lang(lang, "deal"), false, 14, 4.5, 11.5);
         BlackjackGuiItems.texture(tree, "clear", Images.blank(16, 16));
@@ -123,7 +123,7 @@ final class BlackjackGui {
     static String lang(JsonObject lang, String key) {
         String full = "gui.roulettecasino.blackjack." + key;
         if (!lang.has(full)) {
-            throw new IllegalStateException("de_de.json lacks " + full);
+            throw new IllegalStateException("the mod's " + PackLang.current().modCode() + ".json lacks " + full);
         }
         return lang.get(full).getAsString();
     }

@@ -1,5 +1,6 @@
 package de.tigges.kaboofcasino.board;
 
+import de.tigges.kaboofcasino.config.Language;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.config.Msg;
 import de.tigges.kaboofcasino.util.ChipText;
@@ -33,18 +34,18 @@ public final class BoardView {
 
     public static Msg categoryMsg(BoardCategory c) {
         return switch (c) {
-            case BIGGEST_WIN -> Msg.BOARD_CAT_GEWINN;
-            case MULTIPLIER -> Msg.BOARD_CAT_MULTIPLIKATOR;
-            case NET -> Msg.BOARD_CAT_NETTO;
-            case STAKED -> Msg.BOARD_CAT_EINSATZ;
-            case ROUNDS -> Msg.BOARD_CAT_RUNDEN;
-            case SLOT_MACHINE -> Msg.BOARD_CAT_SPIELAUTOMAT;
-            case FORTUNE_WHEEL -> Msg.BOARD_CAT_GLUECKSRAD;
+            case BIGGEST_WIN -> Msg.BOARD_CAT_WIN;
+            case MULTIPLIER -> Msg.BOARD_CAT_MULTIPLIER;
+            case NET -> Msg.BOARD_CAT_NET;
+            case STAKED -> Msg.BOARD_CAT_STAKED;
+            case ROUNDS -> Msg.BOARD_CAT_ROUNDS;
+            case SLOT_MACHINE -> Msg.BOARD_CAT_SLOTS;
+            case FORTUNE_WHEEL -> Msg.BOARD_CAT_WHEEL;
             case PLINKO -> Msg.BOARD_CAT_PLINKO;
             case ROULETTE -> Msg.BOARD_CAT_ROULETTE;
             case BLACKJACK -> Msg.BOARD_CAT_BLACKJACK;
             case POKER -> Msg.BOARD_CAT_POKER;
-            case DERBY -> Msg.BOARD_CAT_ENTENRENNEN;
+            case DERBY -> Msg.BOARD_CAT_DERBY;
         };
     }
 
@@ -73,23 +74,26 @@ public final class BoardView {
         }
         long whole = v / 100;
         long frac = v % 100;
-        String f = frac == 0 ? "" : frac % 10 == 0 ? "," + frac / 10 : "," + (frac < 10 ? "0" : "") + frac;
+        char dec = Language.current().decimal();
+        String f = frac == 0 ? "" : frac % 10 == 0 ? dec + "" + frac / 10 : dec + (frac < 10 ? "0" : "") + frac;
         return "×" + ChipText.number(whole) + f;
     }
 
     /**
-     * A big number short, never rounded up: up to 9.999 as it is, then "12,3 Tsd.", "123 Tsd.", "1,2 Mio.",
-     * "123 Mio.".
+     * A big number short, never rounded up: up to 9,999 as it is, then "12.3k", "123k", "1.2M", "123M" (German:
+     * "12,3 Tsd.", "123 Tsd.", "1,2 Mio.", "123 Mio.").
      */
     public static String compact(long v) {
         if (v < 10_000) {
             return ChipText.number(v);
         }
+        Language l = Language.current();
         if (v < 1_000_000) {
-            return v < 100_000 ? (v / 1000) + "," + (v / 100 % 10) + " Tsd." : ChipText.number(v / 1000) + " Tsd.";
+            return (v < 100_000 ? (v / 1000) + "" + l.decimal() + (v / 100 % 10) : ChipText.number(v / 1000))
+                    + l.thousands();
         }
-        return v < 100_000_000 ? (v / 1_000_000) + "," + (v / 100_000 % 10) + " Mio."
-                : ChipText.number(v / 1_000_000) + " Mio.";
+        return (v < 100_000_000 ? (v / 1_000_000) + "" + l.decimal() + (v / 100_000 % 10)
+                : ChipText.number(v / 1_000_000)) + l.millions();
     }
 
     public static TextColor rankColor(int rank) {

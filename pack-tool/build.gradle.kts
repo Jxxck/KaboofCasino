@@ -52,6 +52,9 @@ tasks.test {
             "-Dkaboofcasino.modJarSha1=" + sha1.get(),
             "-Dkaboofcasino.packSrc=" + src.asFile.absolutePath,
             "-Dkaboofcasino.clientJar=" + client.getOrElse(""),
+            // the tests compare with the German pack, as they did while the plugin was German only;
+            // PackLanguageTest builds the English one
+            "-Dkaboofcasino.language=de",
         )
     })
     testLogging {

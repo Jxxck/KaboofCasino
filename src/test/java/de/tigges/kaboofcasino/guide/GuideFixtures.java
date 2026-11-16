@@ -38,7 +38,7 @@ final class GuideFixtures {
 
     static synchronized GuideBook book() {
         if (book == null) {
-            book = GuideBook.load(GuideFixtures.class.getClassLoader().getResourceAsStream(GuideBook.RESOURCE));
+            book = GuideBook.load(GuideFixtures.class.getClassLoader().getResourceAsStream(GuideBook.resource()));
         }
         return book;
     }
@@ -47,7 +47,7 @@ final class GuideFixtures {
     static synchronized RecipePictures pictures() {
         if (pictures == null) {
             pictures = RecipePictures.load(
-                    GuideFixtures.class.getClassLoader().getResourceAsStream(RecipePictures.RESOURCE));
+                    GuideFixtures.class.getClassLoader().getResourceAsStream(RecipePictures.resource()));
         }
         return pictures;
     }
@@ -112,7 +112,7 @@ final class GuideFixtures {
         if (key == null) {
             return Component.translatable(id);
         }
-        String text = book().german(key);
+        String text = book().text(key);
         return text == null ? Component.translatable(key) : Component.translatable(key, text);
     }
 

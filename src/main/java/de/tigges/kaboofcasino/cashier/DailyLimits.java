@@ -2,7 +2,6 @@ package de.tigges.kaboofcasino.cashier;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -12,15 +11,14 @@ import java.util.regex.Pattern;
 /**
  * How often a player bought each limited prize today (PLAN-2 C3: "Limit pro Spieler und Tag"). Kept in the player's
  * PDC ({@code kaboofcasino:shop_limits}), i.e. in the same file as his inventory, so a crash rolls a purchase and its
- * count back together. One string {@code 1|2026-11-08|<key>=<n>,<key>=<n>}; a stored day other than today (Berlin)
- * reads as empty, so the counts start afresh at midnight without any timer. Immutable, pure.
+ * count back together. One string {@code 1|2026-11-08|<key>=<n>,<key>=<n>}; a stored day other than today (in the
+ * casino's time zone) reads as empty, so the counts start afresh at midnight without any timer. Immutable, pure.
  *
- * @param day    the Berlin date the counts belong to
+ * @param day    the date the counts belong to
  * @param counts purchases per {@link ShopEntry#key()}
  */
 public record DailyLimits(LocalDate day, Map<String, Integer> counts) {
 
-    public static final ZoneId BERLIN = ZoneId.of("Europe/Berlin");
     static final String VERSION = "1";
     private static final Pattern KEY = Pattern.compile("[0-9a-f]{16}");
 
@@ -29,9 +27,9 @@ public record DailyLimits(LocalDate day, Map<String, Integer> counts) {
         counts = Map.copyOf(counts);
     }
 
-    /** The Berlin date of an instant (the limits' day). */
+    /** The date of an instant in the casino's time zone (the limits' day). */
     public static LocalDate day(Instant now) {
-        return LocalDate.ofInstant(now, BERLIN);
+        return LocalDate.ofInstant(now, de.tigges.kaboofcasino.config.Language.zone());
     }
 
     public static DailyLimits empty(LocalDate today) {

@@ -263,15 +263,20 @@ public final class GuideDialogs {
     static final int CAPTION_PX = 240;
     /** The short shapeless marker in front of the name (the mod's "Formloses Rezept" made the long names too wide). */
     static final String SHAPELESS_MARK = "Formlos";
+    static final String SHAPELESS_MARK_EN = "Shapeless";
+
+    static String shapelessMark() {
+        return de.tigges.kaboofcasino.config.Language.text(SHAPELESS_MARK_EN, SHAPELESS_MARK);
+    }
 
     /**
      * The result's name, for a shapeless recipe "Formlos · Name". A caption wider than {@link #CAPTION_PX} (by its
      * German name) is cut with "…"; the result icon's tooltip has the full name.
      */
     Component caption(Recipe r, GuideTexts texts) {
-        String mark = r.shapeless() ? SHAPELESS_MARK + " · " : "";
+        String mark = r.shapeless() ? shapelessMark() + " · " : "";
         String key = book.nameKey(r.result());
-        String german = key != null ? book.german(key) : null;
+        String german = key != null ? book.text(key) : null;
         Component name = name(r.result(), texts);
         if (german != null && FontWidth.width(mark + german) > CAPTION_PX) {
             name = Component.text(FontWidth.fit(german, CAPTION_PX - FontWidth.width(mark)));
@@ -330,7 +335,7 @@ public final class GuideDialogs {
 
     /** A mod text: translatable with the mod's German text as fallback. */
     Component tr(String key) {
-        String german = book.german(key);
+        String german = book.text(key);
         return german != null ? Component.translatable(key, german) : Component.translatable(key);
     }
 

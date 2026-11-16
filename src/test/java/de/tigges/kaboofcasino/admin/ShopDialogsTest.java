@@ -20,6 +20,7 @@ import java.util.Optional;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -34,12 +35,12 @@ class ShopDialogsTest {
 
     @BeforeAll
     static void load(@TempDir Path dir) throws IOException {
-        Path file = dir.resolve("messages_de.yml");
-        try (InputStream in = ShopDialogsTest.class.getClassLoader().getResourceAsStream("messages_de.yml")) {
+        Path file = dir.resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile());
+        try (InputStream in = ShopDialogsTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())) {
             Files.write(file, in.readAllBytes());
         }
         messages = Messages.load(file, () -> ShopDialogsTest.class.getClassLoader()
-                .getResourceAsStream("messages_de.yml")).messages();
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())).messages();
     }
 
     static String plain(Component c) {
@@ -78,6 +79,7 @@ class ShopDialogsTest {
                 k -> values.get(k) instanceof Boolean b ? b : null);
     }
 
+    @Tag("german")
     @Test
     void theDialogShowsAPageOfPrizesAndTheOffHandItem() {
         ShopDialogs.View v = view(shop(8), 0, "minecraft:diamond_sword");
@@ -107,6 +109,7 @@ class ShopDialogsTest {
                 .anyMatch(b -> b.action() == ShopClick.Action.ADD));
     }
 
+    @Tag("german")
     @Test
     void anOffHandItemWithChipsSaysWhyItCannotBeAPrize() {
         ShopDialogs.View none = view(shop(2), 0, null);

@@ -16,7 +16,7 @@ import java.util.TreeSet;
  *   <li>{@code book}: the mod's {@code assets/roulettecasino/casino_guide.json} (format 2) unchanged;</li>
  *   <li>{@code names}: for every casino item id the guide shows (tiles, items, chips, recipe cells and results, scene
  *       blocks, tabs, index) the lang key of its name ({@code block.<ns>.<id>}, else {@code item.<ns>.<id>});</li>
- *   <li>{@code de}: the German text (the mod's {@code de_de.json} of its three namespaces) of every lang key the
+ *   <li>{@code texts}: the text in the pack's language (the mod's lang file of its three namespaces) of every lang key the
  *       dialogs use: widget keys, tab labels, the screen's buttons, the shapeless hint, the guide's own name, the
  *       croupier and the item names above. The dialogs send these keys as translatable components with the German
  *       text as fallback, so the pack's language files win.</li>
@@ -71,7 +71,7 @@ final class GuideData {
             String key = german.containsKey("block." + ns + "." + path) ? "block." + ns + "." + path
                     : "item." + ns + "." + path;
             if (!german.containsKey(key)) {
-                throw new IllegalStateException("the guide shows " + id + ", which has no name in de_de.json");
+                throw new IllegalStateException("the guide shows " + id + ", which has no name in the mod's lang file");
             }
             names.addProperty(id, key);
             keys.add(key);
@@ -80,7 +80,7 @@ final class GuideData {
         for (String key : keys) {
             String text = german.get(key);
             if (text == null) {
-                throw new IllegalStateException("the guide uses " + key + ", which de_de.json does not have");
+                throw new IllegalStateException("the guide uses " + key + ", which the mod's lang file does not have");
             }
             de.addProperty(key, text);
         }
@@ -88,7 +88,7 @@ final class GuideData {
         out.addProperty("format", 1);
         out.add("book", book);
         out.add("names", names);
-        out.add("de", de);
+        out.add("texts", de);
         return out;
     }
 
@@ -133,11 +133,16 @@ final class GuideData {
         }
     }
 
-    /** The mod's German texts of its three namespaces. */
+    /** The mod's texts of its three namespaces in the pack's language ({@link PackLang}). */
     static Map<String, String> german(ModJar jar) {
+        return texts(jar, PackLang.current());
+    }
+
+    /** The mod's texts of its three namespaces in one language. */
+    static Map<String, String> texts(ModJar jar, PackLang lang) {
         Map<String, String> out = new TreeMap<>();
         for (String ns : NAMESPACES) {
-            String path = "assets/" + ns + "/lang/de_de.json";
+            String path = lang.modLangPath(ns);
             for (Map.Entry<String, JsonElement> e : Json.parse(jar.bytes(path)).entrySet()) {
                 out.put(e.getKey(), e.getValue().getAsString());
             }

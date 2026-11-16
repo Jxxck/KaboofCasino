@@ -25,7 +25,17 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
                            Lights lights, Music music,
                            de.tigges.kaboofcasino.cashier.CashierSettings cashier, Leaderboard leaderboard,
                            de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop, Jukebox jukebox,
-                           Discord discord) {
+                           Region region) {
+
+    /** The config without {@code language:} and {@code time-zone:} (tests built before them). */
+    public CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
+                        Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker, Slot derby,
+                        Lights lights, Music music, de.tigges.kaboofcasino.cashier.CashierSettings cashier,
+                        Leaderboard leaderboard, de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop,
+                        Jukebox jukebox) {
+        this(pack, bets, rounds, owed, machines, safety, gui, slot, wheel, plinko, roulette, blackjack, poker, derby,
+                lights, music, cashier, leaderboard, chipshop, jukebox, Region.DEFAULTS);
+    }
 
     /** The config without a {@code jukebox:} section (tests built before the jukebox). */
     public CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
@@ -33,32 +43,24 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
                         Lights lights, Music music, de.tigges.kaboofcasino.cashier.CashierSettings cashier,
                         Leaderboard leaderboard, de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop) {
         this(pack, bets, rounds, owed, machines, safety, gui, slot, wheel, plinko, roulette, blackjack, poker, derby,
-                lights, music, cashier, leaderboard, chipshop, Jukebox.DEFAULTS, Discord.DEFAULTS);
-    }
-
-    /** The config without a {@code discord:} section (tests built before the Discord posts). */
-    public CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machines machines, Safety safety, Gui gui,
-                        Slot slot, Slot wheel, Slot plinko, Slot roulette, Blackjack blackjack, Poker poker, Slot derby,
-                        Lights lights, Music music, de.tigges.kaboofcasino.cashier.CashierSettings cashier,
-                        Leaderboard leaderboard, de.tigges.kaboofcasino.chipshop.ChipShopSettings chipshop,
-                        Jukebox jukebox) {
-        this(pack, bets, rounds, owed, machines, safety, gui, slot, wheel, plinko, roulette, blackjack, poker, derby,
-                lights, music, cashier, leaderboard, chipshop, jukebox, Discord.DEFAULTS);
+                lights, music, cashier, leaderboard, chipshop, Jukebox.DEFAULTS, Region.DEFAULTS);
     }
 
     /**
-     * {@code discord:} posts through KaboofDiscord (Jack 2026-11-11), if that plugin is there and its
-     * {@code events.casino} is on. Players hidden from the leaderboard never appear.
+     * {@code language:} and {@code time-zone:} at the top of the file.
      *
-     * @param bigWins         a single bet that pays at least {@code multiplier} times its stake and at least
-     *                        {@code minChips} chips is posted
-     * @param multiplier      2..10000
-     * @param minChips        0..10 million
-     * @param cooldownSeconds a player's next big win is posted only after this many seconds (0..86400)
-     * @param weekly          after each week (Monday 00:00 Berlin) its top 3 per leaderboard category are posted once
+     * @param language the casino's language (texts, item names, number format, resource pack); a change needs a
+     *                 restart
+     * @param zone     the zone of the leaderboard's weeks (from Monday 00:00) and the shops' daily limits;
+     *                 {@code system} in the file is the server's own zone
      */
-    public record Discord(boolean bigWins, int multiplier, int minChips, int cooldownSeconds, boolean weekly) {
-        public static final Discord DEFAULTS = new Discord(true, 50, 250, 300, true);
+    public record Region(Language language, java.time.ZoneId zone) {
+        public static final Region DEFAULTS = new Region(Language.EN, java.time.ZoneId.systemDefault());
+
+        public Region {
+            Objects.requireNonNull(language);
+            Objects.requireNonNull(zone);
+        }
     }
 
     /**
@@ -79,7 +81,7 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
      * @param cycleSeconds   a board without a pinned category turns to the next page every so many seconds (0 = only
      *                       by right click; 5..600)
      * @param minStake       the multiplier category counts rounds from this chip stake on (1..1 000 000)
-     * @param weeklyLog      after a week (Monday 00:00 Berlin) its winners go to the server log once
+     * @param weeklyLog      after a week (Monday 00:00) its winners go to the server log once
      */
     public record Leaderboard(boolean craftable, int refreshSeconds, int cycleSeconds, int minStake,
                               boolean weeklyLog) {
@@ -268,5 +270,6 @@ public record CasinoConfig(Pack pack, Bets bets, Rounds rounds, Owed owed, Machi
             new Music(true),
             de.tigges.kaboofcasino.cashier.CashierSettings.DEFAULTS,
             new Leaderboard(false, 30, 15, 25, true),
-            de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULTS, Jukebox.DEFAULTS, Discord.DEFAULTS);
+            de.tigges.kaboofcasino.chipshop.ChipShopSettings.DEFAULTS, Jukebox.DEFAULTS,
+            Region.DEFAULTS);
 }

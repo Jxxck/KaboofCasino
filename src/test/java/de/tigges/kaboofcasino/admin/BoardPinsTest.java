@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -24,14 +25,15 @@ class BoardPinsTest {
 
     @BeforeAll
     static void load(@TempDir Path dir) throws IOException {
-        Path file = dir.resolve("messages_de.yml");
-        try (InputStream in = BoardPinsTest.class.getClassLoader().getResourceAsStream("messages_de.yml")) {
+        Path file = dir.resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile());
+        try (InputStream in = BoardPinsTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())) {
             Files.write(file, in.readAllBytes());
         }
         messages = Messages.load(file, () -> BoardPinsTest.class.getClassLoader()
-                .getResourceAsStream("messages_de.yml")).messages();
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())).messages();
     }
 
+    @Tag("german")
     @Test
     void theDialogListsEveryChoiceAndMarksTheCurrentOnes() {
         BoardPins.View v = BoardPins.view(3, new BoardPin(BoardCategory.POKER, null), messages);

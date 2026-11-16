@@ -25,7 +25,7 @@ import net.kyori.adventure.text.format.TextDecoration;
  * added then); the result shows from {@code resultAt + 4}.
  *
  * <p>The words are the mod's translation keys (in the pack for all twelve languages, so every client reads its own
- * language like in the mod) with the German {@code de_de.json} text as fallback for a client without the pack.
+ * language like in the mod) with the mod's text in the casino's language as fallback for a client without the pack.
  */
 public final class PokerPanel {
 
@@ -44,6 +44,18 @@ public final class PokerPanel {
         "Full House", "Vierling", "Straight Flush", "Royal Flush"};
     static final String[] RESULTS = {"", "GEWONNEN!", "CROUPIER SPIELT NICHT", "UNENTSCHIEDEN", "VERLOREN",
         "AUSGESTIEGEN"};
+    /** English fallbacks ({@code en_us.json}). */
+    static final String YOU_EN = "YOU";
+    static final String DEALER_EN = "DEALER";
+    static final String[] HANDS_EN = {"High card", "Pair", "Two pair", "Three of a kind", "Straight", "Flush",
+        "Full house", "Four of a kind", "Straight flush", "Royal flush"};
+    static final String[] RESULTS_EN = {"", "YOU WIN!", "DEALER DOESN'T QUALIFY", "PUSH", "YOU LOSE", "FOLDED"};
+
+    /** A hand category's name in the casino's language ("Straight" / "Straße"). */
+    public static String hand(int category) {
+        int c = Math.max(0, Math.min(HANDS.length - 1, category));
+        return de.tigges.kaboofcasino.config.Language.text(HANDS_EN[c], HANDS[c]);
+    }
     /** {@code PokerTableRenderState.STAKES}. */
     static final int STAKES = 3;
     /** {@code extractPanel} 118, 120: a card counts this long after its deal, a flipping card is hidden this long. */
@@ -125,7 +137,7 @@ public final class PokerPanel {
     /** {@code PokerScreen.handName}: {@code gui.roulettecasino.poker.hand_<category>}. */
     static Component handName(int category) {
         int c = Math.max(0, Math.min(HANDS.length - 1, category));
-        return word("gui.roulettecasino.poker.hand_" + c, HANDS[c]);
+        return word("gui.roulettecasino.poker.hand_" + c, hand(c));
     }
 
     /**
@@ -139,18 +151,19 @@ public final class PokerPanel {
                 .append(PanelText.stakes(content.stakes().subList(0, Math.min(STAKES, content.stakes().size()))));
         if (hands.player() >= 0) {
             text.append(nl).append(Component.text()
-                    .append(word(YOU_KEY, YOU)).append(Component.text(" ")).append(handName(hands.player()))
+                    .append(word(YOU_KEY, de.tigges.kaboofcasino.config.Language.text(YOU_EN, YOU))).append(Component.text(" ")).append(handName(hands.player()))
                     .color(GOLD).build());
             if (hands.dealer() >= 0) {
                 text.append(nl).append(Component.text()
-                        .append(word(DEALER_KEY, DEALER)).append(Component.text(" ")).append(handName(hands.dealer()))
+                        .append(word(DEALER_KEY, de.tigges.kaboofcasino.config.Language.text(DEALER_EN, DEALER))).append(Component.text(" ")).append(handName(hands.dealer()))
                         .color(hands.qualifies() ? PanelText.WHITE : RED).build());
             }
         }
         if (hands.result() != 0) {
             int code = Math.max(0, Math.min(hands.result(), RESULT_COLORS.length - 1));
             text.append(nl).append(Component.text()
-                    .append(word("gui.roulettecasino.poker.result_" + code, RESULTS[code]))
+                    .append(word("gui.roulettecasino.poker.result_" + code,
+                            de.tigges.kaboofcasino.config.Language.text(RESULTS_EN[code], RESULTS[code])))
                     .color(TextColor.color(RESULT_COLORS[code])).decorate(TextDecoration.BOLD).build());
         }
         return text.build();

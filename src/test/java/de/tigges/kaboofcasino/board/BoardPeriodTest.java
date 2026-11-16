@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class BoardPeriodTest {
 
     static long berlin(int y, int mo, int d, int h, int mi) {
-        return ZonedDateTime.of(y, mo, d, h, mi, 0, 0, BoardPeriod.ZONE).toInstant().toEpochMilli();
+        return ZonedDateTime.of(y, mo, d, h, mi, 0, 0, de.tigges.kaboofcasino.config.Language.zone()).toInstant().toEpochMilli();
     }
 
     @Test

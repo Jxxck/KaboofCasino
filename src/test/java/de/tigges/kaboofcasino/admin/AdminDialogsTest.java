@@ -12,6 +12,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -34,6 +35,7 @@ class AdminDialogsTest {
         return values;
     }
 
+    @Tag("german")
     @Test
     void slotMachineFollowingItsType() {
         String expected = """
@@ -53,6 +55,7 @@ class AdminDialogsTest {
                 null, false, false))));
     }
 
+    @Tag("german")
     @Test
     void namedSlotMachineWithItsOwnChanceACopyAndAResetQuestion() {
         String expected = """
@@ -76,6 +79,7 @@ class AdminDialogsTest {
                 MachineSettings.INHERIT_BIAS), 30, true, AdminClick.Kind.RESET, true, false))));
     }
 
+    @Tag("german")
     @Test
     void blackjackTableInTheNether() {
         String expected = """
@@ -101,6 +105,7 @@ class AdminDialogsTest {
                 1, MachineSettings.Own.NONE, -20, 0, 70, 0, "minecraft:the_nether", false, null, false, false))));
     }
 
+    @Tag("german")
     @Test
     void rouletteAndDerbyCarryTheirNotes() {
         String roulette = AdminFixtures.describe(AdminDialogs.machine(new MachineData(MachineType.ROULETTE_TABLE, 2,
@@ -119,6 +124,7 @@ class AdminDialogsTest {
         assertTrue(derby.contains("button Zurücksetzen -> {do:\"reset\"}"), derby);
     }
 
+    @Tag("german")
     @Test
     void theWholeCasino() {
         Map<MachineType, Integer> values = natural();

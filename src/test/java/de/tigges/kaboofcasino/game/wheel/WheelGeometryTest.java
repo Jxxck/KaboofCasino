@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 class WheelGeometryTest {
 
     static byte[] packEntry(String path) throws IOException {
-        try (InputStream in = WheelGeometryTest.class.getClassLoader().getResourceAsStream("pack/KaboofCasino-pack.zip");
+        try (InputStream in = WheelGeometryTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("KaboofCasino-pack.zip"));
              ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry e;
             while ((e = zip.getNextEntry()) != null) {

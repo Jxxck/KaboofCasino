@@ -20,6 +20,9 @@ import net.kyori.adventure.key.Key;
  */
 public final class GuiLayout {
 
+    /** The file the pack tool writes for each language ({@code Language.packResource}). */
+    public static final String FILE = "gui-layout.json";
+
     /** A named position of a screen: window x (left, centre or right edge per align) and y (cap top). */
     public record Anchor(String name, int x, int y, TitleBuilder.Align align) {
     }

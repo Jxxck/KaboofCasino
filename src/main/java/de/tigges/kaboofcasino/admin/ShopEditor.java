@@ -234,7 +234,8 @@ final class ShopEditor implements Listener {
         } else if (!changes.lines().isEmpty()) {
             int n = changes.lines().size();
             m.actionBar(player, Msg.SHOP_ADMIN_SAVED, Messages.text("changes",
-                    ChipText.number(n) + (n == 1 ? " Änderung" : " Änderungen")));
+                    ChipText.number(n) + " " + de.tigges.kaboofcasino.config.Language.text(n == 1 ? "change"
+                            : "changes", n == 1 ? "Änderung" : "Änderungen")));
         }
         int pages = ShopDialogs.pages(changes.after().size());
         int page = switch (click.action()) {

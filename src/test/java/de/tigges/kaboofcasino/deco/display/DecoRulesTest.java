@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Material;
 import org.bukkit.block.BlockFace;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -334,6 +335,7 @@ class DecoRulesTest {
     }
 
     /** German fallback names, used when a client lacks the pack's language file. */
+    @Tag("german")
     @Test
     void namesAndKeys() {
         assertEquals("block.roulettecasino.casino_chair", DecoType.CASINO_CHAIR.translationKey());

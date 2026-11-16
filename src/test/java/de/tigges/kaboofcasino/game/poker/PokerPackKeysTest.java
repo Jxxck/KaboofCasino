@@ -79,4 +79,27 @@ class PokerPackKeysTest {
         assertEquals("Royal flush", english.get("gui.roulettecasino.poker.hand_9").getAsString());
         assertEquals("DEALER DOESN'T QUALIFY", english.get("gui.roulettecasino.poker.result_2").getAsString());
     }
+
+    @Test
+    void theEnglishPanelWordsAreTheModsToo() {
+        java.util.Map<String, String> en = de.tigges.kaboofcasino.TestModJar.lang("en_us");
+        assertEquals(en.get(PokerPanel.YOU_KEY), PokerPanel.YOU_EN);
+        assertEquals(en.get(PokerPanel.DEALER_KEY), PokerPanel.DEALER_EN);
+        for (int hand = 0; hand < PokerHands.CATEGORIES; hand++) {
+            assertEquals(en.get("gui.roulettecasino.poker.hand_" + hand), PokerPanel.HANDS_EN[hand]);
+        }
+        for (int code = 1; code <= 5; code++) {
+            assertEquals(en.get("gui.roulettecasino.poker.result_" + code), PokerPanel.RESULTS_EN[code]);
+        }
+        de.tigges.kaboofcasino.config.Language before = de.tigges.kaboofcasino.config.Language.current();
+        try {
+            de.tigges.kaboofcasino.config.Language.use(de.tigges.kaboofcasino.config.Language.EN);
+            assertEquals("Straight", PokerPanel.hand(4));
+            assertEquals("Royal flush", PokerPanel.hand(99));
+            de.tigges.kaboofcasino.config.Language.use(de.tigges.kaboofcasino.config.Language.DE);
+            assertEquals("Straße", PokerPanel.hand(4));
+        } finally {
+            de.tigges.kaboofcasino.config.Language.use(before);
+        }
+    }
 }

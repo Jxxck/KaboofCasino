@@ -47,35 +47,48 @@ public final class Outfits {
         }
     }
 
-    /** An outfit: its id (the pack's {@code OutfitArt} styles), recipe wool and accent, the names of the four pieces. */
+    /**
+     * An outfit: its id (the pack's {@code OutfitArt} styles), recipe wool and accent, the names of the four pieces in
+     * German and in English.
+     */
     public enum Style {
-        SMOKING("smoking", "minecraft:black_wool", "minecraft:white_wool", "Zylinder", "Smoking-Jackett",
-                "Smoking-Hose", "Lackschuhe"),
-        CROUPIER("croupier", "minecraft:green_wool", "minecraft:gold_nugget", "Croupier-Schirm", "Croupier-Weste",
-                "Croupier-Hose", "Croupier-Schuhe"),
-        RUBIN("rubin", "minecraft:red_wool", "minecraft:black_wool", "Rubin-Fedora", "Rubin-Samtjackett",
-                "Rubin-Anzughose", "Rubin-Schuhe"),
-        SAPHIR("saphir", "minecraft:blue_wool", "minecraft:gold_nugget", "Saphir-Fedora", "Saphir-Jackett",
-                "Saphir-Anzughose", "Saphir-Schuhe"),
-        ELFENBEIN("elfenbein", "minecraft:white_wool", "minecraft:black_wool", "Panama-Hut", "Dinner-Jackett",
-                "Dinner-Hose", "Zweifarbige Schuhe"),
-        HIGHROLLER("highroller", "minecraft:white_wool", "minecraft:gold_ingot", "Goldener Zylinder",
-                "High-Roller-Jackett", "High-Roller-Hose", "Goldene Schuhe"),
-        ABENDKLEID("abendkleid", "minecraft:red_wool", "minecraft:gold_nugget", "Diadem", "Abendkleid",
-                "Abendkleid-Rock", "Goldene Pumps");
+        SMOKING("smoking", "minecraft:black_wool", "minecraft:white_wool",
+                List.of("Zylinder", "Smoking-Jackett", "Smoking-Hose", "Lackschuhe"),
+                List.of("Top Hat", "Tuxedo Jacket", "Tuxedo Trousers", "Patent Leather Shoes")),
+        CROUPIER("croupier", "minecraft:green_wool", "minecraft:gold_nugget",
+                List.of("Croupier-Schirm", "Croupier-Weste", "Croupier-Hose", "Croupier-Schuhe"),
+                List.of("Croupier Visor", "Croupier Vest", "Croupier Trousers", "Croupier Shoes")),
+        RUBIN("rubin", "minecraft:red_wool", "minecraft:black_wool",
+                List.of("Rubin-Fedora", "Rubin-Samtjackett", "Rubin-Anzughose", "Rubin-Schuhe"),
+                List.of("Ruby Fedora", "Ruby Velvet Jacket", "Ruby Suit Trousers", "Ruby Shoes")),
+        SAPHIR("saphir", "minecraft:blue_wool", "minecraft:gold_nugget",
+                List.of("Saphir-Fedora", "Saphir-Jackett", "Saphir-Anzughose", "Saphir-Schuhe"),
+                List.of("Sapphire Fedora", "Sapphire Jacket", "Sapphire Suit Trousers", "Sapphire Shoes")),
+        ELFENBEIN("elfenbein", "minecraft:white_wool", "minecraft:black_wool",
+                List.of("Panama-Hut", "Dinner-Jackett", "Dinner-Hose", "Zweifarbige Schuhe"),
+                List.of("Panama Hat", "Dinner Jacket", "Dinner Trousers", "Two-Tone Shoes")),
+        HIGHROLLER("highroller", "minecraft:white_wool", "minecraft:gold_ingot",
+                List.of("Goldener Zylinder", "High-Roller-Jackett", "High-Roller-Hose", "Goldene Schuhe"),
+                List.of("Golden Top Hat", "High Roller Jacket", "High Roller Trousers", "Golden Shoes")),
+        ABENDKLEID("abendkleid", "minecraft:red_wool", "minecraft:gold_nugget",
+                List.of("Diadem", "Abendkleid", "Abendkleid-Rock", "Goldene Pumps"),
+                List.of("Tiara", "Evening Gown", "Evening Gown Skirt", "Golden Pumps"));
 
         private final String id;
         private final String wool;
         private final String accent;
-        private final List<String> names;
+        private final List<String> german;
+        private final List<String> english;
 
-        Style(String id, String wool, String accent, String... names) {
+        Style(String id, String wool, String accent, List<String> german, List<String> english) {
             this.id = id;
             this.wool = wool;
             this.accent = accent;
-            this.names = List.of(names);
+            this.german = german;
+            this.english = english;
         }
 
+        /** The id in item ids and pack files (kept as first released: items in the world carry it). */
         public String id() {
             return id;
         }
@@ -88,8 +101,18 @@ public final class Outfits {
             return accent;
         }
 
+        /** The piece's name in the casino's language. */
         public String name(Piece piece) {
-            return names.get(piece.ordinal());
+            return de.tigges.kaboofcasino.config.Language.text(english.get(piece.ordinal()),
+                    german.get(piece.ordinal()));
+        }
+
+        public String germanName(Piece piece) {
+            return german.get(piece.ordinal());
+        }
+
+        public String englishName(Piece piece) {
+            return english.get(piece.ordinal());
         }
     }
 

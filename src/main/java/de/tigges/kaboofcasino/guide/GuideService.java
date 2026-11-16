@@ -52,20 +52,20 @@ public final class GuideService {
     }
 
     /**
-     * Loads {@value GuideBook#RESOURCE} and the recipe pictures ({@value RecipePictures#RESOURCE}), registers the
+     * Loads {@code guide.json} and the recipe pictures ({@code guide-pictures.json}), registers the
      * listener and the danger check.
      */
     public void enable() {
-        try (InputStream in = ctx.plugin().getResource(GuideBook.RESOURCE)) {
+        try (InputStream in = ctx.plugin().getResource(GuideBook.resource())) {
             book = GuideBook.load(in);
         } catch (IOException e) {
-            throw new UncheckedIOException("cannot read " + GuideBook.RESOURCE, e);
+            throw new UncheckedIOException("cannot read " + GuideBook.resource(), e);
         }
         RecipePictures pictures;
-        try (InputStream in = ctx.plugin().getResource(RecipePictures.RESOURCE)) {
+        try (InputStream in = ctx.plugin().getResource(RecipePictures.resource())) {
             pictures = RecipePictures.load(in);
         } catch (IOException e) {
-            throw new UncheckedIOException("cannot read " + RecipePictures.RESOURCE, e);
+            throw new UncheckedIOException("cannot read " + RecipePictures.resource(), e);
         }
         dialogs = new GuideDialogs(book, pictures);
         sessions = new GuideSessions(book.size());

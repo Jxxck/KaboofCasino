@@ -39,7 +39,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Draws both poker menus like the 26.3 client from the embedded pack (the same renderer as the blackjack preview:
  * title glyphs, pen advances, spaces, bold and style shadows; slot items through the pack's item definitions and
- * models) onto the common scaled screens. Writes {@code build/reports/gui/poker-*.png} (2x) and asserts that the
+ * models) onto the common scaled screens. Writes {@code build/reports/gui/<language>/poker-*.png} (2x) and asserts that the
  * content is on screen at all three sizes, that every card lands at the window place the layout gives it, and that no
  * two pictures overlap except a compact NET label over its own item (like a count).
  */
@@ -95,16 +95,16 @@ class PokerGuiPreviewTest {
 
     @BeforeEach
     void load() throws IOException {
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("pack/KaboofCasino-pack.zip");
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("KaboofCasino-pack.zip"));
              ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry e;
             while ((e = zip.getNextEntry()) != null) {
                 pack.put(e.getName(), zip.readAllBytes());
             }
         }
-        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream("pack/gui-layout.json"));
+        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new InputStreamReader(
-                getClass().getClassLoader().getResourceAsStream("messages_de.yml"), StandardCharsets.UTF_8));
+                getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile()), StandardCharsets.UTF_8));
         raw = m -> yaml.getString(m.key());
     }
 
@@ -712,7 +712,7 @@ class PokerGuiPreviewTest {
                 }
             }
         }
-        Path out = Path.of("build/reports/gui/" + name + "-preview-" + width + "x" + height + ".png");
+        Path out = Path.of("build/reports/gui/" + de.tigges.kaboofcasino.config.Language.current().code() + "/" + name + "-preview-" + width + "x" + height + ".png");
         Files.createDirectories(out.getParent());
         BufferedImage big = new BufferedImage(width * 2, height * 2, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < height * 2; y++) {

@@ -1,0 +1,374 @@
+# KaboofCasino – Einstellungen. Neue Schlüssel ergänzt das Plugin beim Start selbst.
+
+pack:
+  # Ressourcenpaket überhaupt anbieten.
+  enabled: true
+  # Kill-Switch. false: das Paket wird nur angeboten, niemand wird gekickt.
+  # true erst, wenn der Download von außen geprüft ist (ein Spieler von außerhalb sieht das Casino).
+  enforce: false
+  # Wo das Paket ausgeliefert wird:
+  #   minecraft-port: über den Minecraft-Port selbst (HTTP-Anfragen werden am Anfang jeder Verbindung erkannt,
+  #                   alles andere geht unverändert an Minecraft). Keine Portweiterleitung nötig.
+  #   http-port:      eigener HTTP-Server auf "port" (muss am Gateway weitergeleitet sein).
+  serve: minecraft-port
+  # Host in der Download-Adresse http://<url-host>:<Port>/pack/<sha1>.zip
+  #   auto: jeder Spieler bekommt die Adresse, mit der er sich selbst verbunden hat (bei serve: minecraft-port samt
+  #         Port). Passt ohne weitere Einstellung, solange Spieler diesen Server direkt erreichen.
+  #   Sonst die öffentliche Adresse des Servers, z. B. play.example.org oder eine IP. Nötig hinter einem Proxy
+  #   (Velocity, BungeeCord, TCPShield): dort führt die Adresse des Spielers nicht zu diesem Server, am besten
+  #   zusammen mit serve: http-port.
+  url-host: auto
+  # Öffentlicher Port in der Adresse bei serve: minecraft-port und festem url-host (der Minecraft-Port).
+  url-port: 25565
+  # Nur bei serve: http-port: TCP-Port und Bind-Adresse des eigenen HTTP-Servers (auch Port in der Adresse).
+  port: 25580
+  bind: 0.0.0.0
+  # So lange wartet die Configuration-Phase auf die Antwort des Clients (erster Download, Annehmen-Dialog).
+  timeout-seconds: 300
+
+bets:
+  # Höchsteinsatz in Chip-Wert, je Einsatzfeld oder je Runde (siehe cap-per). Eingesetzt wird nur mit
+  # Chips; Erze tauscht man an der Kasse (cashier.rates).
+  max-stake: 2000
+  # slot: max-stake gilt je Einsatzfeld wie im Mod (Glücksrad/Plinko: 3 Felder, also bis 3 × max-stake pro Runde).
+  # round: alle Felder einer Runde zusammen höchstens max-stake.
+  cap-per: slot
+
+rounds:
+  # Höchstens so viele offene Einsätze pro Spieler (im Spieler-PDC). Jedes Einsatzfeld zählt einzeln:
+  # eine Glücksrad- oder Plinko-Runde mit drei Feldern belegt drei.
+  max-open: 8
+
+owed:
+  # Alle wie viele Ticks offene Gewinne (volles Inventar) nachgeliefert werden.
+  delivery-ticks: 20
+
+machines:
+  # Wer abbauen darf: owner (wer sie aufgestellt hat, plus OPs) oder anyone.
+  break: owner
+  # Alle wie viele Ticks die Barrier-Blöcke geladener Maschinen geprüft werden (/fill, Kolben-Exploits).
+  verify-ticks: 100
+  # Nie eine Maschine dort aufstellen, wo ein Spieler ausgeloggt ist (er würde in den Barrieren erwachen und
+  # ersticken). Nur für Tests abschalten.
+  refuse-logout-spots: true
+  # "Im Überlebensmodus abbaubar" des Mods (Hand des Croupiers › Schutz). false: niemand außerhalb des
+  # Kreativmodus kann Casino-Maschinen abbauen; Kreativ und /casino remove entfernen sie weiterhin.
+  breakable: true
+
+safety:
+  # Kein Menü, solange der Spieler vor so vielen Sekunden Schaden genommen oder ausgeteilt hat.
+  combat-seconds: 10
+  # Monster in diesem Umkreis (mit Sichtlinie) schließen das Menü.
+  monster-radius: 12
+  # Gezündetes TNT in diesem Umkreis schließt das Menü.
+  tnt-radius: 8
+  # Gefahren-Prüfung alle so viele Ticks für Spieler mit offenem Casino-Menü.
+  sweep-ticks: 5
+
+gui:
+  # Ein Klick auf DREHEN zählt erst so viele Ticks nach dem Öffnen (Doppelklick-Schutz).
+  click-guard-ticks: 4
+  # Ein Automaten-Menü ohne Dreh schließt nach so vielen Sekunden und gibt den Automaten frei (0 = nie).
+  idle-close-seconds: 120
+
+slot:
+  # -1 = Quoten wie im Mod (RTP 499/512). 0..100 = erzwungene Gewinnchance in Prozent (CasinoOdds des Mods).
+  win-chance: -1
+  # Lichter im Leerlauf alle so viele Ticks aktualisieren (0 = aus), nur wenn ein Spieler so nah ist.
+  idle-light-ticks: 4
+  idle-light-range: 16
+
+wheel:
+  # Glücksrad. -1 = Quoten wie im Mod (RTP 250/256). 0..100 = erzwungene Gewinnchance (CasinoOdds des Mods).
+  win-chance: -1
+  idle-light-ticks: 4
+  idle-light-range: 16
+
+roulette:
+  # Roulette. -1 = Quoten wie im Mod (RTP 36/37 auf jede Farbe). 0..100 = erzwungene Gewinnchance (CasinoOdds des
+  # Mods: auf Rot/Schwarz p/100, auf Grün p/1800).
+  win-chance: -1
+  # true: mindestens eines der vier Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
+  # Stehen andere Spieler am Tisch, wartet die Kugel so viele Sekunden auf ihre Einsätze (bis zu 8 Spieler, eine
+  # Drehung für alle). Wer allein am Tisch steht, dreht sofort. 0 = immer sofort, nur ein Spieler pro Drehung.
+  # Mit einer erzwungenen win-chance gibt es keine gemeinsamen Drehungen.
+  countdown-seconds: 15
+  # Das Roulette hat keine Lichter.
+  idle-light-ticks: 0
+  idle-light-range: 16
+
+blackjack:
+  # Blackjack (6 Decks, neu gemischt unter 60 Karten, Croupier steht auf allen 17, Verdoppeln, Blackjack 3:2).
+  # Ausrichtung der Karten wie die Admin-Einstellung des Mods: 0 = faires Kartenschlitten (RTP ~99,5 % bei bester
+  # Strategie). +1..+100 begünstigt die Spieler, -1..-100 den Croupier (bei jeder Karte mit dieser Stärke die
+  # passendere der zwei obersten Karten). Eine Gewinnchance gibt es beim Blackjack im Mod nicht.
+  bias: 0
+  # Stehen andere Spieler am Tisch, wartet der Croupier so viele Sekunden auf ihre Einsätze (bis zu 5 Plätze, eine
+  # Runde für alle, ein Croupier). Wer allein am Tisch steht, spielt sofort. 0 = immer nur ein Spieler.
+  # Mit einer Ausrichtung (bias nicht 0) gibt es keine gemeinsamen Runden.
+  countdown-seconds: 15
+  # true: mindestens eines der acht Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
+
+poker:
+  # Poker (Casino Hold'em gegen den Croupier, 1 Deck, jede Runde neu gemischt, Croupier spielt ab Paar Vieren).
+  # Ausrichtung der Karten wie die Admin-Einstellung des Mods: 0 = faires Deck (RTP ~98,5 % mit der Strategie des
+  # Mods). +1..+100 begünstigt die Spieler, -1..-100 den Croupier. Eine Gewinnchance gibt es beim Poker im Mod nicht.
+  bias: 0
+  # true: mindestens eines der zwölf Felder braucht festen Boden darunter (Permadeath: kein Tisch über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
+  # Texas Hold'em gegeneinander (No-Limit): Steht noch jemand am Tisch, setzt man sich mit Chips hin (bis zu 3
+  # Plätze), der Croupier teilt nur aus, gespielt wird um die Chips der anderen. Allein am Tisch: Casino Hold'em gegen
+  # den Croupier wie bisher. Aufstehen (GEHEN) zahlt die Chips am Tisch aus.
+  holdem:
+    enabled: true
+    small-blind: 5
+    big-blind: 10
+    # Einkauf (Chips, mit denen man sich hinsetzt)
+    min-buy-in: 100
+    max-buy-in: 2000
+    # Bedenkzeit pro Zug; danach wird gecheckt, wenn möglich, sonst gepasst
+    turn-seconds: 30
+    # Wartezeit vor der ersten Hand, sobald zwei sitzen, und Pause zwischen zwei Händen
+    start-seconds: 10
+    next-hand-seconds: 6
+
+lights:
+  # Leerlauf-Lichter aller Automaten zusammen: höchstens so viele Updates pro Tick (reihum). Jedes Update schickt
+  # alle Lampenfarben eines Automaten an alle Spieler in der Nähe; so bleibt der Verkehr begrenzt, egal wie viele
+  # Automaten stehen. Bei wenigen Automaten bleibt es beim Takt aus idle-light-ticks.
+  max-updates-per-tick: 4
+
+plinko:
+  # Plinko. -1 = Quoten wie im Mod (RTP 998/1024). 0..100 = erzwungene Gewinnchance je Kugel (CasinoOdds des Mods).
+  win-chance: -1
+  # 63 Lampen pro Update: seltener als 4 Ticks lohnt den Verkehr nicht.
+  idle-light-ticks: 4
+  idle-light-range: 16
+
+derby:
+  # Entenrennen. -1 = Quoten wie im Mod: jede der vier Enten gewinnt mit 1/4, Erster zahlt 3x, Zweiter gibt den
+  # Einsatz zurück (RTP 100 %). 0..100 = erzwungene Gewinnchance der eigenen Ente, nur solo (CasinoOdds des Mods;
+  # RTP 3p + (1-p)/3, unter 25 mit Hausvorteil). Gruppenrennen gibt es nur bei -1 oder 25 und immer mit 1/4.
+  win-chance: -1
+  # true: mindestens eines der zwölf Felder braucht festen Boden darunter (Permadeath: kein Becken über Lava oder
+  # Leere). false = wie im Mod, ganz ohne Stütze.
+  needs-support: true
+  # 12 Lämpchen am Schild (Lauflicht im Leerlauf).
+  idle-light-ticks: 4
+  idle-light-range: 16
+
+music:
+  # Lounge-Musik des Mods an eingeschalteten Casino-Lautsprechern: 6 Stücke von Kevin MacLeod (CC BY 4.0), im Umkreis
+  # von 48 Blöcken um den nächsten Lautsprecher, bis 12 Blöcke volle Lautstärke (Regler "Jukebox/Notenblöcke").
+  # Sie steckt in einem zweiten, freiwilligen Ressourcenpaket (rund 22 MB), das erst nach dem Casino-Paket angeboten
+  # wird. Ablehnen, Fehler oder keine Antwort kicken nie, auch nicht mit pack.enforce: true.
+  # false: kein Musikpaket, keine Musik, keine Noten-Partikel (die Lautsprecher leuchten weiter).
+  # Für das Paket gilt eine Änderung ab dem nächsten Login, für die Musik sofort nach /casino reload.
+  enabled: true
+
+jukebox:
+  # Die Casino-Jukebox (craftbar, im Chip-Shop unter Technik): 98 Titel in 9 Musikrichtungen, die Minecraft-Musik des
+  # Spiels selbst (alle Schallplatten, Overworld, Kreativ, Nether, Unterwasser, Das Ende) und die Casino-Lounge des
+  # Musikpakets. Jeder in der Nähe kann Titel, Modus und Reichweite (16/32/48 Blöcke) wählen; in ihrer Reichweite
+  # schweigen die Casino-Lautsprecher. /casino musik aus schaltet auch die Jukebox ab. false: alle Jukeboxen schweigen.
+  enabled: true
+
+leaderboard:
+  # Die Bestenliste: Tafeln an der Wand (2x2 bis 6x4) und Säulen (1x3), dazu /casino top. Aufstellen:
+  # /casino give leaderboard_wall (3x2), leaderboard_wall_4x4 usw. bzw. leaderboard_column. Gezählt werden nur Runden mit Chips.
+  # true: beide Tafeln auch craftbar (Rezepte kaboofcasino:leaderboard_wall und kaboofcasino:leaderboard_column).
+  craftable: false
+  # Höchstens so oft (Sekunden, 30 bis 3600) rechnet die Bestenliste neu, und nur wenn seitdem gespielt wurde.
+  refresh-seconds: 30
+  # Eine Tafel ohne fest eingestellte Kategorie blättert alle so viele Sekunden weiter (5 bis 600; 0 = nur per
+  # Rechtsklick). Rechtsklick wechselt die Kategorie, die Hand des Croupiers stellt sie fest ein.
+  cycle-seconds: 15
+  # Der höchste Multiplikator zählt erst ab diesem Einsatz (in Chips), damit 1-Chip-Glückstreffer nicht alles schlagen.
+  min-stake: 25
+  # Nach jeder Woche (Montag 00:00 Berlin) stehen die Sieger einmal im Server-Log.
+  weekly-log: true
+
+discord:
+  # Posts im Discord-Kanal. Nur zusammen mit dem eigenen Plugin KaboofDiscord (ab 1.1.0; dort schaltet events.casino
+  # alles ab); ohne dieses Plugin wird nichts gepostet. Das Casino selbst spricht nie mit Discord. Wer sich mit
+  # /casino bestenliste aus versteckt, erscheint auch hier nie.
+  # Großgewinn: ein einzelner Einsatz bringt mindestens big-win-multiplier mal den Einsatz und mindestens
+  # big-win-min-chips Chips. Pro Spieler höchstens ein Post alle big-win-cooldown-seconds Sekunden.
+  big-wins: true
+  big-win-multiplier: 50
+  big-win-min-chips: 250
+  big-win-cooldown-seconds: 300
+  # Nach jeder Woche (Montag 00:00 Berlin) einmal die Top 3 jeder Kategorie der Bestenliste.
+  weekly: true
+
+chipshop:
+  # Der Chip-Shop: Casino-Deko, Möbel, Technik, Maschinen, Kasse, Bestenlisten und der Shop selbst für
+  # Chips (alles außer den Croupier-Sachen). Aufstellen: /casino give chip_shop
+  # oder craften (Rezept kaboofcasino:chip_shop: Glasscheibe, kleines Casino-Schild, Glasscheibe über schwarzer
+  # Marmor-Bar, Chip-Stapel, schwarzer Marmor-Bar). false: nur per /casino give, wie die Kasse.
+  craftable: true
+  # Preis = Wert der Rezept-Zutaten in Chips x Aufschlag der Kategorie, aufgerundet (unter 25 auf 1, unter 250 auf 5,
+  # sonst auf 25 Chips), mindestens min-price pro Stück. Ein Stapel wird als Ganzes gerechnet. Erze zählen zum Kurs der
+  # Kasse (cashier.rates). Kategorien: boeden, moebel, bar, licht, technik, maschinen, outfits.
+  categories:
+    boeden:
+      markup: 1.25
+      # pro Stück: Blöcke, Treppen, Stufen
+      min-price: 5
+      min-price-stairs: 4
+      min-price-slab: 3
+    moebel:
+      markup: 3.75
+      min-price: 5
+    bar:
+      markup: 3.75
+      min-price: 5
+    licht:
+      markup: 3.75
+      min-price: 5
+    technik:
+      markup: 3.75
+      min-price: 5
+    maschinen:
+      markup: 1.25
+      min-price: 0
+    # Anzüge, Croupier-Outfit, Abendkleid (Lederwerte, Aussehen aus dem Ressourcenpaket)
+    outfits:
+      markup: 15
+      min-price: 50
+  # true: auch Blackjack- und Pokertisch (sonst nur über das Croupier-Abzeichen).
+  tables: false
+  # Werte der übrigen Zutaten (Chips pro Stück; #name = ein Item-Tag). Eine Liste: gelöschte Einträge fehlen dann.
+  values:
+  - item: '#minecraft:planks'
+    value: 0.25
+  - item: minecraft:dark_oak_planks
+    value: 0.25
+  - item: '#minecraft:wooden_slabs'
+    value: 0.125
+  - item: '#minecraft:signs'
+    value: 0.54
+  - item: minecraft:stick
+    value: 0.125
+  - item: minecraft:torch
+    value: 0.28
+  - item: minecraft:black_wool
+    value: 1
+  - item: minecraft:blue_wool
+    value: 1
+  - item: minecraft:green_wool
+    value: 1
+  - item: minecraft:red_wool
+    value: 1
+  - item: minecraft:white_wool
+    value: 1
+  - item: minecraft:black_dye
+    value: 0.5
+  - item: minecraft:green_dye
+    value: 0.5
+  - item: minecraft:red_dye
+    value: 0.5
+  - item: minecraft:white_dye
+    value: 0.5
+  - item: minecraft:yellow_dye
+    value: 0.5
+  - item: minecraft:leather
+    value: 1
+  - item: minecraft:paper
+    value: 0.5
+  - item: minecraft:clay_ball
+    value: 0.25
+  - item: minecraft:glass
+    value: 0.5
+  - item: minecraft:green_stained_glass
+    value: 0.75
+  - item: minecraft:tinted_glass
+    value: 2.5
+  - item: minecraft:glass_bottle
+    value: 0.5
+  - item: minecraft:amethyst_shard
+    value: 1
+  - item: minecraft:calcite
+    value: 0.5
+  - item: minecraft:glowstone_dust
+    value: 1
+  - item: minecraft:glowstone
+    value: 4
+  - item: minecraft:iron_chain
+    value: 5
+  - item: minecraft:dropper
+    value: 2
+  - item: minecraft:piston
+    value: 6
+  - item: roulettecasino:croupier_badge
+    value: 384
+  # Pro Artikel (schreibt auch die Hand des Croupiers am Chip-Shop): price = fester Stückpreis (0 = automatisch),
+  # limit = Stück pro Spieler und Tag (0 = keins), hidden: true = nicht im Shop. Beispiel:
+  #   - item: roulettecasino:slot_machine
+  #     price: 500
+  #     limit: 1
+  items: []
+
+cashier:
+  # Die Kasse: Erze in Chips wechseln, Kleingeld, Preis-Shop. Aufstellen: /casino give cashier.
+  # true: auch craftbar (Rezept kaboofcasino:cashier, schaltet mit einer Registrierkasse frei:
+  #   Glasscheibe | kleines Casino-Schild | Glasscheibe
+  #   Theke aus schwarzem Marmor | Registrierkasse | Theke aus schwarzem Marmor).
+  craftable: false
+  # Kurse beim Wechseln: Chip-Wert pro Item. Nur normale Stapel (ohne Namen, Verzauberung oder Daten) zählen.
+  # Chips lassen sich nicht in Erze zurücktauschen. Eine Liste: Einträge, die du löschst, kommen nicht wieder.
+  rates:
+  - item: minecraft:coal
+    value: 1
+  - item: minecraft:coal_block
+    value: 9
+  - item: minecraft:copper_ingot
+    value: 1
+  - item: minecraft:copper_block
+    value: 9
+  - item: minecraft:redstone
+    value: 1
+  - item: minecraft:redstone_block
+    value: 9
+  - item: minecraft:lapis_lazuli
+    value: 2
+  - item: minecraft:lapis_block
+    value: 18
+  - item: minecraft:iron_ingot
+    value: 4
+  - item: minecraft:iron_block
+    value: 36
+  - item: minecraft:gold_ingot
+    value: 8
+  - item: minecraft:gold_block
+    value: 72
+  - item: minecraft:emerald
+    value: 16
+  - item: minecraft:emerald_block
+    value: 144
+  - item: minecraft:diamond
+    value: 32
+  - item: minecraft:diamond_block
+    value: 288
+  - item: minecraft:netherite_ingot
+    value: 256
+  - item: minecraft:netherite_block
+    value: 2304
+
+shop:
+  # Prämien der Kasse. Je Prämie: item = ein Casino-Item (z. B. roulettecasino:casino_chair, casinodeco:...) oder
+  # ein Vanilla-Item, auch mit Komponenten wie bei /give (z. B. "minecraft:diamond_sword[enchantments={sharpness:5}]");
+  # count = Anzahl pro Kauf (1-64); price = Preis in Chips; limit = Käufe pro Spieler und Tag (Datum in Berlin),
+  # 0 = unbegrenzt. Chips selbst sind kein Preis. Bearbeiten: hier (danach /casino reload) oder in Kreativ mit der
+  # Hand des Croupiers an einer Kasse. Eine Liste: Einträge, die du löschst, kommen nicht wieder.
+  # Die Casino-Deko gibt es im Chip-Shop; hier stehen die Sonder-Prämien des Admins. Beispiel:
+  #   - item: minecraft:diamond_sword[enchantments={sharpness:5}]
+  #     count: 1
+  #     price: 4000
+  #     limit: 1
+  items: []

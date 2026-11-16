@@ -18,6 +18,28 @@ public final class TestModJar {
     private TestModJar() {
     }
 
+    /**
+     * The mod's texts of one language ({@code en_us}, {@code de_de}), its three namespaces merged: what the plugin's
+     * own tables of names and fallbacks are compared with.
+     */
+    public static java.util.Map<String, String> lang(String code) {
+        java.util.Map<String, String> out = new java.util.TreeMap<>();
+        try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(path().toFile())) {
+            for (String ns : new String[] {"roulettecasino", "casinodeco", "casinosound"}) {
+                try (InputStream in = zip.getInputStream(zip.getEntry("assets/" + ns + "/lang/" + code + ".json"))) {
+                    com.google.gson.JsonObject json = com.google.gson.JsonParser.parseString(new String(
+                            in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+                    for (java.util.Map.Entry<String, com.google.gson.JsonElement> e : json.entrySet()) {
+                        out.put(e.getKey(), e.getValue().getAsString());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return out;
+    }
+
     public static Path path() {
         String given = System.getProperty("kaboofcasino.modJar", "");
         if (!given.isEmpty()) {

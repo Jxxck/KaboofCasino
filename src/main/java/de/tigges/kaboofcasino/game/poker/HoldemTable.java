@@ -787,7 +787,7 @@ final class HoldemTable implements HoldemHand.Listener {
                 continue;
             }
             String handName = showdown && hand.score(i) >= 0
-                    ? m.raw(Msg.POKER_HOLDEM_WITH).replace("<hand>", PokerPanel.HANDS[PokerHands.category(hand.score(i))])
+                    ? m.raw(Msg.POKER_HOLDEM_WITH).replace("<hand>", PokerPanel.hand(PokerHands.category(hand.score(i))))
                     : "";
             s.action = word(Msg.POKER_HOLDEM_ACT_WON, s.won);
             log.add(s.name + " +" + s.won + (handName.isEmpty() ? "" : " (" + PokerHands.category(hand.score(i)) + ")"));

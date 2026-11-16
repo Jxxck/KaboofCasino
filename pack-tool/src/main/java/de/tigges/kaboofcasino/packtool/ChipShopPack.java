@@ -18,7 +18,7 @@ import java.util.Map;
  *       coordinates in the anchor cell's frame (x 0..32 over both cells from the viewer's left, y 16..32 the upper
  *       block, z 16 the front). Two brass posts at the counter's front corners and a brass rail carry a sign built
  *       like the cashier's KASSE sign (walnut back, the mod's dark green sign panel, brass frame, warm bulbs) whose red
- *       LEDs spell {@value #WORD} in the mod's 7-row LED letters at 0.4 pixels per LED. No glass: the display case
+ *       LEDs spell CHIP SHOP (in a German pack {@value #WORD}) in the mod's 7-row LED letters at 0.4 pixels per LED. No glass: the display case
  *       stands behind the posts;</li>
  *   <li>{@code kaboofcasino:chipshop/display}, placed like the cashier's register
  *       ({@code Part(model, 0, 0, 1.5, -0.06)}): its y 0 is the counter top, x 0..32 both cells, z = the counter's z
@@ -38,6 +38,12 @@ final class ChipShopPack {
     static final List<String> SOUND_EVENTS = List.of();
     static final List<String> LANG_PREFIXES = List.of();
     static final String WORD = "CHIP-SHOP";
+    static final String WORD_EN = "CHIP SHOP";
+
+    /** The word on the sign in the pack's language. */
+    static String word() {
+        return PackLang.text(WORD_EN, WORD);
+    }
     static final String SIGN = "kaboofcasino:chipshop/sign";
     static final String DISPLAY = "kaboofcasino:chipshop/display";
     static final String ITEM = "kaboofcasino:chip_shop";
@@ -57,7 +63,8 @@ final class ChipShopPack {
             'P', new String[] {"####.", "#..##", "#...#", "#..##", "####.", "#....", "#...."},
             'S', new String[] {".####", "##...", "#....", ".###.", "....#", "...##", "####."},
             'O', new String[] {".###.", "##.##", "#...#", "#...#", "#...#", "##.##", ".###."},
-            '-', new String[] {"...", "...", "...", "###", "...", "...", "..."});
+            '-', new String[] {"...", "...", "...", "###", "...", "...", "..."},
+            ' ', new String[] {"...", "...", "...", "...", "...", "...", "..."});
 
     // ---- the sign (anchor cell frame) ------------------------------------------------------------------------------
     /** LED pitch (px): finer than the cashier's 0.5, so the nine letters keep the same air around them. */
@@ -255,7 +262,7 @@ final class ChipShopPack {
             el.add(box(x, SIGN_Y1 - 0.375, SIGN_Z + 0.35, x + 0.25, SIGN_Y1 - 0.125, SIGN_Z + 0.5, "#bulb", 15));
         }
         // the LEDs, one element per horizontal run of a row
-        boolean[][] grid = leds(WORD);
+        boolean[][] grid = leds(word());
         int cols = grid[0].length;
         double x0 = (SIGN_X0 + SIGN_X1) / 2 - cols * LED / 2;
         double yTop = (SIGN_Y0 + SIGN_Y1) / 2 + 7 * LED / 2;

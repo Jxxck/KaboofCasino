@@ -113,8 +113,8 @@ record ShopClick(Action action, Optional<Map<Integer, Edit>> edits, Optional<Edi
     }
 
     /**
-     * A typed whole number in min..max: digits, optionally grouped in thousands by '.', ' ' or '_' ("1.250"),
-     * surrounding spaces ignored; empty is 0 if {@code emptyIsZero}. Null if invalid.
+     * A typed whole number in min..max: digits, optionally grouped in thousands by ',', '.', ' ' or '_' ("1,250",
+     * "1.250"), surrounding spaces ignored; empty is 0 if {@code emptyIsZero}. Null if invalid.
      */
     static Long number(String typed, long min, long max, boolean emptyIsZero) {
         if (typed == null) {
@@ -124,10 +124,10 @@ record ShopClick(Action action, Optional<Map<Integer, Edit>> edits, Optional<Edi
         if (s.isEmpty()) {
             return emptyIsZero && min <= 0 ? 0L : null;
         }
-        if (s.length() > PRICE_LENGTH || !s.matches("[0-9]+|[0-9]{1,3}([. _][0-9]{3})+")) {
+        if (s.length() > PRICE_LENGTH || !s.matches("[0-9]+|[0-9]{1,3}([,. _][0-9]{3})+")) {
             return null;
         }
-        String digits = s.replaceAll("[. _]", "");
+        String digits = s.replaceAll("[,. _]", "");
         if (digits.length() > 12) {
             return null;
         }

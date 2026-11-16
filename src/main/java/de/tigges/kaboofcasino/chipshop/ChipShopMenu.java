@@ -92,12 +92,12 @@ final class ChipShopMenu extends GameMenu {
 
     static Msg categoryMsg(ChipShopCategory c) {
         return switch (c) {
-            case FLOORS -> Msg.CHIPSHOP_CAT_BOEDEN;
-            case FURNITURE -> Msg.CHIPSHOP_CAT_MOEBEL;
+            case FLOORS -> Msg.CHIPSHOP_CAT_FLOORS;
+            case FURNITURE -> Msg.CHIPSHOP_CAT_FURNITURE;
             case BAR -> Msg.CHIPSHOP_CAT_BAR;
-            case LIGHTS -> Msg.CHIPSHOP_CAT_LICHT;
-            case TECH -> Msg.CHIPSHOP_CAT_TECHNIK;
-            case MACHINES -> Msg.CHIPSHOP_CAT_MASCHINEN;
+            case LIGHTS -> Msg.CHIPSHOP_CAT_LIGHTS;
+            case TECH -> Msg.CHIPSHOP_CAT_TECH;
+            case MACHINES -> Msg.CHIPSHOP_CAT_MACHINES;
             case OUTFITS -> Msg.CHIPSHOP_CAT_OUTFITS;
         };
     }

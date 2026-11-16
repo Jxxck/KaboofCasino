@@ -79,22 +79,16 @@ final class AdminLabels {
         };
     }
 
-    /** The label's text as the default font measures it (German names; approximate advances). */
+    /** The label's text as the default font measures it (names in the casino's language; approximate advances). */
     static String plain(MachineType type, String name, int number) {
         if (!name.isBlank()) {
             return name;
         }
-        String german = switch (type) {
-            case CASHIER -> "Kasse";
-            case LEADERBOARD_WALL -> "Bestenliste (Wandtafel)";
-            case LEADERBOARD_WALL_2X2, LEADERBOARD_WALL_3X3, LEADERBOARD_WALL_4X3, LEADERBOARD_WALL_4X4, LEADERBOARD_WALL_5X3, LEADERBOARD_WALL_5X4, LEADERBOARD_WALL_6X4 ->
-                    "Bestenliste (Wandtafel " + type.wallColumns() + "×" + type.wallRows() + ")";
-            case LEADERBOARD_COLUMN -> "Bestenliste (Säule)";
-            case CHIP_SHOP -> "Chip-Shop";
-            case JUKEBOX -> "Jukebox";
-            default -> AdminTexts.GERMAN.get("block.roulettecasino." + type.id());
-        };
-        return german + " #" + number;
+        boolean own = type == MachineType.CASHIER || type == MachineType.CHIP_SHOP || type == MachineType.JUKEBOX
+                || type.isBoard();
+        String typeName = type == MachineType.JUKEBOX ? "Jukebox" : own ? AdminTexts.ownName(type)
+                : AdminTexts.fallback("block.roulettecasino." + type.id());
+        return typeName + " #" + number;
     }
 
     /** Approximate default-font width in pixels (most glyphs 6, narrow ones less). */

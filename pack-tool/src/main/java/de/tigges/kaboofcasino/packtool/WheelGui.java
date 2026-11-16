@@ -47,8 +47,8 @@ final class WheelGui {
         for (GuiFont.Anchor a : anchors()) {
             font.anchor(a);
         }
-        SlotMachineGui.button(tree, text, "wheel_on", "DREHEN", true, 14, 4.5, 11.5);
-        SlotMachineGui.button(tree, text, "wheel_off", "DREHEN", false, 14, 4.5, 11.5);
+        SlotMachineGui.button(tree, text, "wheel_on", SlotMachineGui.spin(), true, 14, 4.5, 11.5);
+        SlotMachineGui.button(tree, text, "wheel_off", SlotMachineGui.spin(), false, 14, 4.5, 11.5);
     }
 
     static BufferedImage compose(BufferedImage source) {

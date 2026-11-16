@@ -63,9 +63,9 @@ public final class PanelText {
         return Component.object(ObjectContents.sprite(atlas, sprite));
     }
 
-    /** {@code quarters / 4} as the mod's German multiplier text: "×5", "×1,5", "×0,25". */
+    /** {@code quarters / 4} as the mod's multiplier text: "×5", "×1.5", "×0.25" (German: "×1,5", "×0,25"). */
     public static String multiplier(int quarters) {
         String n = BigDecimal.valueOf(quarters).divide(BigDecimal.valueOf(4)).stripTrailingZeros().toPlainString();
-        return "×" + n.replace('.', ',');
+        return "×" + de.tigges.kaboofcasino.util.ChipText.decimal(n);
     }
 }

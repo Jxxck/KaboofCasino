@@ -52,7 +52,7 @@ wheel) # 7 chips (5 + 1 + 1) per spin until a quarter segment (x0.25 / x0.5 / x0
     line=$(wait_for "spins fortune wheel" "$n0" 10); echo "wheel $i: $line"
     echo "  settled: $(wait_for "settled \(NORMAL\).*seg=" "$s0" 20)"
     sleep 1; b Alice close; v1=$(value Alice); echo "  value $v0 -> $v1 (delta $((v1 - v0)))"
-    echo "$line" | grep -qE "×0,25|×0,5|×0,75|×1,5" && break
+    echo "$line" | grep -qE "×0[.,]25|×0[.,]5|×0[.,]75|×1[.,]5" && break
   done
   ;;
 plinko) # 9 chips (5 + 4 x 1)

@@ -9,12 +9,12 @@ import java.util.Set;
  * is decided by {@link #of}. Pure.
  */
 public enum ChipShopCategory {
-    FLOORS("boeden", "casinodeco:ruby_velvet"),
-    FURNITURE("moebel", "roulettecasino:casino_chair"),
+    FLOORS("floors", "casinodeco:ruby_velvet"),
+    FURNITURE("furniture", "roulettecasino:casino_chair"),
     BAR("bar", "casinodeco:black_marble_bar"),
-    LIGHTS("licht", "casinodeco:casino_chandelier"),
-    TECH("technik", "roulettecasino:casino_tv"),
-    MACHINES("maschinen", "roulettecasino:slot_machine"),
+    LIGHTS("lights", "casinodeco:casino_chandelier"),
+    TECH("tech", "roulettecasino:casino_tv"),
+    MACHINES("machines", "roulettecasino:slot_machine"),
     OUTFITS("outfits", "casinodeco:outfit_smoking_jacket");
 
     private static final Set<String> FURNITURE_IDS = Set.of("casinodeco:casino_sofa", "roulettecasino:casino_chair",

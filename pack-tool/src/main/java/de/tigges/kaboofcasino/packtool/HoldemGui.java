@@ -91,9 +91,17 @@ final class HoldemGui {
         STATUSES.put("lobby", new Object[] {"Warte auf Mitspieler", WHITE, false});
     }
 
-    /** The big buttons: name, label, column. */
-    static final String[][] BUTTONS = {{"fold", "PASSEN", "0"}, {"leave", "GEHEN", "0"}, {"check", "CHECKEN", "1"},
-            {"call", "MITGEHEN", "1"}, {"bet", "SETZEN", "2"}, {"raise", "ERHÖHEN", "2"}, {"allin", "ALL-IN", "2"}};
+    /** The status lines in English, by the same keys. */
+    static final Map<String, String> STATUSES_EN = Map.ofEntries(Map.entry("your_turn", "Your move!"),
+            Map.entry("waiting", "Waiting for the others"), Map.entry("dealing", "Dealing the cards"),
+            Map.entry("all_in", "You are all-in"), Map.entry("showdown", "Showdown"), Map.entry("won", "You win!"),
+            Map.entry("split", "Split pot"), Map.entry("lost", "You lose"), Map.entry("folded", "Folded"),
+            Map.entry("next", "The next hand is coming up"), Map.entry("lobby", "Waiting for players"));
+
+    /** The big buttons: name, German label, column, English label. */
+    static final String[][] BUTTONS = {{"fold", "PASSEN", "0", "FOLD"}, {"leave", "GEHEN", "0", "LEAVE"},
+            {"check", "CHECKEN", "1", "CHECK"}, {"call", "MITGEHEN", "1", "CALL"}, {"bet", "SETZEN", "2", "BET"},
+            {"raise", "ERHÖHEN", "2", "RAISE"}, {"allin", "ALL-IN", "2", "ALL-IN"}};
 
     private HoldemGui() {
     }
@@ -107,12 +115,12 @@ final class HoldemGui {
     }
 
     static void add(PackTree tree, TextGlyphs text) {
-        SlotMachineGui.button(tree, text, "holdem/sit_on", "HINSETZEN", true, 18, 4.5, 13.5);
-        SlotMachineGui.button(tree, text, "holdem/sit_off", "HINSETZEN", false, 18, 4.5, 13.5);
+        SlotMachineGui.button(tree, text, "holdem/sit_on", PackLang.text("SIT DOWN", "HINSETZEN"), true, 18, 4.5, 13.5);
+        SlotMachineGui.button(tree, text, "holdem/sit_off", PackLang.text("SIT DOWN", "HINSETZEN"), false, 18, 4.5, 13.5);
         for (String[] b : BUTTONS) {
             int col = Integer.parseInt(b[2]);
-            button(tree, text, "hd_" + b[0] + "_on", b[1], true, BUTTON_ART_SLOT[col], BUTTON_X[col]);
-            button(tree, text, "hd_" + b[0] + "_off", b[1], false, BUTTON_ART_SLOT[col], BUTTON_X[col]);
+            button(tree, text, "hd_" + b[0] + "_on", PackLang.text(b[3], b[1]), true, BUTTON_ART_SLOT[col], BUTTON_X[col]);
+            button(tree, text, "hd_" + b[0] + "_off", PackLang.text(b[3], b[1]), false, BUTTON_ART_SLOT[col], BUTTON_X[col]);
         }
         for (int i = 0; i < SIZE_SLOTS.length; i++) {
             small(tree, "hd_" + SIZE_NAMES[i] + "_on", i, true, SIZE_SLOTS[i]);
@@ -134,7 +142,8 @@ final class HoldemGui {
         }
         for (Map.Entry<String, Object[]> e : STATUSES.entrySet()) {
             Object[] v = e.getValue();
-            status(tree, text, "hd_status_" + e.getKey(), (String) v[0], (Integer) v[1], (Boolean) v[2]);
+            status(tree, text, "hd_status_" + e.getKey(), PackLang.text(STATUSES_EN.get(e.getKey()), (String) v[0]),
+                    (Integer) v[1], (Boolean) v[2]);
         }
     }
 

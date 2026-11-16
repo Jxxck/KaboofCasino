@@ -30,11 +30,37 @@ public final class ConfigLoader {
     private ConfigLoader() {
     }
 
+    /** The Chip-Shop's tabs in the files of versions up to 0.19.0 (German) and now. */
+    static final String[][] CATEGORY_RENAMES = {{"boeden", "floors"}, {"moebel", "furniture"}, {"licht", "lights"},
+        {"technik", "tech"}, {"maschinen", "machines"}};
+
     public static Loaded load(Path file, Supplier<java.io.InputStream> jarDefaults) {
-        YamlFiles.Merged merged = YamlFiles.loadMerged(file, jarDefaults, FILE);
+        YamlFiles.Merged merged = YamlFiles.loadMerged(file, jarDefaults, FILE, ConfigLoader::migrate);
         List<String> warnings = new ArrayList<>(merged.warnings());
         CasinoConfig config = read(merged.yaml(), warnings);
         return new Loaded(config, warnings, merged.added());
+    }
+
+    /**
+     * A config.yml written by a version up to 0.19.0. Those were German only and counted weeks and days in
+     * Europe/Berlin, so a file without {@code language:} keeps both; the Chip-Shop's tabs get their English keys and
+     * the Discord section, which no longer exists, goes.
+     */
+    static int migrate(YamlConfiguration live) {
+        int n = 0;
+        if (!live.contains("language", true)) {
+            live.set("language", Language.DE.code());
+            n++;
+            if (!live.contains("time-zone", true)) {
+                live.set("time-zone", "Europe/Berlin");
+                n++;
+            }
+        }
+        for (String[] r : CATEGORY_RENAMES) {
+            n += YamlFiles.rename(live, "chipshop.categories." + r[0], "chipshop.categories." + r[1]);
+        }
+        n += YamlFiles.remove(live, "discord");
+        return n;
     }
 
     static CasinoConfig read(YamlConfiguration y, List<String> warnings) {
@@ -92,11 +118,11 @@ public final class ConfigLoader {
                 leaderboard(r, d.leaderboard()),
                 de.tigges.kaboofcasino.chipshop.ChipShopSettings.read(y, warnings),
                 new CasinoConfig.Jukebox(r.bool("jukebox.enabled", d.jukebox().enabled())),
-                new CasinoConfig.Discord(r.bool("discord.big-wins", d.discord().bigWins()),
-                        r.integer("discord.big-win-multiplier", d.discord().multiplier(), 2, 10_000),
-                        r.integer("discord.big-win-min-chips", d.discord().minChips(), 0, 10_000_000),
-                        r.integer("discord.big-win-cooldown-seconds", d.discord().cooldownSeconds(), 0, 86_400),
-                        r.bool("discord.weekly", d.discord().weekly())));
+                new CasinoConfig.Region(
+                        Language.byCode(r.string("language", d.region().language().code(),
+                                v -> Language.byCode(v).isPresent())).orElse(d.region().language()),
+                        Language.zoneOf(r.string("time-zone", "system", v -> Language.zoneOf(v).isPresent()))
+                                .orElse(d.region().zone())));
     }
 
     private static CasinoConfig.Leaderboard leaderboard(Reader r, CasinoConfig.Leaderboard d) {

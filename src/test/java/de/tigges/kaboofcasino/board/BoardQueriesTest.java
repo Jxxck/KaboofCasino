@@ -26,7 +26,7 @@ class BoardQueriesTest {
     static final UUID BOB = new UUID(0, 2);
     static final UUID CARL = new UUID(0, 3);
     /** Monday 2026-11-09 00:00 Berlin: the week starts here. */
-    static final long MONDAY = ZonedDateTime.of(2026, 11, 9, 0, 0, 0, 0, BoardPeriod.ZONE).toInstant().toEpochMilli();
+    static final long MONDAY = ZonedDateTime.of(2026, 11, 9, 0, 0, 0, 0, de.tigges.kaboofcasino.config.Language.zone()).toInstant().toEpochMilli();
     static int ids;
 
     static void round(Connection c, UUID player, String name, String game, String stakeItem, long stake, long payout,

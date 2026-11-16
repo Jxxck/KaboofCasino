@@ -10,6 +10,7 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.format.TextDecoration;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The spectator panel's lines as {@code BlackjackTableRenderer.extractPanel}/{@code panel} derive them. */
@@ -68,6 +69,7 @@ class BlackjackPanelTest {
         return null;
     }
 
+    @Tag("german")
     @Test
     void linesAppearInTheModsOrder() {
         Component early = BlackjackPanel.render(CONTENT, new BlackjackPanel.Totals(-1, -1, 0));

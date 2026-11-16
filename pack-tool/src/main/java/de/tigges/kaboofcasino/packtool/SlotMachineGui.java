@@ -48,6 +48,15 @@ final class SlotMachineGui {
     static final int WIDTH = LEFT_W + PANEL_W;
     static final int TILE_W = WIDTH / 2;
     static final int TILE_H = 133;
+    /** The lettering of the play buttons in the pack's language (the mod's SPIN / DREHEN; COLLECT is the plugin's). */
+    static String spin() {
+        return PackLang.text("SPIN", "DREHEN");
+    }
+
+    static String collect() {
+        return PackLang.text("COLLECT", "ABHOLEN");
+    }
+
     static final String[] SYMBOLS = {"seven", "diamond", "bar", "bell", "lemon", "cherry"};
 
     private SlotMachineGui() {
@@ -101,9 +110,9 @@ final class SlotMachineGui {
         // for floating panels (text displays): 9 px tall like a text line, top 1 px above the cap height
         font.grid(symbolNames, icons, "font/slot/symbols.png", 6, 1, 9, 8, 0, 0);
 
-        button(tree, text, "spin_on", "DREHEN", true);
-        button(tree, text, "spin_off", "DREHEN", false);
-        button(tree, text, "collect_on", "ABHOLEN", true);
+        button(tree, text, "spin_on", spin(), true);
+        button(tree, text, "spin_off", spin(), false);
+        button(tree, text, "collect_on", collect(), true);
     }
 
     /** The re-composition steps described in the class comment. */

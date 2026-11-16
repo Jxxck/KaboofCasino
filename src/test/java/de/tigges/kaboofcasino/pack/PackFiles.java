@@ -20,7 +20,7 @@ public final class PackFiles {
     /** The casino pack. */
     public static synchronized Map<String, byte[]> all() {
         if (files == null) {
-            files = read(PackFile.ZIP);
+            files = read(de.tigges.kaboofcasino.config.Language.current().packResource(PackFile.ZIP));
         }
         return files;
     }

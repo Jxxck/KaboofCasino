@@ -55,7 +55,7 @@ public final class DecoItems {
     public static ItemStack create(DecoType type, int amount) {
         ItemStack stack = ItemStack.of(type.vanillaCarrier() ? type.vanilla() : Material.PAPER, amount);
         stack.setData(DataComponentTypes.ITEM_MODEL, Key.key(type.id()));
-        stack.setData(DataComponentTypes.ITEM_NAME, Component.translatable(type.translationKey(), type.german()));
+        stack.setData(DataComponentTypes.ITEM_NAME, Component.translatable(type.translationKey(), type.displayName()));
         stack.editPersistentDataContainer(pdc -> pdc.set(Keys.ITEM, PersistentDataType.STRING, type.id()));
         return stack;
     }

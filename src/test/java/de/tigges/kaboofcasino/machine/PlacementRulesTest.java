@@ -9,11 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import de.tigges.kaboofcasino.util.Pos;
 import java.util.List;
 import org.bukkit.util.BoundingBox;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** Safety 1 and 2: 3x3 machines stay inside one chunk; other players keep two blocks away while placing. */
 class PlacementRulesTest {
 
+    @Tag("german")
     @Test
     void theShiftNamesTheSideThatFits() {
         for (MachineType type : List.of(MachineType.FORTUNE_WHEEL, MachineType.PLINKO)) {
@@ -36,6 +38,7 @@ class PlacementRulesTest {
         assertNull(MachineType.SLOT_MACHINE.chunkFit(new Pos("w", 15, 64, 15), Facing.SOUTH));
     }
 
+    @Tag("german")
     @Test
     void theRouletteTableMovesAlongXZOrDiagonally() {
         MachineType t = MachineType.ROULETTE_TABLE;

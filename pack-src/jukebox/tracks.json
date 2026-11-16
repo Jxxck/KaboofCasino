@@ -3,47 +3,47 @@
  "genres": [
   {
    "id": "lounge",
-   "name": "Casino Lounge",
+   "name": "Casino Lounge", "name_en": "Casino Lounge",
    "icon": "casinosound:casino_speaker"
   },
   {
    "id": "discs",
-   "name": "Schallplatten",
+   "name": "Schallplatten", "name_en": "Music Discs",
    "icon": "minecraft:music_disc_cat"
   },
   {
    "id": "classic",
-   "name": "Minecraft Klassik",
+   "name": "Minecraft Klassik", "name_en": "Minecraft Classics",
    "icon": "minecraft:grass_block"
   },
   {
    "id": "creative",
-   "name": "Kreativ",
+   "name": "Kreativ", "name_en": "Creative",
    "icon": "minecraft:painting"
   },
   {
    "id": "calm",
-   "name": "Entspannt",
+   "name": "Entspannt", "name_en": "Calm",
    "icon": "minecraft:cherry_leaves"
   },
   {
    "id": "adventure",
-   "name": "Abenteuer",
+   "name": "Abenteuer", "name_en": "Adventure",
    "icon": "minecraft:compass"
   },
   {
    "id": "nether",
-   "name": "Nether",
+   "name": "Nether", "name_en": "Nether",
    "icon": "minecraft:crimson_nylium"
   },
   {
    "id": "water",
-   "name": "Unterwasser",
+   "name": "Unterwasser", "name_en": "Underwater",
    "icon": "minecraft:heart_of_the_sea"
   },
   {
    "id": "end",
-   "name": "Das Ende",
+   "name": "Das Ende", "name_en": "The End",
    "icon": "minecraft:dragon_head"
   }
  ],

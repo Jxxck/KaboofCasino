@@ -42,7 +42,7 @@ final class FullDecoItems {
         }
         stack.setData(DataComponentTypes.ITEM_MODEL, Key.key(block.modId()));
         stack.setData(DataComponentTypes.ITEM_NAME, Component.translatable(block.translationKey(),
-                block.germanName()));
+                block.displayName()));
         stack.editPersistentDataContainer(pdc -> pdc.set(Keys.ITEM, PersistentDataType.STRING, block.modId()));
         return stack;
     }

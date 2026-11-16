@@ -51,7 +51,7 @@ class GuideDataTest {
     @Test
     void sameJarSameBytes() {
         assertArrayEquals(GuideData.build(jar), GuideData.build(jar));
-        List<String> keys = new ArrayList<>(data.getAsJsonObject("de").keySet());
+        List<String> keys = new ArrayList<>(data.getAsJsonObject("texts").keySet());
         List<String> sorted = new ArrayList<>(keys);
         sorted.sort(String::compareTo);
         assertEquals(sorted, keys);
@@ -60,7 +60,7 @@ class GuideDataTest {
     @Test
     void everyKeyHasTheModsGermanText() {
         Map<String, String> german = GuideData.german(jar);
-        JsonObject de = data.getAsJsonObject("de");
+        JsonObject de = data.getAsJsonObject("texts");
         assertEquals(134, de.size());
         for (Map.Entry<String, JsonElement> e : de.entrySet()) {
             assertEquals(german.get(e.getKey()), e.getValue().getAsString(), e.getKey());
@@ -78,7 +78,7 @@ class GuideDataTest {
 
     @Test
     void thePackShipsEveryKeyInEveryLanguage() {
-        JsonObject de = data.getAsJsonObject("de");
+        JsonObject de = data.getAsJsonObject("texts");
         int files = 0;
         for (String ns : GuideData.NAMESPACES) {
             for (String path : jar.list("assets/" + ns + "/lang/")) {

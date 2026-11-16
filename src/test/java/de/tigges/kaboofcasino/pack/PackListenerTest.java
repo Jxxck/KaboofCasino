@@ -40,8 +40,8 @@ class PackListenerTest {
     static void load(@TempDir Path dir) {
         pack = PackFile.load(PackListenerTest.class.getClassLoader());
         music = PackFile.loadMusic(PackListenerTest.class.getClassLoader());
-        messages = Messages.load(dir.resolve("messages_de.yml"),
-                () -> PackListenerTest.class.getClassLoader().getResourceAsStream("messages_de.yml")).messages();
+        messages = Messages.load(dir.resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile()),
+                () -> PackListenerTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())).messages();
     }
 
     /** DEFAULTS with another pack/music section (by reflection, so new config sections do not break this test). */

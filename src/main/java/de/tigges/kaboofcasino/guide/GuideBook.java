@@ -22,7 +22,7 @@ import java.util.Set;
 /**
  * The casino guide book of MineVegas Casino (games.md 11) as the mod ships it: {@code casino_guide.json} format 2
  * (34 spreads; each JSON page is one two-page spread, left half x &lt; 180), plus the German text of every lang key it
- * uses and the name key of every casino item it shows. Read from {@value #RESOURCE}, which the pack tool's
+ * uses and the name key of every casino item it shows. Read from {@value #FILE} of the language, which the pack tool's
  * {@code GuideData} builds from the pinned mod jar. Page numbers are 1-based, as in the JSON's {@code tabs},
  * {@code index} and tile {@code page} fields. Pure (no server); immutable after {@link #load}.
  *
@@ -33,7 +33,13 @@ import java.util.Set;
  */
 public final class GuideBook {
 
-    public static final String RESOURCE = "pack/guide.json";
+    /** The guide's file name; the plugin jar has one per language ({@code Language.packResource}). */
+    public static final String FILE = "guide.json";
+
+    /** The guide of the casino's language inside the plugin jar. */
+    public static String resource() {
+        return de.tigges.kaboofcasino.config.Language.current().packResource(FILE);
+    }
     /** The mod's split between the two pages of a spread ({@code CasinoGuideScreen}: left half x &lt; 180). */
     public static final int RIGHT_PAGE_X = 180;
     /** Tag ingredients the mod cycles through, shown as their first member (the tag files' first entry). */
@@ -171,11 +177,11 @@ public final class GuideBook {
     }
 
     public static GuideBook load(InputStream in) {
-        Objects.requireNonNull(in, RESOURCE + " is missing in the plugin jar");
+        Objects.requireNonNull(in, FILE + " is missing in the plugin jar");
         try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
             return parse(JsonParser.parseReader(reader).getAsJsonObject());
         } catch (IOException e) {
-            throw new UncheckedIOException("cannot read " + RESOURCE, e);
+            throw new UncheckedIOException("cannot read " + FILE, e);
         }
     }
 
@@ -185,7 +191,7 @@ public final class GuideBook {
             throw new IllegalArgumentException("casino guide format " + book.get("format") + ", expected 2");
         }
         Map<String, String> names = strings(root.getAsJsonObject("names"));
-        Map<String, String> german = strings(root.getAsJsonObject("de"));
+        Map<String, String> german = strings(root.getAsJsonObject("texts"));
         List<Tab> tabs = new ArrayList<>();
         for (JsonElement e : book.getAsJsonArray("tabs")) {
             JsonObject t = e.getAsJsonObject();
@@ -376,7 +382,7 @@ public final class GuideBook {
     }
 
     /** The mod's German text of a lang key, or null if the guide data has none (vanilla keys). */
-    public String german(String key) {
+    public String text(String key) {
         return german.get(key);
     }
 

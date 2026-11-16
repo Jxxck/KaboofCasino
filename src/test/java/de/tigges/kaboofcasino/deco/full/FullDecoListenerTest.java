@@ -73,9 +73,9 @@ class FullDecoListenerTest {
             case "hashCode" -> System.identityHashCode(p);
             default -> dflt(m.getReturnType());
         });
-        Path file = Files.createTempDirectory("fulldeco").resolve("messages_de.yml");
+        Path file = Files.createTempDirectory("fulldeco").resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile());
         Messages messages = Messages.load(file, () -> getClass().getClassLoader()
-                .getResourceAsStream("messages_de.yml")).messages();
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())).messages();
         listener = new FullDecoListener(null, null, () -> messages, () -> on);
     }
 

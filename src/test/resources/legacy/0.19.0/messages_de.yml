@@ -1,0 +1,702 @@
+# KaboofCasino – alle Texte (MiniMessage). Texte der Spiele stammen aus de_de.json des Mods.
+prefix: "<gold>[Casino]</gold> "
+
+# Kasse: Erze in Chips wechseln, Kleingeld, Prämien. Texte im Menü-Titel (brand, head-*, help-*,
+# label-*) sind schlichter Text ohne Farben; help-* hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
+# Chip-Beträge (<value>, <owed>, <price>) kommen fertig mit "Chip"/"Chips" ("1 Chip", "1.250 Chips").
+cashier:
+  item: "Kasse"
+  item-lore: "<gray>Erze in Chips tauschen, Kleingeld, Prämien"
+  in-use: "<yellow><name> ist gerade an dieser Kasse."
+  brand: "KASSE"
+  tab-exchange: "Wechseln"
+  tab-exchange-lore: "<gray>Erze gegen Chips"
+  tab-change: "Kleingeld"
+  tab-change-lore: "<gray>Chips in andere Nennwerte"
+  tab-shop: "Prämien"
+  tab-shop-lore: "<gray>Chips gegen Prämien"
+  head-exchange: "Erze wechseln"
+  help-exchange: "Klicke Erze im\nInventar an.\nLinks: Stapel\nRechts: eins mehr\nUmschalt: alle"
+  head-change: "Kleingeld"
+  help-change: "Klicke Chips im\nInventar an und\nwähle den Nenn-\nwert. Rest in\nkleineren Chips."
+  head-shop: "Prämien"
+  help-shop: "Wähle eine\nPrämie, dann\nKAUFEN. Wechsel-\ngeld gibt es\nin Chips."
+  label-value: "Wert in Chips:"
+  label-balance: "Deine Chips:"
+  label-price: "Preis:"
+  ore-lore: "<gray><count>× = <value>\n<dark_gray>Links: weg · Rechts: eins weniger"
+  chips-lore: "<gray><count> Stück"
+  selected-lore: "<gray><count> Stück gewählt\n<dark_gray>Links: weg · Rechts: eins weniger"
+  target: "In <denomination>er-Chips"
+  target-lore: "<dark_gray>Klicke hier, um diesen Nennwert zu wählen."
+  target-chosen: "<green>Gewählt"
+  rates: "Kurse"
+  rate-line: "<gray>• </gray><yellow><item></yellow><gray>: <value>"
+  rates-lore: "<dark_gray>Nur normale Stapel ohne Namen,\n<dark_gray>Verzauberung oder andere Daten.\n<red>Kein Rücktausch von Chips in Erze."
+  clear: "Auswahl leeren"
+  clear-lore: "<gray>Nichts wird bewegt, bis du wechselst."
+  exchange-button: "Wechseln"
+  exchange-lore: "<gray>Für <value> wechseln.\n<red>Kein Rücktausch!"
+  change-lore: "<gray><value> in <denomination>er-Chips wechseln.\n<gray>Rest in kleineren Chips."
+  nothing-lore: "<gray>Wähle erst etwas aus deinem Inventar."
+  not-accepted: "<red>Das nimmt die Kasse nicht: <item>."
+  not-plain: "<red>Nur normale Stapel ohne Namen, Verzauberung oder Daten."
+  not-chip: "<red>Hier zählen nur Chips."
+  not-enough: "<red>Das hast du nicht mehr im Inventar."
+  no-room: "<red>Dafür ist kein Platz im Inventar. Schaffe erst Platz."
+  nothing-to-change: "<yellow>Da gibt es nichts zu wechseln."
+  empty: "<yellow>Wähle erst etwas aus deinem Inventar."
+  exchanged: "<green>Gewechselt: <items> für <value>."
+  exchanged-owed: "<yellow><owed> passen nicht ins Inventar. Sie kommen nach, sobald Platz ist."
+  changed: "<green>Gewechselt: <value> in neue Nennwerte."
+  rates-changed: "<yellow>Die Kurse oder deine Erze haben sich inzwischen geändert. Schau noch mal."
+  idle-closed: "<gray>Menü geschlossen: zu lange nichts getan. Die Kasse ist wieder frei."
+  tray-full: "<yellow>Höchstens 18 Sorten auf einmal."
+
+# Bestenliste: Tafeln (Wand 2x2 bis 6x4, Säule 1x3) und /casino top. Gezählt werden nur Runden mit Chips.
+# Eine Runde = ein Spiel (ein Dreh mit allen Feldern, ein Entenrennen mit allen Enten, eine Blackjack-Hand).
+# Gewinn = Auszahlung minus Einsatz einer Runde; Multiplikator = Auszahlung / Einsatz (ab leaderboard.min-stake).
+board:
+  item-wall: "Bestenliste (Wandtafel)"
+  item-wall-2x2: "Bestenliste (Wandtafel 2×2)"
+  item-wall-3x3: "Bestenliste (Wandtafel 3×3)"
+  item-wall-4x3: "Bestenliste (Wandtafel 4×3)"
+  item-wall-4x4: "Bestenliste (Wandtafel 4×4)"
+  item-wall-5x3: "Bestenliste (Wandtafel 5×3)"
+  item-wall-5x4: "Bestenliste (Wandtafel 5×4)"
+  item-wall-6x4: "Bestenliste (Wandtafel 6×4)"
+  item-column: "Bestenliste (Säule)"
+  item-lore: "<gray>Die besten Spieler des Casinos, in Chips"
+  no-wall: "<red>Hänge die Tafel an eine Wand: Klicke die Seite eines festen Blocks an. Hinter allen sechs Feldern muss Wand sein."
+  player-below: "<red>Unter der Tafel ist jemand. Hänge sie erst auf, wenn darunter niemand mehr ist."
+  # Tafel: Titel und Untertitel (<period> · <unit>)
+  title: "<gold><b><category>"
+  subtitle: "<gray><period> · <unit>"
+  unit-chips: "in Chips"
+  unit-multiplier: "ab <min> Einsatz"
+  unit-rounds: "Runden"
+  empty: "<gray>Noch keine Einträge"
+  loading: "<gray>Wird berechnet …"
+  pinned: "<yellow>Diese Tafel ist fest eingestellt."
+  category:
+    gewinn: "Größter Gewinn"
+    multiplikator: "Höchster Multiplikator"
+    netto: "Netto-Gewinn"
+    einsatz: "Gesetzte Chips"
+    runden: "Meiste Runden"
+    spielautomat: "Spielautomat: größter Gewinn"
+    gluecksrad: "Glücksrad: größter Gewinn"
+    plinko: "Plinko: größter Gewinn"
+    roulette: "Roulette: größter Gewinn"
+    blackjack: "Blackjack: größter Gewinn"
+    poker: "Poker: größter Gewinn"
+    entenrennen: "Entenrennen: größter Gewinn"
+  period:
+    woche: "Diese Woche"
+    gesamt: "Gesamt"
+  hidden: "<gray>Du erscheinst nicht mehr in der Bestenliste. Mit <white>/casino bestenliste an</white> wieder."
+  shown: "<green>Du erscheinst wieder in der Bestenliste."
+  hide-wait: "<gray>Einen Moment, bitte. Versuche es gleich noch einmal."
+  hide-usage: "<gray>/casino bestenliste aus|an – dich in der Bestenliste ausblenden oder wieder zeigen."
+  top-usage: "<gray>/casino top [<categories>] [woche|gesamt]"
+  top-header: "<gold>Bestenliste – <category></gold> <gray>(<period>, <unit>)"
+  top-line: "<gray><rank>. <white><name></white> – <gold><value>"
+  top-empty: "<gray>Noch keine Einträge."
+  top-loading: "<gray>Die Bestenliste wird gerade berechnet. Versuche es gleich noch einmal."
+  top-you-hidden: "<dark_gray>Du bist ausgeblendet (/casino bestenliste an)."
+  # Dialog der Hand des Croupiers an einer Tafel (Kreativ + kaboofcasino.admin)
+  pin-title: "Bestenliste #<number>"
+  pin-state: "<gray>Kategorie: <white><category></white> · Zeitraum: <white><period></white>"
+  pin-help: "<gray>Fest: Die Tafel zeigt immer diese Kategorie bzw. diesen Zeitraum. Automatisch: Sie blättert alle paar Sekunden weiter, und ein Rechtsklick zeigt die nächste Kategorie."
+  pin-auto-category: "Kategorie: automatisch"
+  pin-auto-period: "Zeitraum: automatisch"
+  pin-auto: "automatisch"
+  pin-done: "Fertig"
+  pin-saved: "<green>Bestenliste #<number>: <category>, <period>."
+  # Wochensieger im Server-Log (nicht im Spiel gezeigt): <week> = "03.11.–09.11.2026", <lines> = je Kategorie die Top 3
+  weekly: "Bestenliste der Woche <week>: <lines>"
+
+jukebox:
+  # Die Casino-Jukebox; <title> = Titel, <range> = Blöcke, <mode> = Modus, <length> = m:ss, <count> = Anzahl
+  item: "Casino-Jukebox"
+  item-lore: "<gray>98 Titel in 9 Musikrichtungen"
+  now-playing: "<gold>♪ <white><title>"
+  brand: "JUKEBOX"
+  help: "Titel anklicken:\ner läuft sofort.\nUnten: Modus,\nStart, Weiter,\nReichweite."
+  # Quittung im Menü-Titel (schlichter Text, höchstens etwa 15 Zeichen): darunter steht der Titel
+  label-playing: "Jetzt läuft:"
+  label-stopped: "Gerade still"
+  mode-order: "der Reihe nach"
+  mode-shuffle: "Zufall"
+  mode-repeat: "Wiederholen"
+  mode-button: "<gold>Modus: <white><mode>"
+  mode-lore: "<gray>Klick: der Reihe nach, Zufall\n<gray>oder einen Titel wiederholen"
+  play: "<gold><b>ABSPIELEN"
+  play-lore: "<gray><title>"
+  stop: "<gold><b>STOPPEN"
+  stop-lore: "<gray>Die Musik anhalten"
+  skip: "<gold>Nächster Titel"
+  skip-lore: "<gray>Gleich weiter in dieser Musikrichtung"
+  range: "<gold>Reichweite: <white><range> Blöcke"
+  range-lore: "<gray>Klick: 32, 48 oder 16 Blöcke"
+  track-lore: "<gray>Länge <length>\n<dark_gray>Klick: abspielen"
+  track-playing: "<green>Läuft gerade"
+  genre-lore: "<gray><count> Titel"
+  genre-music-pack: "<dark_gray>Braucht das Musikpaket"
+  prev: "<gold>Vorige Seite"
+  next: "<gold>Nächste Seite"
+  needs-music-pack: "<gray>♪ <title> <dark_gray>– dafür brauchst du das Casino-Musikpaket"
+  disabled: "<yellow>Die Jukeboxen sind gerade ausgeschaltet."
+  cooldown: "<gray>Einen Moment – die Musik wurde gerade erst gewechselt."
+  no-settings: "<gray>Die Jukebox hat keine Einstellungen. Ohne Croupier-Hand öffnet ein Rechtsklick ihr Menü."
+
+discord:
+  # Posts im Discord-Kanal über KaboofDiscord: schlichter Text, keine Farben; im Text geht Discord-Formatierung
+  # (**fett**), der Titel steht neben dem Kopf des Spielers und kann keine Formatierung. <player> = Name,
+  # <chips> = Gewinn ("1.500 Chips"), <stake> = Einsatz, <multiplier> = "100" oder "52,5", <game> = game-* unten.
+  big-win-title: "<player> gewinnt <chips> <game>!"
+  big-win-text: "🎰 **<multiplier>×** der Einsatz von <stake>"
+  # Wochensieger: <week> = "03.11.–09.11.2026"; je Kategorie eine Überschrift und die Plätze (<medal> = 🥇🥈🥉,
+  # <value> = "1.500 Chips", "×12,5" oder weekly-rounds / weekly-round)
+  weekly-title: "🏆 Casino-Bestenliste der Woche <week>"
+  weekly-category: "**<category>**"
+  weekly-place: "<medal> <player> – <value>"
+  weekly-rounds: "<count> Runden"
+  weekly-round: "1 Runde"
+  game-slot-machine: "am Spielautomaten"
+  game-fortune-wheel: "am Glücksrad"
+  game-plinko: "beim Plinko"
+  game-roulette: "beim Roulette"
+  game-blackjack: "beim Blackjack"
+  game-poker: "beim Poker"
+  game-derby: "beim Entenrennen"
+  game-other: "im Casino"
+
+# Chip-Shop: Casino-Deko, Möbel und Maschinen für Chips. Texte im Menü-Titel (brand, category.*, help,
+# label-*) sind schlichter Text ohne Farben; help hat höchstens 5 Zeilen (\n) zu je etwa 15 Zeichen.
+# Chip-Beträge (<price>) kommen fertig mit "Chip"/"Chips".
+chipshop:
+  item: "Chip-Shop"
+  item-lore: "<gray>Casino-Deko, Möbel und Maschinen für Chips"
+  in-use: "<yellow><name> kauft gerade am Chip-Shop."
+  brand: "CHIP-SHOP"
+  category:
+    boeden: "Böden und Wände"
+    moebel: "Möbel"
+    bar: "Bar & Tische"
+    licht: "Licht & Schilder"
+    technik: "Technik"
+    maschinen: "Maschinen"
+    outfits: "Outfits"
+  tab-lore: "<gray>Klicke hier, um die Kategorie zu zeigen."
+  help: "Wähle einen\nArtikel, dann\nKAUFEN.\nUmschalt-Klick:\nein Stapel."
+  label-balance: "Deine Chips:"
+  label-price: "Preis:"
+  price-lore: "<gold>Preis: <price> pro Stück"
+  stack-lore: "<gray>Stapel: <count> Stück für <price>"
+  limit-lore: "<gray>Heute noch <left> von <limit> Stück"
+  select-lore: "<dark_gray>Klicke hier, um ihn zu wählen."
+  selected-lore: "<green>Gewählt – jetzt KAUFEN"
+  empty: "<gray>Hier gibt es gerade nichts."
+  page: "Seite <page> / <pages>"
+  page-lore: "<gray>Klicke hier, um zu blättern."
+  qty-one: "Menge: 1 Stück"
+  qty-stack: "Menge: ein Stapel"
+  qty-lore: "<gray>Klicke hier, um die Menge zu wechseln.\n<gray>Umschalt-Klick auf KAUFEN kauft immer einen Stapel."
+  buy-button: "Kaufen"
+  buy-lore: "<gray><count>× <item> für <price> kaufen."
+  buy-shift-lore: "<dark_gray>Umschalt: <count> Stück für <price>"
+  # über 1.000 Chips: der erste Klick fragt nach, der zweite (innerhalb von 3 s) kauft
+  confirm: "Nochmal klicken: <price>"
+  confirm-hint: "<yellow>Nochmal auf KAUFEN klicken, um für <price> zu kaufen."
+  too-expensive: "<red>Stapel zu teuer – kauf einzeln."
+  none-selected: "<yellow>Wähle erst einen Artikel."
+  bought: "<green>Gekauft: <count>× <item> für <price>."
+  not-enough: "<red>Dafür reichen deine Chips nicht (<price>)."
+  no-room: "<red>Kein Platz im Inventar für den Kauf und das Wechselgeld. Schaffe erst Platz."
+  limit: "<red>Davon kannst du heute nur noch <left> Stück kaufen."
+  changed: "<yellow>Das Angebot hat sich inzwischen geändert. Schau noch mal."
+  idle-closed: "<gray>Menü geschlossen: zu lange nichts getan. Der Chip-Shop ist wieder frei."
+  unavailable: "<red>Gerade nicht verfügbar"
+  # Dialog der Hand des Croupiers am Chip-Shop (Kreativ + kaboofcasino.admin)
+  admin-title: "Chip-Shop – Preise"
+  admin-help: "Preis in Chips pro Stück (leer = automatisch aus dem Rezept), Limit = Stück pro Spieler und Tag (0 = keins), ausblenden = nicht im Shop."
+  admin-entry: "<white><item></white> <gray>– <price><auto>, Limit <limit><hidden>"
+  admin-auto: " (automatisch)"
+  admin-hidden: " <red>(ausgeblendet)"
+  admin-price: "Preis"
+  admin-limit: "Limit/Tag"
+  admin-hide: "ausblenden"
+  admin-save: "Speichern"
+  admin-prev: "« Zurück"
+  admin-next: "Weiter »"
+  admin-done: "Fertig"
+  admin-page: "<gray><category> · Seite <page> / <pages>"
+  admin-saved: "<green>Chip-Shop gespeichert (<changes>)."
+  admin-invalid: "<red>Ungültige Eingabe: Preis leer oder 1 bis <max>, Limit 0 bis <limit>."
+  admin-stale: "<yellow>Der Chip-Shop wurde inzwischen geändert. Hier ist die aktuelle Liste."
+
+shop:
+  price-lore: "<gold>Preis: <price>"
+  count-lore: "<gray><count> Stück pro Kauf"
+  limit-lore: "<gray>Heute noch <left> von <limit>"
+  select-lore: "<dark_gray>Klicke hier, um sie zu wählen."
+  selected-lore: "<green>Gewählt – jetzt KAUFEN"
+  unavailable: "<red>Gerade nicht verfügbar"
+  empty: "<gray>Es gibt noch keine Prämien."
+  buy-button: "Kaufen"
+  buy-lore: "<gray><item> für <price> kaufen."
+  none-selected: "<yellow>Wähle erst eine Prämie."
+  bought: "<green>Gekauft: <item> für <price>."
+  limit: "<red>Davon gibt es heute nichts mehr für dich. Morgen wieder!"
+  not-enough: "<red>Dafür reichen deine Chips nicht (<price>)."
+  no-room: "<red>Kein Platz im Inventar für die Prämie und das Wechselgeld. Schaffe erst Platz."
+  page: "Seite <page> / <pages>"
+  page-lore: "<gray>Klicke hier, um zu blättern."
+  changed: "<yellow>Die Prämien haben sich inzwischen geändert. Schau noch mal."
+  # Dialog der Hand des Croupiers an einer Kasse (Kreativ + kaboofcasino.admin)
+  admin-title: "Kasse – Prämien"
+  admin-help: "Preis in Chips, Limit = Käufe pro Spieler und Tag (0 = keins). Neu: das Item in deiner Nebenhand."
+  admin-entry: "<white><index>. <item></white> <gray>– <price>, Limit <limit>"
+  admin-price: "<index>. Preis"
+  admin-limit: "<index>. Limit/Tag"
+  admin-remove: "<index>. entfernen"
+  admin-new: "Neu: <item> (<count>×)"
+  admin-new-none: "<gray>Neue Prämie: Nimm ein Item in die Nebenhand."
+  admin-new-price: "Neu: Preis"
+  admin-new-limit: "Neu: Limit/Tag"
+  admin-save: "Speichern"
+  admin-add: "Nebenhand hinzufügen"
+  admin-prev: "« Zurück"
+  admin-next: "Weiter »"
+  admin-done: "Fertig"
+  admin-page: "<gray>Seite <page> / <pages>"
+  # <changes>: "1 Änderung" / "3 Änderungen"
+  admin-saved: "<green>Prämien gespeichert (<changes>)."
+  admin-added: "<green>Hinzugefügt: <item> für <price>."
+  admin-invalid: "<red>Ungültige Eingabe: Preis 1 bis <max>, Limit 0 bis <limit>."
+  admin-stale: "<yellow>Die Prämien wurden inzwischen geändert. Hier ist die aktuelle Liste."
+  admin-no-item: "<red>Nimm das neue Item in die Nebenhand."
+  admin-chip: "<red>Chips und Casino-Items, auch in Kisten oder Bündeln, können keine Prämie sein."
+  admin-full: "<red>Es gibt schon <max> Prämien, mehr geht nicht."
+
+slot:
+  # message.roulettecasino.slot_machine.*
+  no-bet: "<yellow>Setze einen Einsatz, bevor du den Hebel ziehst."
+  busy: "<yellow>Der Automat dreht sich."
+  spacing: "<red>Lass zwischen zwei Spielautomaten einen Block frei."
+
+wheel:
+  # message.roulettecasino.fortune_wheel.*
+  no-bet: "<yellow>Setze einen Einsatz, bevor du das Rad drehst."
+  busy: "<yellow>Das Rad dreht sich."
+
+plinko:
+  # message.roulettecasino.plinko.*
+  no-bet: "<yellow>Setze einen Einsatz, bevor du die Kugel fallen lässt."
+  busy: "<yellow>Eine Runde läuft."
+
+roulette:
+  # message.roulettecasino.no_bet, gui.roulettecasino.roulette.several (busy: the mod opens no menu while it spins)
+  no-bet: "<yellow>Setze einen Einsatz, bevor du das Roulette drehst."
+  busy: "<yellow>Das Roulette dreht sich."
+  several: "<yellow>Nur eine Farbe behalten"
+  # mehrere Spieler an einem Tisch (seconds: bis die Kugel rollt)
+  joined: "<gold>Du bist dabei.</gold> <gray>Die Kugel rollt in <seconds> s."
+  already: "<yellow>Du hast schon gesetzt. Die Kugel rollt in <seconds> s."
+  full: "<yellow>An diesem Tisch spielen schon 8 Leute mit."
+  countdown: "<gold>Einsätze noch <seconds> s"
+
+blackjack:
+  # message.roulettecasino.blackjack.busy / no_bet / cannot_double / timeout
+  busy: "<yellow><name> spielt an diesem Tisch."
+  no-bet: "<yellow>Setze einen Einsatz, bevor du spielst."
+  cannot-double: "<yellow>Du hast nicht genug Gegenstände zum Verdoppeln."
+  timeout: "<yellow>Die Zeit ist um: Du bleibst stehen."
+  # mehrere Spieler an einem Tisch (seconds: bis ausgeteilt wird)
+  joined: "<gold>Du bist dabei.</gold> <gray>Es wird in <seconds> s ausgeteilt."
+  already: "<yellow>Du hast schon gesetzt. Es wird in <seconds> s ausgeteilt."
+  full: "<yellow>An diesem Tisch sind alle 5 Plätze besetzt."
+  your-turn: "<gold>Du bist dran!"
+  waiting: "<gray><name> ist dran."
+  countdown: "<gold>Einsätze noch <seconds> s"
+
+poker:
+  # message.roulettecasino.poker.busy / no_bet / cannot_call / timeout
+  busy: "<yellow><name> spielt an diesem Tisch."
+  no-bet: "<yellow>Setze einen Einsatz, bevor du spielst."
+  cannot-call: "<yellow>Du hast nicht genug Gegenstände zum Mitgehen (zweimal den Einsatz)."
+  timeout: "<yellow>Die Zeit ist um: Du steigst aus."
+  # plugin text: CALL found the hand's records already settled (they paid the fold), so the hand folds
+  hand-settled: "<yellow>Diese Hand ist schon abgerechnet (ausgestiegen): Mitgehen geht nicht mehr."
+  full: "<yellow>An diesem Tisch sind alle 3 Plätze besetzt."
+  # Texas Hold'em gegeneinander (chips: z. B. "120 Chips"; hand: " mit Full House" oder leer)
+  holdem-seated: "<gold>Du sitzt am Tisch.</gold> <gray>Die Hand beginnt, sobald zwei Spieler sitzen."
+  holdem-already: "<yellow>Du sitzt schon an diesem Tisch."
+  holdem-buy-in: "<yellow>Setz dich mit <min> bis <max> hin."
+  holdem-your-turn: "<gold>Du bist dran!"
+  holdem-timeout: "<yellow>Die Zeit ist um."
+  holdem-left: "<gray>Du bist aufgestanden: <gold><chips></gold> zurück."
+  holdem-away: "<yellow>Du warst zu weit vom Pokertisch weg und bist aufgestanden: <gold><chips></gold> zurück."
+  holdem-idle: "<yellow>Zweimal ist deine Zeit abgelaufen: Du bist aufgestanden, <gold><chips></gold> zurück."
+  holdem-danger-time: "<yellow>Gefahr! Du bekommst 20 Sekunden mehr für deinen Zug (bis zu dreimal)."
+  holdem-solo-hint: "<gray>Allein gegen den Croupier: schleichend den Tisch anklicken."
+  # Beim ersten Hinsetzen und mit dem ? im Menü (Chat, mehrere Zeilen)
+  holdem-rules: "<gold><b>So geht Texas Hold'em</b></gold>\n<gray>Du bekommst <white>2 eigene Karten</white>, in die Mitte kommen nach und nach <white>5 gemeinsame</white> (erst 3, dann 1, dann 1). Deine beste Hand aus 5 dieser 7 Karten zählt.\n<gray>Vor jeder neuen Karte wird gesetzt: <white>Checken</white> = weiter ohne Einsatz, <white>Mitgehen</white> = den Einsatz der anderen zahlen, <white>Setzen/Erhöhen</white> = mehr bieten, <white>Passen</white> = aussteigen (was im Pot liegt, ist weg).\n<gray>Small und Big Blind sind Pflichteinsätze, die reihum gehen. Wer am Ende die beste Hand hat oder als Letzter übrig bleibt, gewinnt den Pot.\n<gold>Hände von stark nach schwach:</gold> <gray>Royal Flush, Straight Flush, Vierling, Full House, Flush, Straße, Drilling, Zwei Paare, Ein Paar, Höchste Karte.\n<dark_gray>Tasten im Menü: 1 = Checken/Mitgehen, 2 oder F = Passen, 3 = Setzen/Erhöhen."
+  holdem-busted: "<yellow>Du hast keine Chips mehr am Tisch."
+  holdem-won: "<gray>Poker: <gold><name></gold> gewinnt <gold><chips></gold><hand>."
+  holdem-with: " mit <hand>"
+  holdem-fold-first: "<yellow>Erst passen, dann aufstehen."
+  holdem-panel-title: "<gold>Texas Hold'em</gold> <gray>Blinds <sb>/<bb>"
+  holdem-panel-pot: "<gold>Pot <chips>"
+  holdem-panel-next: "<gray>Nächste Hand in <seconds> s"
+  holdem-panel-lobby: "<gray>Warte auf Mitspieler: Tisch anklicken"
+  holdem-act-sb: "Small Blind <chips>"
+  holdem-act-bb: "Big Blind <chips>"
+  holdem-act-fold: "passt"
+  holdem-act-check: "checkt"
+  holdem-act-call: "geht mit <chips>"
+  holdem-act-bet: "setzt <chips>"
+  holdem-act-raise: "erhöht auf <chips>"
+  holdem-act-allin: "all-in <chips>"
+  holdem-act-won: "gewinnt <chips>"
+
+derby:
+  # message.roulettecasino.derby.busy / received / personal_win / personal_push / personal_loss / no_bet
+  busy: "<yellow>Das Rennen läuft."
+  received: "<green><count> Gegenstände erhalten"
+  personal-win: "<gold>Deine Ente hat gewonnen!"
+  personal-push: "<yellow>Dein Einsatz wird zurückgegeben."
+  personal-loss: "<red>Deine Ente hat verloren."
+  no-bet: "<yellow>Setze einen Einsatz, bevor das Rennen startet."
+  # plugin texts: the group race is full (64 players, the mod's MAX_PLAYERS), its countdown is over, or the
+  # machine's win chance forbids groups (gui.roulettecasino.derby.group_unavailable)
+  group-full: "<yellow>Das Gruppenrennen ist voll (64 Spieler)."
+  group-closed: "<yellow>Die Anmeldung ist geschlossen: Das Rennen startet gleich."
+  group-unavailable: "<yellow>Diese Einstellungen erlauben keine Gruppenrennen."
+
+machine:
+  in-use: "<yellow><name> spielt gerade an diesem Automaten."
+  not-yours: "<red>Diesen Automaten kann nur <name> oder ein Admin abbauen."
+  running: "<yellow>Der Automat läuft gerade. Warte, bis die Runde vorbei ist."
+  no-space: "<red>Hier ist kein Platz für den Automaten."
+  no-support: "<red>Der Automat braucht festen Boden."
+  chunk-border: "<red>Die Maschine passt hier nicht ganz in einen Chunk – stell sie einen Block weiter nach <direction>."
+  chunk-border-far: "<red>Die Maschine passt hier nicht ganz in einen Chunk – stell sie <blocks> Blöcke weiter nach <direction>."
+  player-near: "<red>Hier steht jemand zu nah – die Maschine braucht zwei Blöcke Abstand zu anderen Spielern."
+  logout-spot: "<red>Hier ist jemand ausgeloggt – stell die Maschine woanders hin."
+  place-denied: "<red>Hier darfst du nichts bauen."
+  removed: "<green>Automat entfernt."
+  none: "<red>Du schaust auf keinen Casino-Automaten."
+  idle-closed: "<gray>Menü geschlossen: zu lange nicht gedreht. Der Automat ist wieder frei."
+
+bet:
+  not-allowed: "<red><item> ist kein Einsatz."
+  not-enough: "<red>Du hast nicht genug <item>."
+
+# Einsätze in Chips: die Einsatzfelder aller Spiele nehmen Chips aus dem Inventar
+chips:
+  only: "<red>Hier wird mit Chips gespielt. Erze tauschst du an der Kasse in Chips."
+  max: "<yellow>Höchsteinsatz: <max> je Feld."
+  max-round: "<yellow>Höchsteinsatz: <max> pro Runde."
+  # name of a filled bet slot; <value> e.g. "1.250 Chips" or "1 Chip"
+  stake: "<gold><value>"
+  # one lore line per chip kind in a bet slot: <count>, <chip> (the chip's name)
+  stake-line: "<gray><count>× <chip>"
+  stake-lore: "<gray>Linksklick: Feld wählen, nochmal: leeren\n<gray>Rechtsklick: ein Chip weniger"
+  active-lore: "<gray>Klicke Chips in deinem Inventar an:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Umschalt-Linksklick: alle Chips dieser Sorte\n<gray>Höchstens <max> je Feld."
+  active-lore-round: "<gray>Klicke Chips in deinem Inventar an:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Umschalt-Linksklick: alle Chips dieser Sorte\n<gray>Alle Felder zusammen höchstens <max>."
+  play-lore: "<gray>Jedes Feld ist ein eigener Einsatz.\n<gray>Gewinne gibt es in Chips.\n<gray>Höchstens <max> je Feld."
+  play-lore-round: "<gray>Jedes Feld ist ein eigener Einsatz.\n<gray>Gewinne gibt es in Chips.\n<gray>Zusammen höchstens <max>."
+  slot-spin-lore: "<gray>Klicke Chips in deinem Inventar an, um sie zu setzen:\n<gray>Linksklick: der ganze Stapel · Rechtsklick: +1\n<gray>Umschalt-Linksklick: alle dieser Sorte (höchstens <max>)"
+  slot-stake-lore: "<gray>Linksklick: Einsatz zurücknehmen\n<gray>Rechtsklick: ein Chip weniger"
+  book-title: "<gold>Mit Chips spielen"
+  # one line per chip kind: <chip>
+  book-line: "<gray>• <chip>"
+  book-lore: "<gray>Erze tauschst du an der Kasse in Chips.\n<gray>Gewinne gibt es in Chips.\n<gray>Gewinne und Erstattungen kommen in\n<gray>möglichst großen Chips zurück."
+  cannot-call: "<yellow>Du hast nicht genug Chips zum Mitgehen (zweimal den Einsatz)."
+  cannot-double: "<yellow>Du hast nicht genug Chips zum Verdoppeln."
+  # the derby's payout notice for chips (<chips>: "1 Chip", "1.250 Chips"); ore payouts keep derby.received
+  derby-received: "<green><chips> erhalten"
+  # the derby's confirmed group stake
+  escrow: "<gray>Einsatz bestätigt: <value>"
+
+owed:
+  pending: "<yellow>Hol erst deinen Gewinn ab: <click:run_command:'/casino abholen'><u>/casino abholen</u></click>"
+  delivered: "<green>Nachgeliefert: <items>"
+  remaining: "<yellow>Noch offen: <items>. Mach Platz im Inventar."
+  none: "<gray>Du hast nichts abzuholen."
+
+rounds:
+  full: "<red>Du hast schon zu viele laufende Runden."
+
+error:
+  creative: "<red>Im Kreativ- und Zuschauermodus wird nicht gespielt."
+  not-usable: "<red>Das geht gerade nicht."
+  unsafe: "<red>Nicht jetzt – du bist in Gefahr."
+  danger-close: "<red>Gefahr – Menü zu. Deine Runde läuft weiter."
+  no-pack: "<red>Für das Casino brauchst du das Ressourcenpaket. Nimm es beim nächsten Login an."
+  internal: "<red>Interner Fehler (Code <code>). Sag einem Admin Bescheid."
+  no-permission: "<red>Dazu fehlt dir die Berechtigung."
+
+deco:
+  switch-off: "<red>Casino-Deko kann gerade nicht platziert werden (Server-Einstellung fehlt). Sag einem Admin Bescheid."
+  # admin status of the full-block deco (one line in /casino for admins): <states> <source>
+  status-on: "<green>Block-Deko aktiv</green> <gray>– Paper block-updates.disable-mushroom-block-updates = true (gelesen über <source>), <states> Zustände."
+  status-off: "<red>Block-Deko AUS</red> <gray>– Paper block-updates.disable-mushroom-block-updates = false (gelesen über <source>): Platzieren gesperrt, reservierte Zustände droppen Vanilla-Loot. In config/paper-global.yml auf true setzen und neu starten."
+  # display decoration: only the casino's own refusals speak; the mod's silent ones stay silent
+  chunk-border: "<red>Das passt hier nicht ganz in einen Chunk – setz es einen Block weiter nach <direction>."
+  chunk-border-far: "<red>Das passt hier nicht ganz in einen Chunk – setz es <blocks> Blöcke weiter nach <direction>."
+  logout-spot: "<red>Hier ist jemand ausgeloggt – stell das woanders hin."
+  # barrier deco without support below (croupier counter, wall shelves): two blocks to other players, as machines
+  player-near: "<red>Hier steht jemand zu nah – das braucht zwei Blöcke Abstand zu anderen Spielern."
+  seat-danger: "<red>Gefahr – du stehst auf."
+
+# the casino guide (dialogs); its own texts come from the mod (pack lang files), these are the plugin's additions
+guide:
+  # label of a shaped recipe (the mod only labels shapeless ones: "Formloses Rezept")
+  recipe: "Rezept"
+  # after an ingredient tag shown by one of its items (planks, slabs, signs)
+  any-kind: " (beliebige Sorte)"
+  # hover text of a link to another page: <page>
+  goto: "<gray>Zur Seite <page>"
+  # licence line on the cover
+  credits: "<gray>Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>"
+  danger-close: "<red>Gefahr – Handbuch zu."
+  # plugin notes under the mod's texts where this server works differently (spread 3: text 043; spreads 33/34)
+  note-counter: "<gray><i>Hier: Stell einen arbeitslosen Dorfbewohner auf die Theke (Leine ab) und klick die Theke an."
+  note-hand: "<gray><i>Hier: /casino give croupier_hand (nur Admins)."
+  note-bets: "<gray><i>Hier nicht im Fenster: Einsätze und Auszahlungen stehen in der config.yml."
+  note-names: "<gray><i>Hier: das Feld „Name“ im Fenster der Maschine."
+  note-number: "<gray><i>Hier nur der Balken, keine Zahleneingabe."
+  note-chips: "<gray><i>Hier spielst du mit Chips: Erze tauschst du an der Kasse in Chips, Gewinne gibt es in Chips. Deko und Maschinen kaufst du am Chip-Shop."
+
+# the croupier counter: answers to a right click on a free counter (option A: a click converts the villager on it)
+croupier:
+  hint: "Stell einen arbeitslosen Dorfbewohner auf die Theke und klick sie an."
+  not-on-top: "Der Dorfbewohner muss oben auf der Theke stehen."
+  nitwit: "Ein Nitwit wird kein Croupier."
+  employed: "Dieser Dorfbewohner hat schon einen Beruf."
+  baby: "Ein Kind wird kein Croupier."
+  leashed: "Nimm dem Dorfbewohner erst die Leine ab."
+  named: "Ein Dorfbewohner mit Namen wird kein Croupier."
+  riding: "Der Dorfbewohner muss frei auf der Theke stehen."
+  busy-villager: "Der Dorfbewohner ist gerade beschäftigt."
+  out-of-reach: "Komm näher an die Theke."
+
+pack:
+  prompt: "<gold>KaboofCasino</gold>: Grafiken und Sounds von <yellow>MineVegas Casino</yellow> (MIT), curseforge.com/minecraft/mc-mods/minevegas-casino"
+  kick: "<red>Das Casino-Ressourcenpaket ist auf diesem Server Pflicht.</red>\n<gray>Verbinde dich neu und nimm es an (Serverliste: Server-Ressourcenpakete aktivieren)."
+  declined: "<gray>Ohne das Ressourcenpaket siehst du das Casino nicht. Beim nächsten Login kannst du es annehmen."
+  music-prompt: "<gold>KaboofCasino</gold>: freiwillige Lounge-Musik an Casino-Lautsprechern (ca. 22 MB) – Musik: Kevin MacLeod (incompetech.com), CC BY 4.0"
+
+command:
+  info: "<gold>KaboofCasino</gold> <gray>von Jxxck – Paper-Nachbau von <yellow>MineVegas Casino</yellow> von byMehd (MIT):\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>/casino stats · /casino top · /casino abholen · /casino credits"
+  usage: "<gray>/casino [stats|top|bestenliste|abholen|credits|musik] · Admins: /casino give <maschine> [spieler] · /casino remove · /casino reload"
+  give-done: "<green><player> hat <item> bekommen."
+  give-unknown: "<red>Unbekannte Maschine: <name>. Möglich: <list>"
+  player-unknown: "<red>Spieler <name> ist nicht online."
+  reloaded: "<green>KaboofCasino neu geladen (<warnings> Warnungen, siehe Konsole). Das Ressourcenpaket ändert sich erst mit einer neuen Version."
+  stats-header: "<gold>Deine Casino-Statistik</gold> <gray>(<rounds> Runden)"
+  stats-line: "<gray>• <yellow><item></yellow>: gesetzt <staked>, gewonnen <won>"
+  stats-empty: "<gray>Du hast noch nicht gespielt."
+  credits: "<gold>KaboofCasino – Credits</gold>\n<gray>Plugin für Paper, Chips, Kasse, Chip-Shop, Bestenlisten, Outfits, Jukebox, Mehrspieler-Tische und Texas Hold'em: <yellow>Jxxck</yellow> (MIT-Lizenz)\n<gray>Spiele, Modelle, Texturen, GUI-Grafiken, Sounds und Texte: <yellow>MineVegas Casino</yellow> 1.1.0 von byMehd, MIT-Lizenz mit Hinweispflicht:\n<aqua><click:open_url:'https://www.curseforge.com/minecraft/mc-mods/minevegas-casino'><u>https://www.curseforge.com/minecraft/mc-mods/minevegas-casino</u></click>\n<gray>Lounge-Musik an den Lautsprechern (freiwilliges Musikpaket): <yellow>Airport Lounge, Backbay Lounge, Jazz Brunch, George Street Shuffle, Cool Vibes, Bossa Antigua</yellow> – Kevin MacLeod (<click:open_url:'https://incompetech.com'>incompetech.com</click>), Lizenz CC BY 4.0:\n<aqua><click:open_url:'https://creativecommons.org/licenses/by/4.0/'><u>https://creativecommons.org/licenses/by/4.0/</u></click>\n<gray>Geändert von MineVegas Casino: MP3 in Ogg Vorbis umgewandelt, Lautheit auf -20 LUFS angeglichen; Komposition unverändert. Keine Billigung durch den Komponisten.\n<gray>GUI-Schrift aus der Minecraft-Standardschrift. Kein offizielles Minecraft-Produkt.\n<gray>Lounge-Musik abschalten (ab dem nächsten Login kein Musikpaket mehr): <yellow>/casino musik aus</yellow>, wieder an: <yellow>/casino musik an</yellow>"
+  # /casino musik aus|an (plugin texts): the music pack offer at the next login
+  music-off: "<gray>Lounge-Musik ist <yellow>aus</yellow>: Ab dem nächsten Login wird dir kein Musikpaket mehr angeboten."
+  music-on: "<gray>Lounge-Musik ist <yellow>an</yellow>: Ab dem nächsten Login wird dir das Musikpaket wieder angeboten."
+  music-usage: "<gray>/casino musik aus · /casino musik an"
+  open-rounds: "<gray>Laufende Runden: <rounds> · offene Gewinne: <owed>"
+
+gui:
+  slot:
+    # block.roulettecasino.slot_machine, gui.roulettecasino.slot.payouts, .bet, .play
+    title: "Spielautomat"
+    payouts: "Gewinne"
+    bet: "EINSATZ"
+    spin: "<gold><b>DREHEN"
+    collect: "<gold><b>ABHOLEN"
+    collect-lore: "<gray>Erst den offenen Gewinn abholen,\n<gray>dann geht es weiter."
+  stake:
+    # Einsatzfelder (Auswahl statt Hineinlegen; die Chip-Texte stehen unter chips:)
+    active: "<gold>Gewähltes Feld"
+    empty: "<gray>Leeres Feld"
+    empty-lore: "<gray>Linksklick: dieses Feld wählen"
+  wheel:
+    # block.roulettecasino.fortune_wheel, gui.roulettecasino.wheel.bet, .play
+    title: "Glücksrad"
+    bet: "EINSATZ"
+    spin: "<gold><b>DREHEN"
+  plinko:
+    # block.roulettecasino.plinko, gui.roulettecasino.plinko.bet, .one_ball, .play
+    title: "Casino-Plinko"
+    bets: "EINSÄTZE"
+    ball: "1 Kugel"
+    drop: "<gold><b>LOSLASSEN"
+  roulette:
+    # block.roulettecasino.roulette_table, gui.roulettecasino.red/black/green, .play
+    title: "Casino-Roulette"
+    red: "ROT"
+    black: "SCHWARZ"
+    green: "GRÜN"
+    spin: "<gold><b>DREHEN"
+    veil: "<gray>Nur eine Farbe behalten"
+  blackjack:
+    # gui.roulettecasino.blackjack.title / stake / pay_* / odds_* / deal / dealer / you / hit / stand / double;
+    # the button lore is the first line of *_tip (the key hints there do not work in a chest)
+    title: "BLACKJACK"
+    stake: "EINSATZ"
+    pay-blackjack: "BLACKJACK"
+    pay-blackjack-note: "21 direkt"
+    odds-blackjack: "×2,5"
+    pay-win: "SIEG"
+    pay-win-note: "Mehr oder 21"
+    odds-win: "×2"
+    pay-push: "REMIS"
+    pay-push-note: "Rückgabe"
+    odds-push: "×1"
+    deal: "<gold><b>AUSTEILEN"
+    dealer: "CROUPIER"
+    you: "DU"
+    hit: "<gold><b>KARTE"
+    hit-lore: "<gray>Eine Karte ziehen\n<dark_gray>(Taste 1)"
+    stand: "<gold><b>HALTEN"
+    stand-lore: "<gray>Bei dieser Summe bleiben\n<dark_gray>(Taste 2)"
+    double: "<gold><b>DOPPELN"
+    double-lore: "<gray>Einsatz verdoppeln, 1 Karte\n<dark_gray>(Taste 3)"
+  poker:
+    # gui.roulettecasino.poker.title / ante_pays / hand_9..5 / pay_straight_less / call / call_note / qualify_note /
+    # qualify_else / deal / fold; the payout panel's EINSATZ, Gewinne and CROUPIER are gui.blackjack.stake,
+    # gui.slot.payouts and gui.blackjack.dealer like in the mod; the odds (100:1 .. 1:1) are numbers.
+    # The button lore is the text of *_tip without the key hint (the keys do not work in a chest).
+    title: "POKER"
+    ante-pays: "DER EINSATZ ZAHLT"
+    pay-royal-flush: "Royal Flush"
+    pay-straight-flush: "Straight Flush"
+    pay-four-of-a-kind: "Vierling"
+    pay-full-house: "Full House"
+    pay-flush: "Flush"
+    pay-straight-less: "Bis zur Straße"
+    call-label: "MITGEHEN"
+    call-note: "2 × Einsatz"
+    qualify-note: "Ab Paar Vieren"
+    qualify-else: "sonst bezahlt"
+    deal: "<gold><b>AUSTEILEN"
+    call: "<gold><b>MITGEHEN"
+    call-lore: "<gray>Zweimal den Grundeinsatz setzen\n<gray>und die letzten zwei Karten sehen\n<dark_gray>(Taste 1)"
+    fold: "<gold><b>AUSSTEIGEN"
+    fold-lore: "<gray>Die Hand aufgeben:\n<gray>Der Grundeinsatz ist verloren\n<dark_gray>(F oder 2)"
+  holdem:
+    # Texas Hold'em gegeneinander: Titeltexte der Menüs (ohne Farben) und die Knöpfe; <chips> = z. B. "40 Chips"
+    title: "TEXAS HOLD'EM"
+    pot: "POT"
+    to-call: "ZU ZAHLEN"
+    blinds: "BLINDS <sb>/<bb>"
+    players: "SPIELER"
+    buy-in: "EINKAUF"
+    terms: "Am Tisch"
+    versus: "GEGENEINANDER"
+    row-small-blind: "Small Blind"
+    row-big-blind: "Big Blind"
+    row-min-buy-in: "Min. Einkauf"
+    row-max-buy-in: "Max. Einkauf"
+    row-time: "Bedenkzeit"
+    row-seats: "Plätze belegt"
+    box1-label: "DEINE CHIPS"
+    box1-note: "liegen vor dir,"
+    box1-last: "bis du gehst"
+    box2-label: "SHOWDOWN"
+    box2-note: "Die beste Hand"
+    box2-last: "holt den Pot"
+    sit: "<gold><b>HINSETZEN"
+    fold: "<gold><b>PASSEN"
+    fold-lore: "<gray>Diese Hand aufgeben\n<dark_gray>(F oder 2)"
+    leave: "<gold><b>GEHEN"
+    leave-lore: "<gray>Vom Tisch aufstehen:\n<gray>deine Chips kommen ins Inventar"
+    check: "<gold><b>CHECKEN"
+    call: "<gold><b>MITGEHEN</b> <yellow><chips>"
+    bet: "<gold><b>SETZEN</b> <yellow><chips>"
+    raise: "<gold><b>ERHÖHEN</b> <gray>auf</gray> <yellow><chips>"
+    allin: "<gold><b>ALL-IN</b> <yellow><chips>"
+    key-1: "<dark_gray>(Taste 1)"
+    key-3: "<dark_gray>(Taste 3)"
+    min: "<white>Kleinster Einsatz"
+    minus: "<white>Weniger"
+    plus: "<white>Mehr"
+    max: "<white>Alles (All-in)"
+    size-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: um einen Big Blind\n<gray>Umschalt-Klick: um zehn Big Blinds"
+    min-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: der kleinste erlaubte Einsatz"
+    max-lore: "<gray>Einsatz jetzt: <yellow><chips>\n<gray>Klick: alle deine Chips"
+    size-wait: "<gray>Den Einsatz wählst du, wenn du\n<gray>dran bist und setzen darfst."
+    help: "<gold><b>So geht Texas Hold'em"
+    help-lore: "<gray>2 eigene Karten, dazu 5 gemeinsame\n<gray>in der Mitte. Die beste Hand aus 5\n<gray>dieser 7 Karten gewinnt den Pot.\n\n<white>Checken</white> <gray>weiter ohne Einsatz\n<white>Mitgehen</white> <gray>den Einsatz zahlen\n<white>Setzen/Erhöhen</white> <gray>mehr bieten\n<white>Passen</white> <gray>aussteigen\n\n<gold>Hände, stark nach schwach:\n<gray>Royal Flush, Straight Flush,\n<gray>Vierling, Full House, Flush,\n<gray>Straße, Drilling, Zwei Paare,\n<gray>Ein Paar, Höchste Karte\n\n<dark_gray>Klick: die Erklärung im Chat"
+    head-cards: "<gray>Karten: <white><cards>"
+    head-hand: "<gray>Hand: <yellow><hand>"
+    head-stack: "<gray>Chips: <gold><chips>"
+    head-bet: "<gray>Im Pot (diese Runde): <yellow><chips>"
+    head-dealer: "<white>Dealer"
+    head-acting: "<gold>Ist dran"
+  derby:
+    # gui.roulettecasino.derby.header_top / header_bottom, solo, group, confirm, withdraw, claim, help_title, page
+    # arrows, duck_0..3 (in the hint colours of DuckDerbyScreen), confirmed; the lores are plugin texts (the mod
+    # has none). The pictures in the menu (hint line, counts, buttons, help panel) come from the pack.
+    title: "DUCK DERBY"
+    solo: "<gold>Solo spielen"
+    solo-lore: "<gray>Das Rennen startet sofort,\n<gray>nur mit deinem Einsatz."
+    group: "<gold>Gruppe (10s)"
+    group-lore: "<gray>Startet ein Gruppenrennen: Andere Spieler\n<gray>haben 10 Sekunden zum Setzen."
+    confirm: "<gold>Bestätigen"
+    confirm-lore: "<gray>Mit deinem Einsatz beim\n<gray>Gruppenrennen mitmachen."
+    withdraw: "<gold>Zurückziehen"
+    withdraw-lore: "<gray>Den Einsatz zurücknehmen und\n<gray>das Gruppenrennen verlassen."
+    claim: "<gold>Gewinn abholen"
+    claim-lore: "<gray>Holt deine offenen Gewinne ab,\n<gray>dann geht es weiter."
+    help: "<gold>Spielanleitung"
+    help-lore: "<gray>Klick: Anleitung zeigen"
+    help-close: "<gold>Zurück"
+    page: "<gold>Seite <page> / <pages>"
+    page-lore: "<gray>Linksklick: nächste Seite\n<gray>Rechtsklick: vorige Seite"
+    duck-0: "<#FFD048>GELB"
+    duck-1: "<#FF7070>ROT"
+    duck-2: "<#FFF2D6>WEISS"
+    duck-3: "<#AAB6CC>SCHWARZ"
+    confirmed: "<gray>Einsatz bestätigt"
+
+item:
+  slot-machine: "Spielautomat"
+  slot-machine-lore: "<gray>MineVegas Casino"
+  slot-machine-reel: "Spielautomaten-Walze"
+  slot-machine-mechanism: "Spielautomaten-Mechanismus"
+  fortune-wheel: "Glücksrad"
+  plinko: "Casino-Plinko"
+  roulette-mechanism: "Kugellagermechanismus"
+  roulette-table: "Casino-Roulette"
+  # block.roulettecasino.blackjack_table, item.roulettecasino.croupier_badge
+  blackjack-table: "Blackjack-Tisch"
+  croupier-badge: "Croupier-Abzeichen"
+  # item.roulettecasino.croupier_hiring_card, item.roulettecasino.casino_guide
+  croupier-hiring-card: "Croupier-Anstellungskarte"
+  casino-guide: "Casino-Handbuch"
+  # item.roulettecasino.croupier_hand, .lore (die Texte der Einstellungs-Dialoge sind die des Mods)
+  croupier-hand: "Hand des Croupiers"
+  croupier-hand-lore: "<gray>Kreativ: richte die Maschinen des Casinos ein"
+  # block.roulettecasino.poker_table
+  poker-table: "Pokertisch"
+  # block.roulettecasino.duck_derby, item.roulettecasino.duck_derby_mechanism, derby_duck_*
+  duck-derby: "Entenrennen"
+  duck-derby-mechanism: "Entenrennen-Mechanismus"
+  derby-duck-yellow: "Gelbe Rennente"
+  derby-duck-red: "Rote Rennente"
+  derby-duck-white: "Weiße Rennente"
+  derby-duck-black: "Schwarze Rennente"
+
+panel:
+  # gui.roulettecasino.slot.panel_title, result_lose, result_push, result_win, result_jackpot
+  bet: "EINSATZ"
+  lose: "KEIN GEWINN"
+  push: "EINSATZ ZURÜCK"
+  # gui.roulettecasino.plinko.panel_title, wheel/plinko.result_partial, plinko.result_big
+  bets: "EINSÄTZE"
+  partial: "ERSTATTET <mult>"
+  big: "GROSSGEWINN <mult>"
+  win: "GEWINN <mult>"
+  jackpot: "JACKPOT <mult>"

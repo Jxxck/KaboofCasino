@@ -60,7 +60,7 @@ final class GuideItems {
             return registered.get();
         }
         String key = book.nameKey(id);
-        String german = key == null ? null : book.german(key);
+        String german = key == null ? null : book.text(key);
         return display(id, key == null ? Component.text(id)
                 : german == null ? Component.translatable(key) : Component.translatable(key, german), amount);
     }

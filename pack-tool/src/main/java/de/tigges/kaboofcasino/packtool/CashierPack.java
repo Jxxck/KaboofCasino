@@ -16,7 +16,7 @@ import java.util.List;
  *   <li>{@code kaboofcasino:cashier/screen}: the counter's top, 2 blocks wide, at the customer's edge: a pane of the
  *       mod's clear casino glass in a brass frame (the bar's {@code furniture_brass}), and on top of it a sign built
  *       like the mod's small casino sign (walnut back, dark green panel, brass frame, warm bulbs) whose red LEDs spell
- *       {@value #WORD} in the mod's 7-row LED letters ({@code small_sign}'s CASINO, here at half a pixel per LED).
+ *       CASHIER (in a German pack {@value #WORD}) in the mod's 7-row LED letters ({@code small_sign}'s CASINO, here at half a pixel per LED).
  *       Coordinates in the anchor cell's frame (x 0..32 over both cells from the viewer's left, y 16..32 the upper
  *       block, z 16 the front); bulbs and LEDs are self-lit like the mod's.</li>
  * </ul>
@@ -28,10 +28,23 @@ final class CashierPack {
     static final List<String> SOUND_EVENTS = List.of();
     static final List<String> LANG_PREFIXES = List.of();
     static final String WORD = "KASSE";
+    static final String WORD_EN = "CASHIER";
+
+    /** The word on the sign in the pack's language. */
+    static String word() {
+        return PackLang.text(WORD_EN, WORD);
+    }
     static final String SCREEN = "kaboofcasino:cashier/screen";
 
-    /** LED letters (7 rows, top first): A and S as {@code small_sign}'s CASINO has them, K and E in their style. */
+    /**
+     * LED letters (7 rows, top first): A, S, C and I as {@code small_sign}'s CASINO has them, K, E, H and R in their
+     * style.
+     */
     static final java.util.Map<Character, String[]> LETTERS = java.util.Map.of(
+            'C', new String[] {".####", "##...", "#....", "#....", "#....", "##...", ".####"},
+            'H', new String[] {"#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"},
+            'I', new String[] {"#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"},
+            'R', new String[] {"####.", "#..##", "#...#", "####.", "#.#..", "#..#.", "#...#"},
             'K', new String[] {"#...#", "#..##", "#.##.", "###..", "#.##.", "#..##", "#...#"},
             'A', new String[] {".###.", "##.##", "#...#", "#...#", "#####", "#...#", "#...#"},
             'S', new String[] {".####", "##...", "#....", ".###.", "....#", "...##", "####."},
@@ -182,7 +195,7 @@ final class CashierPack {
             el.add(box(x, SIGN_Y1 - 0.375, SIGN_Z + 0.35, x + 0.25, SIGN_Y1 - 0.125, SIGN_Z + 0.5, "#bulb", 15));
         }
         // the LEDs, one element per horizontal run of a row
-        boolean[][] grid = leds(WORD);
+        boolean[][] grid = leds(word());
         int cols = grid[0].length;
         double x0 = (SIGN_X0 + SIGN_X1) / 2 - cols * LED / 2;
         double yTop = (SIGN_Y0 + SIGN_Y1) / 2 + 7 * LED / 2;

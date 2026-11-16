@@ -111,11 +111,11 @@ final class MusicPack {
         Set<String> artists = new TreeSet<>();
         tracks.forEach(t -> artists.add(t.artist()));
         JsonObject title = new JsonObject();
-        title.addProperty("text", "KaboofCasino Musik");
+        title.addProperty("text", "KaboofCasino Music");
         title.addProperty("color", "gold");
         JsonObject rest = new JsonObject();
-        rest.addProperty("text", " - Lounge-Musik: " + String.join(", ", artists)
-                + " (incompetech.com), CC BY 4.0, " + CC_BY + " - aus MineVegas Casino von byMehd, " + Credits.MOD_URL);
+        rest.addProperty("text", " - lounge music: " + String.join(", ", artists)
+                + " (incompetech.com), CC BY 4.0, " + CC_BY + " - from MineVegas Casino by byMehd, " + Credits.MOD_URL);
         rest.addProperty("color", "gray");
         JsonArray extra = new JsonArray();
         extra.add(rest);

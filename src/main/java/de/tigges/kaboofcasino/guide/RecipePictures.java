@@ -22,11 +22,17 @@ import net.kyori.adventure.key.Key;
  * pack tool's {@code GuidePictures} lays them out: per recipe widget ("page:index" of the mod's book) the lines of one
  * dialog text, in the font {@link #font()} (the card with the mod's slots, arrow and output slot, the icons, the
  * count). Each line is a list of segments; the plugin only adds what the pack cannot know: the caption, the tooltips
- * and the links. Read from {@value #RESOURCE}, which the build embeds next to the pack it belongs to. Pure, immutable.
+ * and the links. Read from {@value #FILE} of the language, which the build embeds next to the pack it belongs to. Pure, immutable.
  */
 public final class RecipePictures {
 
-    public static final String RESOURCE = "pack/guide-pictures.json";
+    /** The pictures' file name; the plugin jar has one per language ({@code Language.packResource}). */
+    public static final String FILE = "guide-pictures.json";
+
+    /** The recipe pictures of the casino's language inside the plugin jar. */
+    public static String resource() {
+        return de.tigges.kaboofcasino.config.Language.current().packResource(FILE);
+    }
 
     /** What a segment shows. */
     public enum Kind {
@@ -74,11 +80,11 @@ public final class RecipePictures {
     }
 
     public static RecipePictures load(InputStream in) {
-        Objects.requireNonNull(in, RESOURCE + " is missing in the plugin jar");
+        Objects.requireNonNull(in, FILE + " is missing in the plugin jar");
         try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
             return parse(JsonParser.parseReader(reader).getAsJsonObject());
         } catch (IOException e) {
-            throw new UncheckedIOException("cannot read " + RESOURCE, e);
+            throw new UncheckedIOException("cannot read " + FILE, e);
         }
     }
 

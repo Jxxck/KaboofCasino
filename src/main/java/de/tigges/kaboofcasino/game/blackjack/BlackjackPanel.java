@@ -25,7 +25,7 @@ import net.kyori.adventure.text.format.TextDecoration;
  * {@code resultAt + 4}.
  *
  * <p>The words are the mod's translation keys (in the pack for all twelve languages, so every client reads its own
- * language like in the mod) with the German {@code de_de.json} text as fallback for a client without the pack.
+ * language like in the mod) with the mod's text in the casino's language as fallback for a client without the pack.
  */
 public final class BlackjackPanel {
 
@@ -39,6 +39,24 @@ public final class BlackjackPanel {
     static final String DEALER = "CROUPIER";
     static final String[] RESULTS = {"", "GEWONNEN!", "CROUPIER ÜBERKAUFT!", "BLACKJACK!", "VERLOREN", "ÜBERKAUFT",
         "CROUPIER-BLACKJACK", "UNENTSCHIEDEN", "DOPPEL-BLACKJACK"};
+    /** English fallbacks ({@code en_us.json}). */
+    static final String YOU_EN = "YOU";
+    static final String DEALER_EN = "DEALER";
+    static final String[] RESULTS_EN = {"", "YOU WIN!", "DEALER BUSTS!", "BLACKJACK!", "YOU LOSE", "BUST",
+        "DEALER BLACKJACK", "PUSH", "BOTH BLACKJACK"};
+
+    /** The fallbacks in the casino's language (shown by a client without the pack's keys). */
+    static String you() {
+        return de.tigges.kaboofcasino.config.Language.text(YOU_EN, YOU);
+    }
+
+    static String dealer() {
+        return de.tigges.kaboofcasino.config.Language.text(DEALER_EN, DEALER);
+    }
+
+    static String result(int code) {
+        return de.tigges.kaboofcasino.config.Language.text(RESULTS_EN[code], RESULTS[code]);
+    }
     /** {@code BlackjackTableRenderState.STAKES}. */
     static final int STAKES = 3;
 
@@ -117,13 +135,13 @@ public final class BlackjackPanel {
             if (l.result() != 0) {
                 int code = Math.min(l.result(), RESULT_COLORS.length - 1);
                 text.append(Component.text("  ")).append(Component.text()
-                        .append(word("gui.roulettecasino.blackjack.result_" + code, RESULTS[code]))
+                        .append(word("gui.roulettecasino.blackjack.result_" + code, result(code)))
                         .color(TextColor.color(RESULT_COLORS[code])).decorate(TextDecoration.BOLD).build());
             }
         }
         if (c.dealer() >= 0) {
             text.append(Component.newline()).append(Component.text()
-                    .append(word("gui.roulettecasino.blackjack.dealer", DEALER))
+                    .append(word("gui.roulettecasino.blackjack.dealer", dealer()))
                     .append(Component.text(" " + c.dealer()))
                     .color(c.dealer() > 21 ? BUST : PanelText.WHITE).build());
         }
@@ -171,12 +189,12 @@ public final class BlackjackPanel {
                 .append(PanelText.stakes(content.stakes().subList(0, Math.min(STAKES, content.stakes().size()))));
         if (totals.player() >= 0) {
             text.append(nl).append(Component.text()
-                    .append(word("gui.roulettecasino.blackjack.you", YOU))
+                    .append(word("gui.roulettecasino.blackjack.you", you()))
                     .append(Component.text(" " + totals.player()))
                     .color(totals.player() > 21 ? BUST : GOLD).build());
             if (totals.dealer() >= 0) {
                 text.append(Component.text("    ")).append(Component.text()
-                        .append(word("gui.roulettecasino.blackjack.dealer", DEALER))
+                        .append(word("gui.roulettecasino.blackjack.dealer", dealer()))
                         .append(Component.text(" " + totals.dealer()))
                         .color(totals.dealer() > 21 ? BUST : PanelText.WHITE).build());
             }
@@ -184,7 +202,7 @@ public final class BlackjackPanel {
         if (totals.result() != 0) {
             int code = Math.min(totals.result(), RESULT_COLORS.length - 1);
             text.append(nl).append(Component.text()
-                    .append(word("gui.roulettecasino.blackjack.result_" + code, RESULTS[code]))
+                    .append(word("gui.roulettecasino.blackjack.result_" + code, result(code)))
                     .color(TextColor.color(RESULT_COLORS[code])).decorate(TextDecoration.BOLD).build());
         }
         return text.build();

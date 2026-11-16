@@ -35,4 +35,15 @@ class BlackjackPackKeysTest {
                     + BlackjackPanel.RESULTS[code] + "\""), "result_" + code);
         }
     }
+
+    @Test
+    void theEnglishPanelWordsAreTheModsToo() {
+        java.util.Map<String, String> en = de.tigges.kaboofcasino.TestModJar.lang("en_us");
+        assertEquals(en.get("gui.roulettecasino.blackjack.you"), BlackjackPanel.YOU_EN);
+        assertEquals(en.get("gui.roulettecasino.blackjack.dealer"), BlackjackPanel.DEALER_EN);
+        for (int code = 1; code <= 8; code++) {
+            assertEquals(en.get("gui.roulettecasino.blackjack.result_" + code), BlackjackPanel.RESULTS_EN[code]);
+        }
+        assertEquals(BlackjackPanel.RESULTS.length, BlackjackPanel.RESULTS_EN.length);
+    }
 }

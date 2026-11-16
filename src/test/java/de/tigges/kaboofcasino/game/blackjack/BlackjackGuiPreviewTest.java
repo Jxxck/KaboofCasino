@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
  * and every slot item of the real menu code ({@link BlackjackRoundMenu.View} cells; the bet menu's stake markers and
  * buttons) resolved through the pack's item definitions ({@code model}, {@code select}, {@code range_dispatch},
  * {@code composite}, custom model data tints) and models (south faces, GUI display scale, UVs) onto the common scaled
- * screens. Writes {@code build/reports/gui/blackjack-*.png} (2x) and asserts that the content is on screen at all three
+ * screens. Writes {@code build/reports/gui/<language>/blackjack-*.png} (2x) and asserts that the content is on screen at all three
  * sizes and that no two pictures overlap except where the mod's layout overlaps (cards of one hand, a compact result
  * label over its stake).
  */
@@ -93,16 +93,16 @@ class BlackjackGuiPreviewTest {
 
     @BeforeEach
     void load() throws IOException {
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("pack/KaboofCasino-pack.zip");
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("KaboofCasino-pack.zip"));
              ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry e;
             while ((e = zip.getNextEntry()) != null) {
                 pack.put(e.getName(), zip.readAllBytes());
             }
         }
-        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream("pack/gui-layout.json"));
+        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new InputStreamReader(
-                getClass().getClassLoader().getResourceAsStream("messages_de.yml"), StandardCharsets.UTF_8));
+                getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile()), StandardCharsets.UTF_8));
         raw = m -> yaml.getString(m.key());
     }
 
@@ -575,7 +575,7 @@ class BlackjackGuiPreviewTest {
                 }
             }
         }
-        Path out = Path.of("build/reports/gui/" + name + "-preview-" + width + "x" + height + ".png");
+        Path out = Path.of("build/reports/gui/" + de.tigges.kaboofcasino.config.Language.current().code() + "/" + name + "-preview-" + width + "x" + height + ".png");
         Files.createDirectories(out.getParent());
         BufferedImage big = new BufferedImage(width * 2, height * 2, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < height * 2; y++) {

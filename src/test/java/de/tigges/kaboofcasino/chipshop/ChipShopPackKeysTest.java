@@ -35,11 +35,11 @@ class ChipShopPackKeysTest {
 
     @Test
     void theHelpLinesFitThePanel(@TempDir Path dir) throws IOException {
-        Path file = dir.resolve("messages_de.yml");
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("messages_de.yml")) {
+        Path file = dir.resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile());
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())) {
             Files.write(file, in.readAllBytes());
         }
-        Messages m = Messages.load(file, () -> getClass().getClassLoader().getResourceAsStream("messages_de.yml"))
+        Messages m = Messages.load(file, () -> getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile()))
                 .messages();
         String[] help = m.raw(Msg.CHIPSHOP_HELP).split("\n", -1);
         assertTrue(help.length <= 5);

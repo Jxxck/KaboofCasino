@@ -30,7 +30,7 @@ import net.kyori.adventure.text.format.TextDecoration;
  * </ul>
  * Nothing of the result exists in the content before {@code resultTick}: winner and second come from
  * {@link DerbyView#winnerShown}/{@link DerbyView#secondShown} at the panel's own game tick. Words are the mod's
- * translation keys (the pack has them in every language) with the German {@code de_de.json} text as fallback.
+ * translation keys (the pack has them in every language) with the mod's text in the casino's language as fallback.
  * Bars use the pack's {@code kaboofcasino:derby_panel} font ({@code DerbyPack}). Pure.
  */
 public final class DerbyPanel {
@@ -62,6 +62,20 @@ public final class DerbyPanel {
     static final String MORE_KEY = "gui.roulettecasino.derby.more";
     static final String MORE = "+ %s Spieler";
     static final String PEOPLE = "%s Spieler";
+    /** English fallbacks ({@code en_us.json}). */
+    static final String[] NAMES_EN = {"YELLOW", "RED", "WHITE", "BLACK"};
+    static final String PAYOUT_EN = "WINNER";
+    static final String SECOND_EN = "SECOND";
+    static final String COUNTDOWN_EN = "Starts in %ss";
+    static final String RACING_EN = "Race in progress";
+    static final String MORE_EN = "+ %s players";
+    static final String PEOPLE_EN = "%s players";
+    static final String PERSON_EN = "%s player";
+
+    /** A duck's name in the casino's language: the fallback, and what the lane headers are measured with. */
+    static String name(int lane) {
+        return de.tigges.kaboofcasino.config.Language.text(NAMES_EN[lane], NAMES[lane]);
+    }
     /** {@code sharedPanel}: at most 8 bettors; 3 stakes per bettor and per lane column. */
     static final int MAX_BETTORS = 8;
     static final int STAKES = 3;
@@ -199,14 +213,14 @@ public final class DerbyPanel {
     }
 
     static Component duckName(int lane) {
-        return word(NAME_KEYS[lane], NAMES[lane]);
+        return word(NAME_KEYS[lane], name(lane));
     }
 
     /** {@code peopleKey(count, language)}: one text for every viewer, so the plural rule of the languages without a
      * "few" form (person for 1, else people); German says "%s Spieler" for all. */
     static Component people(int count) {
         String key = DerbyPanelPresentation.peopleKey(count, "en_us");
-        return word(key, PEOPLE, Component.text(count));
+        return word(key, de.tigges.kaboofcasino.config.Language.text(count == 1 ? PERSON_EN : PEOPLE_EN, PEOPLE), Component.text(count));
     }
 
     /** {@code result_line}: "%s: %s". */
@@ -249,7 +263,7 @@ public final class DerbyPanel {
      * centred.
      */
     static Component header(int lane) {
-        int w = width(NAMES[lane]);
+        int w = width(name(lane));
         int start = 1 + (54 - w) / 2;
         return Component.text()
                 .append(glyphs(Character.toString(EDGE), PanelText.WHITE))
@@ -307,28 +321,28 @@ public final class DerbyPanel {
     static Component shared(Shared s) {
         List<Component> lines = new ArrayList<>();
         if (s.enrolling()) {
-            lines.add(word(COUNTDOWN_KEY, COUNTDOWN, Component.text(s.seconds())).color(TITLE));
+            lines.add(word(COUNTDOWN_KEY, de.tigges.kaboofcasino.config.Language.text(COUNTDOWN_EN, COUNTDOWN), Component.text(s.seconds())).color(TITLE));
             lines.add(bar(s.bar()));
         }
         Component title = people(s.members());
         if (s.winner() >= 0) {
             lines.add(title.color(TITLE));
             lines.add(Component.text()
-                    .append(resultLine(PAYOUT_KEY, PAYOUT, duckName(s.winner())))
+                    .append(resultLine(PAYOUT_KEY, de.tigges.kaboofcasino.config.Language.text(PAYOUT_EN, PAYOUT), duckName(s.winner())))
                     .append(Component.text(" · "))
-                    .append(resultLine(SECOND_KEY, SECOND, duckName(s.second())))
+                    .append(resultLine(SECOND_KEY, de.tigges.kaboofcasino.config.Language.text(SECOND_EN, SECOND), duckName(s.second())))
                     .color(TITLE).build());
         } else if (s.enrolling()) {
             lines.add(title.color(TITLE));
         } else {
             lines.add(Component.text().append(title).append(Component.text(" · "))
-                    .append(word(RACING_KEY, RACING)).color(TITLE).build());
+                    .append(word(RACING_KEY, de.tigges.kaboofcasino.config.Language.text(RACING_EN, RACING))).color(TITLE).build());
         }
         for (Bettor b : s.bettors()) {
             lines.add(bettor(b));
         }
         if (s.members() > s.bettors().size()) {
-            lines.add(word(MORE_KEY, MORE, Component.text(s.members() - s.bettors().size())).color(TITLE));
+            lines.add(word(MORE_KEY, de.tigges.kaboofcasino.config.Language.text(MORE_EN, MORE), Component.text(s.members() - s.bettors().size())).color(TITLE));
         }
         return lines(lines);
     }
@@ -345,11 +359,11 @@ public final class DerbyPanel {
             }
         }
         if (s.winner() >= 0) {
-            lines.add(resultLine(PAYOUT_KEY, PAYOUT,
+            lines.add(resultLine(PAYOUT_KEY, de.tigges.kaboofcasino.config.Language.text(PAYOUT_EN, PAYOUT),
                     duckName(s.winner()).color(TextColor.color(WINNER_NAME[s.winner()])))
                     .color(PanelText.WHITE).decorate(TextDecoration.BOLD));
             if (s.second() >= 0) {
-                lines.add(resultLine(SECOND_KEY, SECOND,
+                lines.add(resultLine(SECOND_KEY, de.tigges.kaboofcasino.config.Language.text(SECOND_EN, SECOND),
                         duckName(s.second()).color(TextColor.color(WINNER_NAME[s.second()])))
                         .color(PanelText.WHITE).decorate(TextDecoration.BOLD));
             }

@@ -19,6 +19,7 @@ import java.util.OptionalLong;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -29,12 +30,12 @@ class ChipShopDialogsTest {
 
     @BeforeAll
     static void load(@TempDir Path dir) throws IOException {
-        Path file = dir.resolve("messages_de.yml");
-        try (InputStream in = ChipShopDialogsTest.class.getClassLoader().getResourceAsStream("messages_de.yml")) {
+        Path file = dir.resolve(de.tigges.kaboofcasino.config.Language.current().messagesFile());
+        try (InputStream in = ChipShopDialogsTest.class.getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())) {
             Files.write(file, in.readAllBytes());
         }
         messages = Messages.load(file, () -> ChipShopDialogsTest.class.getClassLoader()
-                .getResourceAsStream("messages_de.yml")).messages();
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile())).messages();
     }
 
     static List<ChipShopCatalog.Row> rows(int n) {
@@ -50,6 +51,7 @@ class ChipShopDialogsTest {
         return PlainTextComponentSerializer.plainText().serialize(c);
     }
 
+    @Tag("german")
     @Test
     void aPageShowsSixItemsWithTheirInputs() {
         ChipShopDialogs.View v = ChipShopDialogs.view(rows(8), 0, id -> Component.text(id), r -> Component.text("Böden"),

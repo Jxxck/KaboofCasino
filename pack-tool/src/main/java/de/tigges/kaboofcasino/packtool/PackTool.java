@@ -11,18 +11,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Builds the KaboofCasino resource pack.
+ * Builds the KaboofCasino resource packs.
  *
  * <pre>
  * PackTool --mod-jar &lt;jar&gt; --mod-sha1 &lt;hex&gt; --src &lt;pack-src&gt; --out &lt;dir&gt;
  * </pre>
- * Writes {@code KaboofCasino-pack.zip}, {@code KaboofCasino-pack.zip.sha1} and {@code gui-layout.json} into the
- * output directory, the casino guide for the plugin's dialogs {@code guide.json} ({@link GuideData}) and its recipe
- * pictures {@code guide-pictures.json} ({@link GuidePictures}), plus the
- * optional music pack {@code KaboofCasino-music.zip} + {@code .sha1} ({@link MusicPack};
- * a separate zip with its own hash, nothing of it is in the casino pack). Same inputs give byte-identical output
- * (sorted entries, fixed timestamps, deterministic PNG and JSON writers), so the SHA-1 only changes when the content
- * does and clients keep their cached copy.
+ * Writes into the output directory, once per language ({@link PackLang}) in a folder of its code ({@code en/},
+ * {@code de/}): {@code KaboofCasino-pack.zip}, {@code KaboofCasino-pack.zip.sha1}, {@code gui-layout.json}, the
+ * casino guide for the plugin's dialogs {@code guide.json} ({@link GuideData}) and its recipe pictures
+ * {@code guide-pictures.json} ({@link GuidePictures}). The packs differ only in the lettering that is drawn into
+ * pictures and models and in their description. Next to the folders, once: {@code recipes.json} and the optional
+ * music pack {@code KaboofCasino-music.zip} + {@code .sha1} ({@link MusicPack}; a separate zip with its own hash,
+ * nothing of it is in a casino pack). Same inputs give byte-identical output (sorted entries, fixed timestamps,
+ * deterministic PNG and JSON writers), so a SHA-1 only changes when the content does and clients keep their cached
+ * copy.
  */
 public final class PackTool {
 
@@ -45,27 +47,37 @@ public final class PackTool {
         Path jar = Path.of(required(opts, "--mod-jar"));
         Path src = Path.of(required(opts, "--src"));
         Path out = Path.of(required(opts, "--out"));
-        Result result = build(jar, required(opts, "--mod-sha1"), src);
         ModJar modJar = ModJar.open(jar, required(opts, "--mod-sha1"));
         MusicPack.Result music = MusicPack.build(modJar);
         try {
             Files.createDirectories(out);
-            Files.write(out.resolve(ZIP), result.zip());
-            Files.writeString(out.resolve(ZIP + ".sha1"), result.sha1() + "\n", StandardCharsets.UTF_8);
-            Files.write(out.resolve(LAYOUT), result.layout());
-            Files.write(out.resolve(ModRecipes.FILE), result.recipes());
-            Files.write(out.resolve(GuideData.FILE), GuideData.build(modJar));
-            Files.write(out.resolve(GuidePictures.FILE), result.pictures().manifest());
+            byte[] recipes = null;
+            for (PackLang lang : PackLang.values()) {
+                Result result = build(jar, required(opts, "--mod-sha1"), src, lang);
+                Path dir = out.resolve(lang.code());
+                Files.createDirectories(dir);
+                Files.write(dir.resolve(ZIP), result.zip());
+                Files.writeString(dir.resolve(ZIP + ".sha1"), result.sha1() + "\n", StandardCharsets.UTF_8);
+                Files.write(dir.resolve(LAYOUT), result.layout());
+                Files.write(dir.resolve(GuideData.FILE), GuideData.build(modJar));
+                Files.write(dir.resolve(GuidePictures.FILE), result.pictures().manifest());
+                if (recipes != null && !java.util.Arrays.equals(recipes, result.recipes())) {
+                    throw new IllegalStateException("the recipes differ between the languages");
+                }
+                recipes = result.recipes();
+                System.out.println("KaboofCasino pack (" + lang.code() + "): " + result.files() + " files, "
+                        + result.zip().length + " bytes, sha1 " + result.sha1()
+                        + (result.padded().isEmpty() ? "" : ", padded " + result.padded().size() + " textures"));
+                System.out.println("KaboofCasino guide pictures (" + lang.code() + "): " + result.pictures().pictures()
+                        + " recipes, " + result.pictures().glyphs() + " glyphs in " + result.pictures().providers()
+                        + " providers, fallbacks " + result.pictures().fallbacks());
+            }
+            Files.write(out.resolve(ModRecipes.FILE), recipes);
             Files.write(out.resolve(MusicPack.ZIP), music.zip());
             Files.writeString(out.resolve(MusicPack.ZIP + ".sha1"), music.sha1() + "\n", StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("cannot write to " + out, e);
         }
-        System.out.println("KaboofCasino pack: " + result.files() + " files, " + result.zip().length + " bytes, sha1 "
-                + result.sha1() + (result.padded().isEmpty() ? "" : ", padded " + result.padded()));
-        System.out.println("KaboofCasino guide pictures: " + result.pictures().pictures() + " recipes, "
-                + result.pictures().glyphs() + " glyphs in " + result.pictures().providers() + " providers, fallbacks "
-                + result.pictures().fallbacks());
         System.out.println("KaboofCasino music pack: " + music.files() + " files, " + music.zip().length
                 + " bytes, sha1 " + music.sha1());
     }
@@ -96,7 +108,16 @@ public final class PackTool {
                 Json.bytes(Json.itemDefinition("kaboofcasino:gui/stake_active")));
     }
 
-    /** Builds the whole pack in memory. */
+    /**
+     * Builds the whole pack of one language in memory. {@link PackLang#current()} is that language from here on (the
+     * guide data that is built after the pack needs it too).
+     */
+    static Result build(Path modJar, String modSha1, Path packSrc, PackLang lang) {
+        PackLang.use(lang);
+        return build(modJar, modSha1, packSrc);
+    }
+
+    /** Builds the whole pack in memory, in the language {@link PackLang#current()}. */
     static Result build(Path modJar, String modSha1, Path packSrc) {
         ModJar jar = ModJar.open(modJar, modSha1);
         PackTree tree = new PackTree();
@@ -123,7 +144,7 @@ public final class PackTool {
         DecoFullPack.add(jar, tree, packSrc);
         DecoDisplayPack.add(jar, tree, packSrc);
         ChipPack.add(jar, tree, packSrc);
-        SlotMachineGui.button(tree, text, "collect_low", "ABHOLEN", true, 14, 4.5, 11.5);
+        SlotMachineGui.button(tree, text, "collect_low", SlotMachineGui.collect(), true, 14, 4.5, 11.5);
         // step 9: the cashier (rig model, item, menu art)
         CashierPack.add(jar, tree, packSrc);
         CashierGui.add(jar, tree, font, text);

@@ -45,8 +45,8 @@ final class PlinkoGui {
         for (GuiFont.Anchor a : anchors()) {
             font.anchor(a);
         }
-        SlotMachineGui.button(tree, text, "plinko_on", "LOSLASSEN", true, 14, 4.5, 11.5);
-        SlotMachineGui.button(tree, text, "plinko_off", "LOSLASSEN", false, 14, 4.5, 11.5);
+        SlotMachineGui.button(tree, text, "plinko_on", PackLang.text("DROP", "LOSLASSEN"), true, 14, 4.5, 11.5);
+        SlotMachineGui.button(tree, text, "plinko_off", PackLang.text("DROP", "LOSLASSEN"), false, 14, 4.5, 11.5);
     }
 
     static BufferedImage compose(BufferedImage source) {

@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
  * the cards' half pixels and the guide's 32 px texture show): title glyphs (also the scaled card glyphs), pen
  * advances, spaces and style shadows; slot items through the pack's item definitions and models, with their display
  * scale and translation; vanilla stakes as marked squares with their count, member heads as a stand-in face. Writes
- * {@code build/reports/gui/derby-*.png} and asserts that the content is on screen at all three sizes, that no
+ * {@code build/reports/gui/<language>/derby-*.png} and asserts that the content is on screen at all three sizes, that no
  * picture is clipped, that the lane pictures cover exactly their cards and that no two pictures overlap except a
  * member's cell behind his head.
  */
@@ -88,16 +88,16 @@ class DerbyGuiPreviewTest {
 
     @BeforeEach
     void load() throws IOException {
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("pack/KaboofCasino-pack.zip");
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("KaboofCasino-pack.zip"));
              ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry e;
             while ((e = zip.getNextEntry()) != null) {
                 pack.put(e.getName(), zip.readAllBytes());
             }
         }
-        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream("pack/gui-layout.json"));
+        layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new InputStreamReader(
-                getClass().getClassLoader().getResourceAsStream("messages_de.yml"), StandardCharsets.UTF_8));
+                getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile()), StandardCharsets.UTF_8));
         raw = m -> yaml.getString(m.key());
     }
 
@@ -616,7 +616,7 @@ class DerbyGuiPreviewTest {
                 }
             }
         }
-        Path out = Path.of("build/reports/gui/" + name + "-preview-" + width + "x" + height + ".png");
+        Path out = Path.of("build/reports/gui/" + de.tigges.kaboofcasino.config.Language.current().code() + "/" + name + "-preview-" + width + "x" + height + ".png");
         Files.createDirectories(out.getParent());
         ImageIO.write(screen, "png", out.toFile());
         String where = name + " " + width + "x" + height + ": ";

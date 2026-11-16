@@ -113,12 +113,12 @@ final class ChipShopEditor implements Listener {
     private Component tab(ChipShopCatalog.Row r) {
         Messages m = ctx.messages().get();
         return m.render(switch (r.category()) {
-            case FLOORS -> Msg.CHIPSHOP_CAT_BOEDEN;
-            case FURNITURE -> Msg.CHIPSHOP_CAT_MOEBEL;
+            case FLOORS -> Msg.CHIPSHOP_CAT_FLOORS;
+            case FURNITURE -> Msg.CHIPSHOP_CAT_FURNITURE;
             case BAR -> Msg.CHIPSHOP_CAT_BAR;
-            case LIGHTS -> Msg.CHIPSHOP_CAT_LICHT;
-            case TECH -> Msg.CHIPSHOP_CAT_TECHNIK;
-            case MACHINES -> Msg.CHIPSHOP_CAT_MASCHINEN;
+            case LIGHTS -> Msg.CHIPSHOP_CAT_LIGHTS;
+            case TECH -> Msg.CHIPSHOP_CAT_TECH;
+            case MACHINES -> Msg.CHIPSHOP_CAT_MACHINES;
             case OUTFITS -> Msg.CHIPSHOP_CAT_OUTFITS;
         });
     }
@@ -258,7 +258,8 @@ final class ChipShopEditor implements Listener {
             }
             int n = changes.size();
             m.actionBar(player, Msg.CHIPSHOP_ADMIN_SAVED, Messages.text("changes",
-                    ChipText.number(n) + (n == 1 ? " Änderung" : " Änderungen")));
+                    ChipText.number(n) + " " + de.tigges.kaboofcasino.config.Language.text(n == 1 ? "change"
+                            : "changes", n == 1 ? "Änderung" : "Änderungen")));
         }
         int pages = ChipShopDialogs.pages(rows.size());
         int page = switch (action.get()) {

@@ -25,8 +25,6 @@ public final class RoundLog implements RoundSink {
     private final Database db;
     /** Runs on the DB thread after a settled row was written (the leaderboard's "recompute" mark). */
     private volatile Runnable afterSettle = () -> { };
-    private SettledHook onSettled = (player, round, reason) -> {
-    };
 
     public RoundLog(Database db) {
         this.db = db;
@@ -35,16 +33,6 @@ public final class RoundLog implements RoundSink {
     /** Sets the hook run on the DB thread after each settled row (step 10: the leaderboard). */
     public void afterSettle(Runnable hook) {
         this.afterSettle = hook;
-    }
-
-    /** Run on MAIN for each settled round (big wins on Discord); it never disturbs the settlement. */
-    public interface SettledHook {
-        void settled(UUID player, RoundRecord round, SettleReason reason);
-    }
-
-    /** Sets the hook run on MAIN for each settled round (big wins on Discord); it never disturbs the settlement. */
-    public void onSettled(SettledHook hook) {
-        this.onSettled = hook;
     }
 
     @Override
@@ -99,11 +87,6 @@ public final class RoundLog implements RoundSink {
             }
             afterSettle.run();
         });
-        try {
-            onSettled.settled(player, r, reason);
-        } catch (RuntimeException e) {
-            Log.get().warn("after settling round {}: {}", r.id(), e.toString());
-        }
     }
 
     /**

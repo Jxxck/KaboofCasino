@@ -18,7 +18,7 @@ class MusicCreditsTest {
 
     @Test
     void creditsNameEveryTrackTheAuthorAndTheLicence() {
-        String credits = yaml("messages_de.yml").getString("command.credits");
+        String credits = yaml(de.tigges.kaboofcasino.config.Language.current().messagesFile()).getString("command.credits");
         for (String title : new String[] {"Airport Lounge", "Backbay Lounge", "Jazz Brunch", "George Street Shuffle",
             "Cool Vibes", "Bossa Antigua"}) {
             assertTrue(credits.contains(title), title);
@@ -29,7 +29,7 @@ class MusicCreditsTest {
         assertTrue(credits.contains("https://creativecommons.org/licenses/by/4.0/"));
         assertTrue(credits.contains("Ogg Vorbis") && credits.contains("-20 LUFS"), "the changes are stated");
         assertTrue(!credits.contains("kommt später"));
-        String prompt = yaml("messages_de.yml").getString("pack.music-prompt");
+        String prompt = yaml(de.tigges.kaboofcasino.config.Language.current().messagesFile()).getString("pack.music-prompt");
         assertTrue(prompt.contains("Kevin MacLeod") && prompt.contains("CC BY 4.0"));
     }
 

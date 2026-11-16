@@ -1,5 +1,6 @@
 package de.tigges.kaboofcasino.admin;
 
+import de.tigges.kaboofcasino.config.Language;
 import de.tigges.kaboofcasino.machine.MachineType;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,9 +10,10 @@ import net.kyori.adventure.text.ComponentLike;
 /**
  * The texts of the croupier's hand: the mod's lang keys ({@code gui.roulettecasino.settings.*},
  * {@code message.roulettecasino.croupier_hand.*}, {@code item.roulettecasino.croupier_hand.*}, the machines'
- * {@code block.roulettecasino.*} names) as translatable components with the mod's German text ({@code de_de.json}) as
- * fallback, so the client's language applies wherever the pack ships the key (the guide's {@code item.} and
- * {@code block.} keys) and German everywhere else ({@code AdminTextsTest} compares every fallback with the mod jar).
+ * {@code block.roulettecasino.*} names) as translatable components with the mod's text in the casino's language
+ * ({@code en_us.json} or {@code de_de.json}) as fallback, so the client's language applies wherever the pack ships the
+ * key (the guide's {@code item.} and {@code block.} keys) and the casino's everywhere else ({@code AdminTextsTest}
+ * compares every fallback with the mod jar).
  * Vanilla keys ({@code gui.done}, {@code options.percent_value}) come from the client. Pure.
  */
 public final class AdminTexts {
@@ -22,6 +24,8 @@ public final class AdminTexts {
 
     /** Key -> the mod's German text. */
     static final Map<String, String> GERMAN = new LinkedHashMap<>();
+    /** Key -> the mod's English text. */
+    static final Map<String, String> ENGLISH = new LinkedHashMap<>();
 
     static {
         de(S + "title", "MASCHINEN-EINSTELLUNGEN");
@@ -105,6 +109,84 @@ public final class AdminTexts {
         de("block.roulettecasino.plinko", "Casino-Plinko");
     }
 
+    static {
+        en(S + "title", "MACHINE SETTINGS");
+        en(S + "chance", "Chance");
+        en(S + "save", "Save");
+        en(S + "copy", "Copy");
+        en(S + "copied", "Copied!");
+        en(S + "paste", "Paste");
+        en(S + "pasted", "Pasted!");
+        en(S + "confirm", "Sure?");
+        en(S + "copy_help", "Copy keeps this machine's settings in the hand; Paste applies them here. Crouch and "
+                + "right-click another machine to paste them onto it.");
+        en(S + "reset_machine", "Reset");
+        en(S + "reset_machine_help", "Clears all of this machine's own settings: it follows the casino in everything "
+                + "again. Click twice.");
+        en(S + "forget_copy", "Forget copy");
+        en(S + "forget_copy_help", "Forgets the settings copied from a machine that the hand keeps.");
+        en(S + "all_normal", "All back to normal");
+        en(S + "all_normal_help", "Every game back to its normal chance; machines with their own setting keep it. "
+                + "Click twice.");
+        en(S + "everything", "Whole casino");
+        en(S + "everything_subtitle", "Settings every machine follows");
+        en(S + "dimension_nether", "Nether");
+        en(S + "dimension_end", "End");
+        en(S + "name", "Machine name");
+        en(S + "automatic_name", "Automatic name: %s");
+        en(S + "name_help", "Leave the field empty to restore the automatic name.");
+        en(S + "help_name", "Its name in this list, and above it while you hold the croupier's hand.");
+        en(S + "help_chance_machine", "This machine's own win chance. Drag the bar or type a number.");
+        en(S + "help_chance_blackjack", "Which side this table's cards favour. In the middle: normal.");
+        en(S + "help_chance_world", "Each game's win chance, for all its machines. Drag a bar or type a number.");
+        en(S + "like_casino_value", "Like the casino: %s");
+        en(S + "like_casino_normal", "Like the casino: normal (%s)");
+        en(S + "like_casino_chance_help", "The machine follows its game's chance, set in “Whole casino” › Chance.");
+        en(S + "natural", "Normal win chance: %s");
+        en(S + "return", "Average return: %s");
+        en(S + "return_help", "Average returned per stake. Above 100%, players receive more than they stake: the "
+                + "machine creates items.");
+        en(S + "creates_items", "Creates more items than are staked");
+        en(S + "roulette_green", "This is the red/black win chance. Green wins at one eighteenth of this chance.");
+        en(S + "derby_group", "Group races use natural odds (1 in 4). Other rates apply to solo play.");
+        en(S + "favour_dealer", "Dealer");
+        en(S + "bias_normal", "Normal");
+        en(S + "favour_player", "Player");
+        en(S + "bias_help", "Which side the cards favour. For each card, with the intensity below, the dealer deals "
+                + "whichever of the two top cards of the shoe suits that side; the other stays on top. Rules, "
+                + "actions and payouts do not change.");
+        en(S + "bias_wins", "Player wins about %s of hands (normal: %s)");
+        en(S + "bias_return", "Estimated average return: %s");
+        en(S + "bias_estimate_help", "Measured over 400,000 hands per setting, the player using the best strategy: a "
+                + "player who plays worse wins less. Shown only in the Croupier's Hand.");
+        en(S + "bias_estimate_help_poker", "Measured over 40,000 hands per setting, the player calling with a pair, "
+                + "a draw or a ten or better: a player who plays worse wins less. Shown only in the Croupier's Hand.");
+        en(S + "blackjack_rules", "The current shoe, actions and payouts stay the same.");
+        en(S + "bias_short_normal", "normal");
+        en(S + "bias_short_dealer", "dealer +%s");
+        en(S + "bias_short_player", "player +%s");
+        en(S + "type_slider_normal", "%s: normal (%s)");
+        en(S + "stats_type", "%s: average return %s");
+        en(S + "stats_blackjack", "Blackjack: player wins ~%s · return ~%s");
+        en(S + "stats_poker", "Poker: player wins ~%s · return ~%s");
+        en(S + "protection", "Protection");
+        en(S + "help_protection", "Can players break the casino's machines in survival?");
+        en(S + "breakable_help", "Applies to all six casino machines. Creative players can always break them.");
+        en(M + "creative_only", "The croupier's hand only works in creative mode.");
+        en(M + "pasted", "Settings pasted onto %s");
+        en(M + "nothing_to_paste", "No copy in the hand: open a machine with it and click Copy.");
+        en(M + "copy_forgotten", "Copied settings forgotten.");
+        en(I + "copied", "Copied settings: %s (%s, %s, %s)");
+        en(I + "copied_help", "Crouch + right-click a machine: paste · in the air: forget");
+        en("block.roulettecasino.roulette_table", "Casino Roulette");
+        en("block.roulettecasino.blackjack_table", "Blackjack Table");
+        en("block.roulettecasino.poker_table", "Poker Table");
+        en("block.roulettecasino.duck_derby", "Duck Derby");
+        en("block.roulettecasino.slot_machine", "Slot Machine");
+        en("block.roulettecasino.fortune_wheel", "Fortune Wheel");
+        en("block.roulettecasino.plinko", "Casino Plinko");
+    }
+
     private AdminTexts() {
     }
 
@@ -112,13 +194,38 @@ public final class AdminTexts {
         GERMAN.put(key, german);
     }
 
-    /** A known key with its German fallback. */
-    static Component t(String key, ComponentLike... args) {
-        String german = GERMAN.get(key);
-        if (german == null) {
-            throw new IllegalArgumentException("no German text for " + key);
+    private static void en(String key, String english) {
+        ENGLISH.put(key, english);
+    }
+
+    /** The mod's text of a known key in the casino's language. */
+    static String fallback(String key) {
+        String text = (Language.current() == Language.DE ? GERMAN : ENGLISH).get(key);
+        if (text == null) {
+            throw new IllegalArgumentException("no text for " + key);
         }
-        return Component.translatable(key, german, args);
+        return text;
+    }
+
+    /** A known key with its text in the casino's language as fallback. */
+    static Component t(String key, ComponentLike... args) {
+        return Component.translatable(key, fallback(key), args);
+    }
+
+    /** The plugin's own machines (no mod text): their names in the casino's language. */
+    static String ownName(MachineType type) {
+        if (type.onWall() && type != MachineType.LEADERBOARD_WALL) {
+            return Language.text("Leaderboard (wall board ", "Bestenliste (Wandtafel ") + type.wallColumns() + "×"
+                    + type.wallRows() + ")";
+        }
+        return switch (type) {
+            case CASHIER -> Language.text("Cashier", "Kasse");
+            case LEADERBOARD_WALL -> Language.text("Leaderboard (wall board)", "Bestenliste (Wandtafel)");
+            case LEADERBOARD_COLUMN -> Language.text("Leaderboard (column)", "Bestenliste (Säule)");
+            case CHIP_SHOP -> Language.text("Chip Shop", "Chip-Shop");
+            case JUKEBOX -> Language.text("Casino Jukebox", "Casino-Jukebox");
+            default -> throw new IllegalArgumentException(type + " is the mod's");
+        };
     }
 
     /** {@code gui.roulettecasino.settings.<name>}. */
@@ -138,24 +245,9 @@ public final class AdminTexts {
 
     /** {@code CasinoMachine.typeName}: the machine's block name ({@code block.roulettecasino.<id>}). */
     public static Component typeName(MachineType type) {
-        if (type == MachineType.CASHIER) {
-            return Component.translatable("item.kaboofcasino.cashier", "Kasse"); // the plugin's own: no mod text
-        }
-        if (type == MachineType.LEADERBOARD_WALL) {
-            return Component.translatable("item.kaboofcasino.leaderboard_wall", "Bestenliste (Wandtafel)");
-        }
-        if (type.onWall()) {
-            return Component.translatable("item.kaboofcasino." + type.id(),
-                    "Bestenliste (Wandtafel " + type.wallColumns() + "×" + type.wallRows() + ")");
-        }
-        if (type == MachineType.CHIP_SHOP) {
-            return Component.translatable("item.kaboofcasino.chip_shop", "Chip-Shop");
-        }
-        if (type == MachineType.JUKEBOX) {
-            return Component.translatable("item.kaboofcasino.jukebox", "Casino-Jukebox");
-        }
-        if (type == MachineType.LEADERBOARD_COLUMN) {
-            return Component.translatable("item.kaboofcasino.leaderboard_column", "Bestenliste (Säule)");
+        if (type == MachineType.CASHIER || type == MachineType.CHIP_SHOP || type == MachineType.JUKEBOX
+                || type.isBoard()) {
+            return Component.translatable("item.kaboofcasino." + type.id(), ownName(type)); // no mod text
         }
         return t("block.roulettecasino." + type.id());
     }

@@ -19,7 +19,7 @@ import java.util.Set;
  * <ul>
  *   <li>{@code kaboofcasino:leaderboard/wall}: 3 x 2 blocks on a wall, centre = the bottom middle cell's centre:
  *       x -16..32, y 0..32, back on the wall at z 0, felt face at z {@value #WALL_FELT}, nothing beyond z 3; the
- *       header says {@value #WALL_WORD};</li>
+ *       header says LEADERBOARD (in a German pack {@value #WALL_WORD});</li>
  *   <li>{@code kaboofcasino:leaderboard/column_post}: the bottom cell of the standing column, centre = that cell's
  *       centre: brass foot, walnut plinth, brass pole (x 7..9, z 7..9) up to y 16, all inside the cell;</li>
  *   <li>{@code kaboofcasino:leaderboard/column_board}: the column's board, centre = the middle cell's centre:
@@ -45,6 +45,12 @@ final class LeaderboardPack {
     static final String WALL_ITEM = "kaboofcasino:leaderboard_wall";
     static final String COLUMN_ITEM = "kaboofcasino:leaderboard_column";
     static final String WALL_WORD = "BESTENLISTE";
+    static final String WALL_WORD_EN = "LEADERBOARD";
+
+    /** A board's header word in the pack's language ("TOP 10" is the same in both). */
+    static String word(Board board) {
+        return board.word().equals(WALL_WORD) ? PackLang.text(WALL_WORD_EN, WALL_WORD) : board.word();
+    }
     static final String COLUMN_WORD = "TOP 10";
     static final double WALL_FELT = 2;
     static final double COLUMN_FELT = 10;
@@ -79,7 +85,10 @@ final class LeaderboardPack {
      * is 3 columns. The zero is slashed so "10" does not read "1O".
      */
     static final Map<Character, String[]> LETTERS = Map.ofEntries(
+            Map.entry('A', new String[] {".###.", "##.##", "#...#", "#...#", "#####", "#...#", "#...#"}),
             Map.entry('B', new String[] {"####.", "#..##", "#...#", "####.", "#...#", "#..##", "####."}),
+            Map.entry('D', new String[] {"####.", "#..##", "#...#", "#...#", "#...#", "#..##", "####."}),
+            Map.entry('R', new String[] {"####.", "#..##", "#...#", "####.", "#.#..", "#..#.", "#...#"}),
             Map.entry('E', new String[] {"#####", "##...", "#....", "####.", "#....", "##...", "#####"}),
             Map.entry('I', new String[] {"#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"}),
             Map.entry('L', new String[] {"#....", "#....", "#....", "#....", "#....", "##...", "#####"}),
@@ -414,7 +423,7 @@ final class LeaderboardPack {
         double[] felt = board.feltRect();
         BufferedImage image = Images.blank(texel(felt[2] - felt[0]), texel(felt[3] - felt[1]));
         Images.fill(image, 0, 0, image.getWidth(), image.getHeight(), FELT);
-        boolean[][] grid = leds(board.word());
+        boolean[][] grid = leds(word(board));
         double x0 = board.ledX(grid[0].length);
         double top = board.ledTop();
         double grown = board.backing();
@@ -556,7 +565,7 @@ final class LeaderboardPack {
                     bulbZ + BULB_RELIEF, "#bulb", FRONT, true, 15));
         }
         // the LEDs, one element per LED like the mod's signs (each shows the whole LED texture)
-        boolean[][] grid = leds(b.word());
+        boolean[][] grid = leds(word(b));
         double x0 = b.ledX(grid[0].length);
         double top = b.ledTop();
         for (int r = 0; r < 7; r++) {

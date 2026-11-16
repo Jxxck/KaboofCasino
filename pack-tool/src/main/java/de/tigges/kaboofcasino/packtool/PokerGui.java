@@ -142,7 +142,7 @@ final class PokerGui {
         for (GuiFont.Anchor a : anchors()) {
             font.anchor(a);
         }
-        JsonObject lang = Json.parse(jar.bytes("assets/roulettecasino/lang/de_de.json"));
+        JsonObject lang = Json.parse(jar.bytes(PackLang.current().modLangPath("roulettecasino")));
         SlotMachineGui.button(tree, text, "poker/deal_on", lang(lang, "deal"), true, 18, 4.5, 13.5);
         SlotMachineGui.button(tree, text, "poker/deal_off", lang(lang, "deal"), false, 18, 4.5, 13.5);
         cards(tree);
@@ -164,7 +164,7 @@ final class PokerGui {
 
     static String langKey(JsonObject lang, String full) {
         if (!lang.has(full)) {
-            throw new IllegalStateException("de_de.json lacks " + full);
+            throw new IllegalStateException("the mod's " + PackLang.current().modCode() + ".json lacks " + full);
         }
         return lang.get(full).getAsString();
     }

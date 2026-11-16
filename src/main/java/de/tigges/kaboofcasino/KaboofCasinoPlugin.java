@@ -3,6 +3,7 @@ package de.tigges.kaboofcasino;
 import de.tigges.kaboofcasino.command.CasinoCommand;
 import de.tigges.kaboofcasino.config.CasinoConfig;
 import de.tigges.kaboofcasino.config.ConfigLoader;
+import de.tigges.kaboofcasino.config.Language;
 import de.tigges.kaboofcasino.config.Messages;
 import de.tigges.kaboofcasino.game.CasinoRandom;
 import de.tigges.kaboofcasino.game.plinko.PlinkoController;
@@ -62,6 +63,8 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
 
     private volatile CasinoConfig config = CasinoConfig.DEFAULTS;
     private volatile Messages messages;
+    /** True once the language of this run is fixed (first load of the settings). */
+    private boolean languageSet;
     private Database db;
     private PackHttpServer http;
     private GamePortPack gamePort;
@@ -99,14 +102,16 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
     private void enable() throws IOException, java.sql.SQLException {
         int warnings = loadSettings();
         if (warnings > 0) {
-            Log.get().warn("{} warning(s) in config.yml/messages_de.yml (see above)", warnings);
+            Log.get().warn("{} warning(s) in config.yml/{} (see above)", warnings, Language.current().messagesFile());
         }
+        Log.get().info("KaboofCasino language: {}, time zone: {}", Language.current().code(), Language.zone());
         PackFile pack = PackFile.load(getClassLoader());
         PackFile musicPack = PackFile.loadMusic(getClassLoader());
         GuiLayout layout;
-        try (InputStream in = getResource("pack/gui-layout.json")) {
+        String layoutFile = Language.current().packResource(GuiLayout.FILE);
+        try (InputStream in = getResource(layoutFile)) {
             if (in == null) {
-                throw new IllegalStateException("pack/gui-layout.json is missing in the plugin jar");
+                throw new IllegalStateException(layoutFile + " is missing in the plugin jar");
             }
             layout = GuiLayout.load(in);
         }
@@ -161,15 +166,6 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         jukebox = new de.tigges.kaboofcasino.jukebox.JukeboxService(ctx,
                 de.tigges.kaboofcasino.jukebox.JukeboxCatalog.load(getClassLoader()));
         roundLog.afterSettle(boards::roundSettled);
-        // Discord (Jack 2026-11-11): only through KaboofDiscord, if it is there
-        de.tigges.kaboofcasino.discord.DiscordBridge discord = new de.tigges.kaboofcasino.discord.DiscordBridge();
-        boards.discord(discord);
-        // hidden: the PDC flag of an online player as well (a restored DB may lack his mirror row until he joins)
-        de.tigges.kaboofcasino.board.BoardService b = boards;
-        roundLog.onSettled(new de.tigges.kaboofcasino.discord.BigWins(ctx, discord, id -> {
-            Player online = Bukkit.getPlayer(id);
-            return online != null ? b.hidden(online) : b.hidden(id);
-        })::settled);
         machines.games(machine -> switch (machine.type()) {
             case SLOT_MACHINE -> new SlotController(machine, ctx);
             case FORTUNE_WHEEL -> new WheelController(machine, ctx);
@@ -279,21 +275,36 @@ public final class KaboofCasinoPlugin extends JavaPlugin {
         Log.get().info("KaboofCasino enabled: {} machine(s) in loaded chunks", machines.all().size());
     }
 
-    /** Loads config.yml and messages_de.yml (merging new keys); returns the number of warnings. */
+    /**
+     * Loads config.yml and the texts file of the casino's language (merging new keys); returns the number of
+     * warnings. The language is taken from the config only the first time: the resource pack and the item names are
+     * loaded once, so a changed {@code language:} waits for the next start.
+     */
     private int loadSettings() {
         Path folder = getDataFolder().toPath();
         ConfigLoader.Loaded c = ConfigLoader.load(folder.resolve(ConfigLoader.FILE),
                 () -> getResource(ConfigLoader.FILE));
-        Messages.Loaded m = Messages.load(folder.resolve(Messages.FILE), () -> getResource(Messages.FILE));
+        int extra = 0;
+        if (!languageSet) {
+            Language.use(c.config().region().language());
+            languageSet = true;
+        } else if (c.config().region().language() != Language.current()) {
+            Log.get().warn("config.yml: language {} takes effect after a server restart; until then the casino stays "
+                    + "in {}", c.config().region().language().code(), Language.current().code());
+            extra++;
+        }
+        Language.useZone(c.config().region().zone());
+        String texts = Language.current().messagesFile();
+        Messages.Loaded m = Messages.load(folder.resolve(texts), () -> getResource(texts));
         c.warnings().forEach(w -> Log.get().warn(w));
         m.warnings().forEach(w -> Log.get().warn(w));
         if (c.added() + m.added() > 0) {
-            Log.get().info("config.yml/messages_de.yml: added {} new setting(s) from the plugin jar",
+            Log.get().info("config.yml/{}: {} setting(s) added or brought up to date from the plugin jar", texts,
                     c.added() + m.added());
         }
         this.config = c.config();
         this.messages = m.messages();
-        return c.warnings().size() + m.warnings().size();
+        return c.warnings().size() + m.warnings().size() + extra;
     }
 
     /** {@code /casino reload}: config and texts (not the pack, not the HTTP port). */

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** The guide data the plugin ships is the mod's guide, complete, with the mod's German texts. */
@@ -54,24 +55,26 @@ class GuideBookTest {
         assertEquals(expected, counted);
     }
 
+    @Tag("german")
     @Test
     void germanTextsAreExactlyTheModsDeDe() {
         GuideBook book = GuideFixtures.book();
         Map<String, String> mod = GuideFixtures.modGerman();
         assertEquals(134, book.germanKeys().size(), "the guide's keys, the screen's, the croupier and 92 names");
         for (String key : book.germanKeys()) {
-            assertEquals(mod.get(key), book.german(key), key);
+            assertEquals(mod.get(key), book.text(key), key);
         }
-        assertEquals("CASINO-HANDBUCH", book.german("guide.roulettecasino.text.006"));
-        assertEquals("Vorherige Seite", book.german("guide.roulettecasino.previous"));
-        assertEquals("Nächste Seite", book.german("guide.roulettecasino.next"));
-        assertEquals("Inhalt", book.german("guide.roulettecasino.contents"));
-        assertEquals("Fertig", book.german("guide.roulettecasino.close"));
-        assertEquals("Formloses Rezept", book.german("guide.roulettecasino.expansion.shapeless"));
+        assertEquals("CASINO-HANDBUCH", book.text("guide.roulettecasino.text.006"));
+        assertEquals("Vorherige Seite", book.text("guide.roulettecasino.previous"));
+        assertEquals("Nächste Seite", book.text("guide.roulettecasino.next"));
+        assertEquals("Inhalt", book.text("guide.roulettecasino.contents"));
+        assertEquals("Fertig", book.text("guide.roulettecasino.close"));
+        assertEquals("Formloses Rezept", book.text("guide.roulettecasino.expansion.shapeless"));
         assertEquals("„Kopieren“ im Fenster, dann Schleichen + Rechtsklick auf die andere Maschine.",
-                book.german("guide.roulettecasino.text.264"));
+                book.text("guide.roulettecasino.text.264"));
     }
 
+    @Tag("german")
     @Test
     void everyKeyOfEveryWidgetAndEveryCasinoNameHasGermanText() {
         GuideBook book = GuideFixtures.book();
@@ -81,24 +84,24 @@ class GuideBookTest {
                 JsonObject widget = w.getAsJsonObject();
                 if (widget.has("key")) {
                     keys++;
-                    assertNotNull(book.german(widget.get("key").getAsString()), widget.toString());
+                    assertNotNull(book.text(widget.get("key").getAsString()), widget.toString());
                 }
             }
         }
         assertEquals(89 + 24 + 9 + 13, keys, "titles, labels, texts and labelled tiles");
         for (Tab tab : book.tabs()) {
-            assertNotNull(book.german(tab.key()), tab.key());
+            assertNotNull(book.text(tab.key()), tab.key());
         }
         for (String id : casinoIds(book)) {
             String key = book.nameKey(id);
             assertNotNull(key, id);
-            assertNotNull(book.german(key), key);
+            assertNotNull(book.text(key), key);
             String path = id.substring(id.indexOf(':') + 1);
             String ns = id.substring(0, id.indexOf(':'));
             assertTrue(key.equals("block." + ns + "." + path) || key.equals("item." + ns + "." + path), key);
         }
-        assertEquals("Croupier-Theke", book.german(book.nameKey("roulettecasino:dealer_station")));
-        assertEquals("Kugellagermechanismus", book.german(book.nameKey("roulettecasino:roulette_mechanism")));
+        assertEquals("Croupier-Theke", book.text(book.nameKey("roulettecasino:dealer_station")));
+        assertEquals("Kugellagermechanismus", book.text(book.nameKey("roulettecasino:roulette_mechanism")));
     }
 
     /** Every casino id the widgets name (refs, results, cells, chips, scene items). */

@@ -98,8 +98,12 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
     /** Its sounds are heard this far (volume 1). */
     static final int SOUND_RANGE = 16;
     static final Component TITLE = Component.translatable("entity.roulettecasino.villager.croupier", "Croupier");
-    static final Component BUSY = Component.translatable("message.roulettecasino.croupier_busy",
-            "Dieser Croupier ist beschäftigt.");
+    /** {@code message.roulettecasino.croupier_busy} with the mod's text in the casino's language as fallback. */
+    static Component busy() {
+        return Component.translatable("message.roulettecasino.croupier_busy",
+                de.tigges.kaboofcasino.config.Language.text("This croupier is busy.",
+                        "Dieser Croupier ist beschäftigt."));
+    }
 
     private final CasinoContext ctx;
     private final DisplayDecoService deco;
@@ -421,7 +425,7 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
     private void trade(Player player, Croupier c) {
         if (c.trading()) {
             if (!player.getUniqueId().equals(c.trader)) {
-                player.sendActionBar(BUSY);
+                player.sendActionBar(busy());
             }
             return;
         }
@@ -620,7 +624,7 @@ public final class CroupierService implements DealerStationHook, CroupierSpawnTr
     /** {@code CroupierHiring.hire}. */
     private void hire(Player player, Croupier c, CroupierHiring.Hand hand) {
         if (c.trading()) {
-            player.sendActionBar(BUSY);
+            player.sendActionBar(busy());
             return;
         }
         CroupierRecord r = c.record();

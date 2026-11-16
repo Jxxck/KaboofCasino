@@ -44,9 +44,17 @@ public final class ChipItems {
         return stack;
     }
 
-    /** {@code item.kaboofcasino.chip_<n>} with the German name as fallback ("25er-Chip"). */
+    /**
+     * {@code item.kaboofcasino.chip_<n>} with the name in the casino's language as fallback ("25 Chip", in German
+     * "25er-Chip"); the pack has the key in every language.
+     */
     public static Component name(int denomination) {
-        return Component.translatable("item.kaboofcasino.chip_" + denomination, denomination + "er-Chip");
+        return Component.translatable("item.kaboofcasino.chip_" + denomination, plainName(denomination));
+    }
+
+    /** "25 Chip" / "25er-Chip". */
+    public static String plainName(int denomination) {
+        return de.tigges.kaboofcasino.config.Language.text(denomination + " Chip", denomination + "er-Chip");
     }
 
     /** The denomination of a chip stack (only by its PDC tag on paper), empty for everything else. */

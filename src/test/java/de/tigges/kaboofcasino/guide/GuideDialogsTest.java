@@ -27,6 +27,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** Every spread converts into a dialog with the mod's texts, resolvable items and valid navigation. */
@@ -108,6 +109,7 @@ class GuideDialogsTest {
                 .contains("CREDITS"), "the licence line is on the cover");
     }
 
+    @Tag("german")
     @Test
     void everyLangKeyExistsInDeDeWithItsGermanText() {
         Map<String, String> german = GuideFixtures.modGerman();
@@ -292,7 +294,7 @@ class GuideDialogsTest {
                 String where = page.number() + ":" + i;
                 // the caption (name, "Formlos · name") stays inside the 250 px text box
                 String caption = GuideFixtures.plain(dialogs.caption(r, texts));
-                String german = book.nameKey(r.result()) == null ? null : book.german(book.nameKey(r.result()));
+                String german = book.nameKey(r.result()) == null ? null : book.text(book.nameKey(r.result()));
                 String shown = caption.startsWith("{") || caption.startsWith("Formlos · {")
                         ? (r.shapeless() ? "Formlos · " : "") + german : caption;
                 assertTrue(german == null || de.tigges.kaboofcasino.util.FontWidth.width(shown)
@@ -419,6 +421,7 @@ class GuideDialogsTest {
         assertTrue(glyphs > 1000, "glyphs " + glyphs);
     }
 
+    @Tag("german")
     @Test
     void stylesFollowTheMod() {
         List<Body> cover = GuideFixtures.view(1, false).body();

@@ -378,9 +378,11 @@ final class DecoPlacer {
         int lz = looks.getModZ();
         int along = shift[0] * lx + shift[1] * lz;
         int across = shift[0] * -lz + shift[1] * lx;
-        String side = across > 0 ? "rechts" : across < 0 ? "links" : "";
-        String depth = along > 0 ? "hinten" : along < 0 ? "vorne" : "";
-        String both = (side + " " + depth).strip();
-        return both.isEmpty() ? "zur Seite" : both;
+        de.tigges.kaboofcasino.config.Language l = de.tigges.kaboofcasino.config.Language.current();
+        String side = across > 0 ? l.pick("to the right", "rechts") : across < 0 ? l.pick("to the left", "links") : "";
+        String depth = along > 0 ? l.pick("to the back", "hinten") : along < 0 ? l.pick("to the front", "vorne") : "";
+        String both = side.isEmpty() || depth.isEmpty() ? side + depth
+                : l.pick(side + " and " + depth, side + " " + depth);
+        return both.isEmpty() ? l.pick("to the side", "zur Seite") : both;
     }
 }

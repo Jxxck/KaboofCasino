@@ -23,6 +23,12 @@ final class RouletteGui {
     /** {@code RouletteScreen.veiled(-792641)}: the label colour blended toward the veil by 180/255. */
     static final int MUTED = 0xFF6B6E5F;
     static final String[] LABELS = {"ROT", "SCHWARZ", "GRÜN"};
+    static final String[] LABELS_EN = {"RED", "BLACK", "GREEN"};
+
+    /** A colour's name in the pack's language. */
+    static String label(int colour) {
+        return PackLang.text(LABELS_EN[colour], LABELS[colour]);
+    }
     /**
      * Window rectangle of a veil: x from {@link #veilX}, y 5..107 (the mod's chip veil and column fill reach mod
      * 25..131; here the fill ends with the last bet frame because the button moved up to window 109).
@@ -62,8 +68,8 @@ final class RouletteGui {
         for (GuiFont.Anchor a : anchors()) {
             font.anchor(a);
         }
-        SlotMachineGui.button(tree, text, "roulette_on", "DREHEN", true, 14, 4.5, 11.5);
-        SlotMachineGui.button(tree, text, "roulette_off", "DREHEN", false, 14, 4.5, 11.5);
+        SlotMachineGui.button(tree, text, "roulette_on", SlotMachineGui.spin(), true, 14, 4.5, 11.5);
+        SlotMachineGui.button(tree, text, "roulette_off", SlotMachineGui.spin(), false, 14, 4.5, 11.5);
         // the floating panel's colour header bar (RouletteBetRenderer: x + 2 .. x + 56): white, tinted by the text
         // colour; ascent 9 so it spans the text line from 2 px above the caps
         BufferedImage bar = Images.blank(54, 11);
@@ -95,10 +101,10 @@ final class RouletteGui {
             }
         }
         // the label exactly where the title draws it (centred at the anchor), in the muted colour
-        int width = text.width(LABELS[c]);
+        int width = text.width(label(c));
         int labelX = ART.windowX(56 + 56 * c) - width / 2 - x0;
         int labelY = ART.windowY(55) - VEIL_TOP;
-        text.draw(img, LABELS[c], labelX, labelY, MUTED, false);
+        text.draw(img, label(c), labelX, labelY, MUTED, false);
         String name = "roulette_veil_" + c;
         tree.put("assets/kaboofcasino/textures/item/gui/" + name + ".png", Images.write(img));
         // GUI scale 4 about the slot item centre: unit u -> px 8 + 4 (u - 8) from the item area's left/top

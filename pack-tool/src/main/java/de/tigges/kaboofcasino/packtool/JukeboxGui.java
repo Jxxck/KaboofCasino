@@ -82,9 +82,9 @@ final class JukeboxGui {
     }
 
     static void buttons(PackTree tree, TextGlyphs text) {
-        picture(tree, "play", DerbyGui.button(text, "ABSPIELEN", CashierGui.COMMIT_W, CashierGui.COMMIT_H, true),
+        picture(tree, "play", DerbyGui.button(text, PackLang.text("PLAY", "ABSPIELEN"), CashierGui.COMMIT_W, CashierGui.COMMIT_H, true),
                 PLAY_ART, CashierGui.COMMIT_X, CashierGui.COMMIT_Y);
-        picture(tree, "stop", DerbyGui.button(text, "STOPPEN", CashierGui.COMMIT_W, CashierGui.COMMIT_H, true),
+        picture(tree, "stop", DerbyGui.button(text, PackLang.text("STOP", "STOPPEN"), CashierGui.COMMIT_W, CashierGui.COMMIT_H, true),
                 PLAY_ART, CashierGui.COMMIT_X, CashierGui.COMMIT_Y);
         slotPicture(tree, "skip_on", DerbyGui.button(text, "»", 18, 18, true), SKIP_SLOT);
         slotPicture(tree, "skip_off", DerbyGui.button(text, "»", 18, 18, false), SKIP_SLOT);

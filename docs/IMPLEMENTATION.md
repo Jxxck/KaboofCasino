@@ -5,7 +5,9 @@ Plinko; step 3 roulette; step 4 seats, deco, music; step 5 blackjack; step 6 pok
 croupier, guide, TVs, dealer station; then part 2 with chips, the cashier, the leaderboard, the Chip-Shop, outfits,
 multiplayer tables, Texas Hold'em and the jukebox. They describe what was built, how the next games plug in, and the
 pitfalls found on the way. Version numbers below 0.19.0 are versions that only ever ran on the author's own server
-(a permadeath SMP, which is why item safety and "permadeath" come up so often); "live" means that server.
+(a permadeath SMP, which is why item safety and "permadeath" come up so often); "live" means that server. Until
+0.20.0 the plugin was German only, so the texts, button labels and commands quoted in these notes are the German
+ones (`messages_de.yml`, "DREHEN", `/casino abholen`); section "Languages" says how English came in.
 
 References such as `PLAN.md`, `PLAN-2.md`, `games.md`, `render.md` and `server.md` (here and in code comments) point
 to design notes and an analysis of the mod that are not part of this repository: `PLAN` = the numbered design
@@ -53,12 +55,40 @@ systemd-run --scope -q -p MemoryMax=3G -p CPUWeight=20 -- choom -n 1000 -- nice 
   chest title on the scaled screens 480x270 (1080p, scale 4), 456x256 (1366x768) and 427x240 (720p/1440p/4K with
   "Auto"). Look at them after every GUI change.
 
+## Languages (0.20.0)
+
+One language per server, `language: en` (default) or `de` in `config.yml`, fixed while the plugin runs
+(`config.Language`, a process-wide switch set when the settings are first loaded; a changed value waits for the
+restart, because the pack and the item names are loaded once).
+
+- **Texts**: `messages_en.yml` and `messages_de.yml` are both in the jar; the one of the language is copied to the
+  data folder and merged as before. `MessagesTest` keeps the two files equal in keys and placeholders.
+- **Names and fallbacks in code** (decoration, outfits, the croupier's hand, the floating panels): every table has
+  the mod's German text (`de_de.json`) and its English one (`en_us.json`); tests compare both with the mod jar. The
+  plugin's own items have names written for both languages. These are the fallbacks of translatable components: a
+  client that has the pack sees the mod's items in its own language anyway.
+- **Resource pack**: text that is drawn into pictures (buttons, tab labels, status lines) and built into models (the
+  LED words on the cashier, the Chip Shop and the leaderboards) cannot follow a setting at runtime, so the pack tool
+  builds one casino pack per language (`PackLang`; `build/pack/en`, `build/pack/de`) and the jar carries both
+  (`pack/<language>/…`). The German pack is byte-identical to the one of 0.19.0. The music pack exists once.
+- **Numbers and dates**: `ChipText` groups digits with `,` or `.`, decimals follow (`×2.5` / `×2,5`), big numbers on
+  the boards read `12.3k` / `12,3 Tsd.`.
+- **Commands**: the English and the German words are both accepted at all times (`collect` / `abholen`, `off` / `aus`,
+  `week` / `woche`, the leaderboard categories); tab completion and the usage texts show the language's words.
+  `BoardCategory.id()` and `BoardPeriod.id()` are the English words and what a pinned board stores; pins written by
+  older versions carry the German words and are read as before.
+- **Time zone**: weeks and shop days were counted in Europe/Berlin; now `time-zone:` (default `system`).
+- **Upgrading an installation of 0.19.0 or older** (`ConfigLoader.migrate`, `Messages.migrate`): a `config.yml`
+  without `language:` is a German one, so it gets `language: de` and `time-zone: Europe/Berlin` and nothing changes
+  for its players; the Chip-Shop tabs' German config keys and the German message keys are renamed with their values;
+  the `discord:` sections are removed (the posts through the author's own Discord plugin are gone).
+
 ## 2. Architecture
 
 | Package | Content |
 |---|---|
 | `KaboofCasinoPlugin`, `CasinoContext` | wiring only; the context hands games the shared services |
-| `config` | `config.yml` → `CasinoConfig` (validated, defaults merged into the live file), `messages_de.yml` → `Messages`/`Msg` |
+| `config` | `config.yml` → `CasinoConfig` (validated, defaults merged into the live file), `messages_<language>.yml` → `Messages`/`Msg`, `Language` |
 | `pack` | `PackFile` (embedded zip, re-hashed), `GamePortPack` + `PackSniffer` + `HttpSniff` (HTTP on the game port), `PackHttpServer` (own port), `PackListener` (configuration phase), `PackSessions` |
 | `wager` | the bet engine: `WagerEngine` (pure), `Ledger`/`RoundRecord`/`ItemAmount`, `Account` (port) + `PlayerAccount` (Bukkit), `LedgerCodec` (player PDC), `LedgerListener` (quit/death/join/timer/disable); chips (PLAN-2 C1/C2): `Chips` (pure: denominations, the chip-value pseudo item `kaboofcasino:chips`, breakdown, selections, paying a value with change), `ChipItems` (the chip items) |
 | `machine` | `MachineType` (footprints), `Facing`, `MachineRecord` + `ChunkRecords` (chunk PDC), `MachineService` (index, place, remove, verify, tick), listeners for interaction, breaking, protection, chunks, item vetoes; `CasinoItem(s)`, `Recipes` (from `pack/recipes.json`), `Heartbeat` |
@@ -1384,7 +1414,7 @@ Four ducks race in four lanes; a player stakes 1-3 stacks (one per bet row) on *
   order, "Glücksrad" also with umlaut); a hidden player is told he is hidden.
 - **Weekly summary** (`leaderboard.weekly-log`, default on): the first computation after Monday 00:00 logs last week's
   top 3 per category once (`board_weeks` remembers it across restarts) as one INFO line "Bestenliste der Woche
-  dd.MM.–dd.MM.yyyy: ...", for Jack to post on Discord; the casino calls no Discord API.
+  dd.MM.–dd.MM.yyyy: ..." (English: ISO dates).
 - **Boards** (machine kinds `LEADERBOARD_WALL`, `LEADERBOARD_COLUMN`; items `leaderboard_wall` "Bestenliste
   (Wandtafel)" and `leaderboard_column` "Bestenliste (Säule)", `/casino give`; recipes only with
   `leaderboard.craftable: true`: wall `GSG/WWW` gold, small casino sign, green wool; column `S/W/B` small casino sign,

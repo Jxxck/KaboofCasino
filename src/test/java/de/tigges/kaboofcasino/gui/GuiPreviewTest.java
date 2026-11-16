@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
  * Draws the slot machine title the way the 26.3 client does (bitmap glyph top = title y 6 + 7 - ascent, pen advance,
  * spaces, glyph colour = texture x text colour) from the embedded pack onto the common scaled screens 480x270
  * (1080p/4), 456x256 (1366x768) and 427x240 (720p, 1440p and 4K with "Auto"), chest centred, and writes
- * {@code build/reports/gui/slot-preview-WxH.png} for a visual check. Asserts the art fits horizontally (at most 125 px
+ * {@code build/reports/gui/<language>/slot-preview-WxH.png} for a visual check. Asserts the art fits horizontally (at most 125 px
  * right of the chest) and that no content is clipped; only the outer frame may be cut at 240 px height.
  */
 class GuiPreviewTest {
@@ -43,7 +43,7 @@ class GuiPreviewTest {
 
     private void loadPack() throws IOException {
         try (InputStream in = GuiPreviewTest.class.getClassLoader().getResourceAsStream(
-                "pack/KaboofCasino-pack.zip"); ZipInputStream zip = new ZipInputStream(in)) {
+                de.tigges.kaboofcasino.config.Language.current().packResource("KaboofCasino-pack.zip")); ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry e;
             while ((e = zip.getNextEntry()) != null) {
                 pack.put(e.getName(), zip.readAllBytes());
@@ -121,7 +121,7 @@ class GuiPreviewTest {
     void slotTitleFitsTheCommonScreens() throws IOException {
         loadPack();
         GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
-                .getResourceAsStream("pack/gui-layout.json"));
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         TitleBuilder t = new TitleBuilder(layout);
         for (int row = 0; row < 2; row++) {
             for (int col = 0; col < 2; col++) {
@@ -178,7 +178,7 @@ class GuiPreviewTest {
     void rouletteTitleFitsTheCommonScreens() throws IOException {
         loadPack();
         GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
-                .getResourceAsStream("pack/gui-layout.json"));
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         TitleBuilder t = new TitleBuilder(layout);
         for (int row = 0; row < 2; row++) {
             for (int col = 0; col < 2; col++) {
@@ -217,7 +217,7 @@ class GuiPreviewTest {
     void wheelTitleFitsTheCommonScreens() throws IOException {
         loadPack();
         GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
-                .getResourceAsStream("pack/gui-layout.json"));
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         TitleBuilder t = new TitleBuilder(layout);
         for (int row = 0; row < 2; row++) {
             for (int col = 0; col < 2; col++) {
@@ -245,7 +245,7 @@ class GuiPreviewTest {
     void plinkoTitleFitsTheCommonScreens() throws IOException {
         loadPack();
         GuiLayout layout = GuiLayout.load(GuiPreviewTest.class.getClassLoader()
-                .getResourceAsStream("pack/gui-layout.json"));
+                .getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         TitleBuilder t = new TitleBuilder(layout);
         for (int row = 0; row < 2; row++) {
             for (int col = 0; col < 2; col++) {
@@ -332,7 +332,7 @@ class GuiPreviewTest {
                 }
             }
         }
-        Path out = Path.of("build/reports/gui/" + name + "-preview-" + width + "x" + height + ".png");
+        Path out = Path.of("build/reports/gui/" + de.tigges.kaboofcasino.config.Language.current().code() + "/" + name + "-preview-" + width + "x" + height + ".png");
         Files.createDirectories(out.getParent());
         BufferedImage big = new BufferedImage(width * 2, height * 2, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < height * 2; y++) {

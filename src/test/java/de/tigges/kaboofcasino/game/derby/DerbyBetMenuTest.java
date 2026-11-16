@@ -290,9 +290,9 @@ class DerbyBetMenuTest {
     /** The title: both background tiles, the four cards and "DUCK DERBY" from the messages. */
     @Test
     void titleUsesThePackLayout() {
-        GuiLayout layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream("pack/gui-layout.json"));
+        GuiLayout layout = GuiLayout.load(getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().packResource("gui-layout.json")));
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(new InputStreamReader(
-                getClass().getClassLoader().getResourceAsStream("messages_de.yml"), StandardCharsets.UTF_8));
+                getClass().getClassLoader().getResourceAsStream(de.tigges.kaboofcasino.config.Language.current().messagesFile()), StandardCharsets.UTF_8));
         Component title = DerbyBetMenu.title(layout, m -> yaml.getString(m.key()));
         StringBuilder text = new StringBuilder();
         for (Component c : title.children()) {
