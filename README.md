@@ -8,6 +8,8 @@ only accept the server resource pack; the plugin serves it itself.
 [MineVegas Casino](https://www.curseforge.com/minecraft/mc-mods/minevegas-casino) by byMehd.** The games, their
 models, textures, sounds and texts come from MineVegas Casino. On Fabric or NeoForge, use the original mod.
 
+**[See everything that is in it →](docs/FEATURES.md)**
+
 ## Download
 
 The plugin jar is on the [releases page](https://github.com/Jxxck/KaboofCasino/releases). [CHANGELOG.md](CHANGELOG.md)
