@@ -4,7 +4,7 @@ Every release of KaboofCasino, newest first. The version is the one `/version Ka
 
 ## [0.20.1] - 2026-11-16
 
-- **The plugin's author is named in the game.** `/casino info`, the resource pack prompt, the cover of the Casino
+- **The plugin's author is named in the game.** `/casino`, the resource pack prompt, the cover of the Casino
   Guide and the tooltip of the machine items now say KaboofCasino by Jxxck. MineVegas Casino, the mod the plugin is
   based on, is credited on the guide's cover and under `/casino credits`; its licence and the full credits stay in
   the jar and inside the packs.

@@ -85,7 +85,7 @@ restart, because the pack and the item names are loaded once).
 
 ## Credits in the game (0.20.1)
 
-What a player reads names the plugin and its author: `/casino info`, the pack prompt (`pack.prompt`), the cover of the
+What a player reads names the plugin and its author: `/casino` (the text `command.info`), the pack prompt (`pack.prompt`), the cover of the
 Casino Guide (`guide.credits`), the tooltip of the machine items (`item.slot-machine-lore`) and the description of the
 packs in the client's pack list (`Credits.add`, `MusicPack.mcmeta`). MineVegas Casino is named in two places in the
 game, the guide's cover and `/casino credits`; the music's CC BY credit stays in `/casino credits`, the music prompt
